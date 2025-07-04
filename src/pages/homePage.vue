@@ -148,29 +148,50 @@
               dense
             />
             <div class="q-mt-sm">
-              <div class="text-subtitle2">Subtasks</div>
-              <div v-for="(subtask, index) in itemForm.subtasks" :key="index" class="row items-center q-mb-xs">
+              <div class="text-subtitle2">Subitems</div>
+              <div v-for="(subitem, index) in itemForm.subitems" :key="index" class="row items-center q-mb-xs">
                 <q-select
-                  v-model="itemForm.subtasks[index].type"
+                  v-model="itemForm.subitems[index].type"
                   :options="['Task', 'Project', 'Portfolio', 'Other']"
-                  label="Subtask Type"
+                  label="Subitem Type"
                   dense
                   use-input
                   input-debounce="0"
-                  :error="!itemForm.subtasks[index].type && formSubmitted"
-                  error-message="Subtask Type is required"
+                  :error="!itemForm.subitems[index].type && formSubmitted"
+                  error-message="Subitem Type is required"
                 />
                 <q-input
-                  v-model="itemForm.subtasks[index].title"
-                  label="Subtask Title"
+                  v-model="itemForm.subitems[index].title"
+                  label="Subitem Title"
                   dense
                   class="q-ml-sm"
-                  :error="!itemForm.subtasks[index].title && formSubmitted"
-                  error-message="Subtask Title is required"
+                  :error="!itemForm.subitems[index].title && formSubmitted"
+                  error-message="Subitem Title is required"
                 />
-                <q-btn flat round icon="remove" color="negative" size="sm" @click="itemForm.subtasks.splice(index, 1)" />
+                <q-input
+                  v-model="itemForm.subitems[index].deadline"
+                  label="Deadline"
+                  dense
+                  type="datetime-local"
+                  class="q-ml-sm"
+                />
+                <q-select
+                  v-model="itemForm.subitems[index].status"
+                  :options="statusOptions"
+                  label="Status"
+                  dense
+                  class="q-ml-sm"
+                />
+                <q-select
+                  v-model="itemForm.subitems[index].priority"
+                  :options="['Low', 'Medium', 'High']"
+                  label="Priority"
+                  dense
+                  class="q-ml-sm"
+                />
+                <q-btn flat round icon="remove" color="negative" size="sm" @click="itemForm.subitems.splice(index, 1)" />
               </div>
-              <q-btn flat icon="add" size="sm" color="secondary" @click="itemForm.subtasks.push({ type: '', title: '' })" />
+              <q-btn flat icon="add" size="sm" color="secondary" @click="itemForm.subitems.push({ type: '', title: '', deadline: '', status: 'backlog', priority: 'Low' })" />
             </div>
             <div class="q-mt-sm">
               <div class="text-subtitle2">Share With</div>
@@ -197,7 +218,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed,
+  onMounted
+  } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -215,7 +238,7 @@ const itemForm = ref({
   title: '',
   deadline: '',
   category: [],
-  subtasks: [],
+  subitems: [],
   shareWith: [],
   backlog: [],
   priority: '',
@@ -246,7 +269,7 @@ const logout = () => {
 
 const addItem = () => {
   formSubmitted.value = true
-  if (!itemForm.value.type || !itemForm.value.title || !itemForm.value.deadline || !itemForm.value.status || !itemForm.value.priority) {
+ if (!itemForm.value.type || !itemForm.value.title || !itemForm.value.deadline || !itemForm.value.status || !itemForm.value.priority){
     return
   }
   const statusMap = {
@@ -255,7 +278,7 @@ const addItem = () => {
     Done: 'done'
   }
   const parentId = Date.now()
-  items.value.push({
+  const newItem = {
     id: parentId,
     type: itemForm.value.type,
     title: itemForm.value.title,
@@ -263,17 +286,24 @@ const addItem = () => {
     status: statusMap[itemForm.value.status] || 'inProgress',
     priority: itemForm.value.priority,
     category: itemForm.value.category,
-    subtasks: itemForm.value.subtasks.map((subtask, index) => ({
+    subitems: itemForm.value.subitems.map((subitem, index) => ({
       id: parentId + index + 1,
-      type: subtask.type,
-      title: subtask.title,
+      type: subitem.type,
+      title: subitem.title,
+      deadline: subitem.deadline,
+      status: subitem.status || 'backlog',
+      priority: subitem.priority || 'Low',
       parentId: parentId,
-      status: 'backlog'
+      category: [],
+      shareWith: [],
+      backlog: [],
+      movedToDoneAt: null
     })),
     shareWith: itemForm.value.shareWith,
     backlog: itemForm.value.backlog,
     movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null
-  })
+  }
+  items.value.push(newItem)
   resetForm(itemForm)
   toggleForm.value = false
   saveItems()
@@ -290,7 +320,7 @@ function resetForm(form) {
 }
 
 const deleteItem = (id) => {
-  items.value = items.value.filter((item) => item.id !== id)
+  items.value = items.value.filter((item) => item.id !== id && (!item.subitems || item.subitems.every(s => s.id !== id)))
   saveItems()
 }
 
@@ -308,7 +338,7 @@ const handleDrop = (newStatus) => {
       draggedItem.value.movedToDoneAt = Date.now()
     }
     draggedItem.value.status = newStatus
-    items.value = [...items.value]
+    items.value = [...items.value] // Force reactivity
     saveItems()
     draggedItem.value = null
   }
@@ -316,9 +346,10 @@ const handleDrop = (newStatus) => {
 
 // Completion percentage
 const completionPercent = computed(() => {
-  if (items.value.length === 0) return 0
-  const doneItems = items.value.filter((item) => item.status === 'done').length
-  return Math.round((doneItems / items.value.length) * 100)
+  const rootItems = items.value.filter(item => !item.parentId)
+  if (rootItems.length === 0) return 0
+  const doneItems = rootItems.filter(item => item.status === 'done').length
+  return Math.round((doneItems / rootItems.length) * 100)
 })
 
 // Priority mapping for sorting
@@ -337,10 +368,7 @@ const sortedItems = (status) => {
     Done: 'done'
   }
   const normalizedStatus = statusMap[status] || status.toLowerCase()
-  const filtered = items.value.filter((item) => {
-    const itemStatus = statusMap[item.status] || item.status.toLowerCase()
-    return itemStatus === normalizedStatus
-  })
+  const filtered = items.value.filter((item) => !item.parentId && (statusMap[item.status] || item.status.toLowerCase()) === normalizedStatus)
   if (status === 'done') {
     return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
   }

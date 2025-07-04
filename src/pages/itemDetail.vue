@@ -60,10 +60,12 @@
               class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
               draggable="true"
               @dragstart="startDrag(subitem)"
-              @click="viewSubitem(subitem.id)"
+              @click="viewItem(subitem.id)"
             >
-              {{ subitem.type }}: {{ subitem.title }}
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteSubitem(subitem.id)" />
+              <div>
+                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+              </div>
+              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
             </div>
           </div>
 
@@ -76,10 +78,12 @@
               class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
               draggable="true"
               @dragstart="startDrag(subitem)"
-              @click="viewSubitem(subitem.id)"
+              @click="viewItem(subitem.id)"
             >
-              {{ subitem.type }}: {{ subitem.title }}
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteSubitem(subitem.id)" />
+              <div>
+                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+              </div>
+              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
             </div>
           </div>
 
@@ -92,10 +96,12 @@
               class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
               draggable="true"
               @dragstart="startDrag(subitem)"
-              @click="viewSubitem(subitem.id)"
+              @click="viewItem(subitem.id)"
             >
-              {{ subitem.type }}: {{ subitem.title }}
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteSubitem(subitem.id)" />
+              <div>
+                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+              </div>
+              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
             </div>
           </div>
         </div>
@@ -131,11 +137,22 @@ const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dub
 const item = ref(null)
 const parentItem = ref(null)
 const sortByPriority = ref(false)
-const draggedSubitem = ref(null)
+const draggedItem = ref(null)
 const formSubmitted = ref(false)
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const isEditing = ref(false)
+
+const findItemById = (items, id) => {
+  for (let item of items) {
+    if (item.id === id) return item
+    if (item.subitems) {
+      const found = findItemById(item.subitems, id)
+      if (found) return found
+    }
+  }
+  return null
+}
 
 onMounted(() => {
   const token = localStorage.getItem('authToken')
@@ -148,7 +165,7 @@ onMounted(() => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
   const itemId = parseInt(route.params.id)
   console.log('Loading item with id:', itemId, 'from', items)
-  item.value = items.find((i) => i.id === itemId)
+  item.value = findItemById(items, itemId)
   if (!item.value) {
     console.error('Item not found for id:', itemId)
     return
@@ -156,9 +173,9 @@ onMounted(() => {
 
   // Build parent chain
   const parentChainTemp = []
-  let currentParentId = route.params.parentId ? parseInt(route.params.parentId) : item.value.parentId
+  let currentParentId = item.value.parentId
   while (currentParentId) {
-    const parent = items.find((i) => i.id === currentParentId)
+    const parent = findItemById(items, currentParentId)
     if (parent) {
       parentChainTemp.unshift(parent)
       currentParentId = parent.parentId
@@ -167,45 +184,46 @@ onMounted(() => {
     }
   }
   parentItem.value = parentChainTemp.length ? parentChainTemp[0] : null
-
-  // Initialize id and status if subtasks are present but lack these properties
-  if (item.value.subtasks && !item.value.subtasks[0]?.id) {
-    item.value.subtasks = item.value.subtasks.map((subtask, index) => ({
-      id: Date.now() + index,
-      ...subtask,
-      status: 'backlog'
-    }))
-  } else if (!item.value.subtasks) {
-    item.value.subtasks = []
-  }
 })
 
-const startDrag = (subitem) => {
-  draggedSubitem.value = subitem
+const startDrag = (item) => {
+  draggedItem.value = item
 }
 
 const handleDrop = (newStatus) => {
-  if (draggedSubitem.value) {
-    draggedSubitem.value.status = newStatus
-    saveSubitems()
-    draggedSubitem.value = null
-  }
-}
-
-const deleteSubitem = (id) => {
-  if (item.value) {
-    item.value.subtasks = item.value.subtasks.filter((s) => s.id !== id)
-    saveSubitems()
-  }
-}
-
-const viewSubitem = (id) => {
-  if (item.value) {
-    const subitem = item.value.subtasks.find((s) => s.id === id)
-    if (subitem) {
-      router.push(`/itemDetail/${id}${item.value.parentId ? `/subitem/${item.value.parentId}` : ''}`)
+  if (draggedItem.value) {
+    if (newStatus === 'done' && draggedItem.value.status !== 'done') {
+      draggedItem.value.movedToDoneAt = Date.now()
     }
+    draggedItem.value.status = newStatus
+    saveItem()
+    draggedItem.value = null
   }
+}
+
+const deleteItem = (id) => {
+  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
+  const deleteRecursive = (items, itemId) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemId) {
+        items.splice(i, 1)
+        return true
+      }
+      if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+        return true
+      }
+    }
+    return false
+  }
+  deleteRecursive(items, id)
+  localStorage.setItem('kanbanItems', JSON.stringify(items))
+  if (item.value && item.value.id === id) {
+    item.value = null
+  }
+}
+
+const viewItem = (id) => {
+  router.push(`/itemDetail/${id}`)
 }
 
 const addNewSubitem = () => {
@@ -213,33 +231,39 @@ const addNewSubitem = () => {
     const newSubitem = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       type: 'Task',
-      title: 'New Subtask',
+      title: 'New Subitem',
+      deadline: '',
+      status: 'backlog',
+      priority: 'Low',
       parentId: item.value.id,
-      status: 'backlog'
+      category: [],
+      subitems: [],
+      shareWith: [],
+      backlog: [],
+      movedToDoneAt: null
     }
-    item.value.subtasks.push(newSubitem)
-    saveSubitems()
-  }
-}
-
-const saveSubitems = () => {
-  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
-  const index = items.findIndex((i) => i.id === item.value.id)
-  if (index !== -1) {
-    items[index].subtasks = item.value.subtasks
-    localStorage.setItem('kanbanItems', JSON.stringify(items))
+    item.value.subitems.push(newSubitem)
+    saveItem()
   }
 }
 
 const saveItem = () => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
-  const index = items.findIndex((i) => i.id === item.value.id)
-  if (index !== -1) {
-    items[index] = { ...item.value } // Ensure all properties, including status, are updated
-    localStorage.setItem('kanbanItems', JSON.stringify(items))
-    console.log('Item saved with status:', item.value.status) // Debug log
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
   }
-  router.push('/home')
+  updateItem(items, item.value)
+  localStorage.setItem('kanbanItems', JSON.stringify(items))
+  console.log('Item saved with status:', item.value.status)
 }
 
 const saveDetails = () => {
@@ -254,14 +278,32 @@ const toggleEdit = (value) => {
   }
 }
 
+// const completionPercent = computed(() => {
+//   if (!item.value) return 0
+//   const allItems = [item.value].concat(item.value.subitems || []) // فقط خود ایتم و زیرمورد‌های مستقیم
+//   if (allItems.length === 0) return 0
+//   const doneItems = allItems.filter(item => item.status === 'done').length
+//   return Math.round((doneItems / allItems.length) * 100)
+// })
+
 const completionPercent = computed(() => {
-  if (!item.value?.subtasks?.length) return 0
-  const doneSubitems = item.value.subtasks.filter((s) => s.status === 'done').length
-  return Math.round((doneSubitems / item.value.subtasks.length) * 100)
+  if (!item.value?.subitems?.length) return 0
+  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length
+  return Math.round((doneSubitems / item.value.subitems.length) * 100)
 })
 
 const sortedSubitems = (status) => {
-  return item.value?.subtasks?.filter((s) => s.status === status) || []
+  const getAllSubitems = (item) => {
+    let allSubitems = []
+    if (item.subitems) {
+      item.subitems.forEach(sub => {
+        allSubitems.push(sub)
+        allSubitems = allSubitems.concat(getAllSubitems(sub))
+      })
+    }
+    return allSubitems
+  }
+  return getAllSubitems(item.value).filter((s) => s.status === status) || []
 }
 
 const parentChain = computed(() => {
@@ -269,7 +311,7 @@ const parentChain = computed(() => {
   let currentParentId = item.value?.parentId
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
   while (currentParentId) {
-    const parent = items.find((i) => i.id === currentParentId)
+    const parent = findItemById(items, currentParentId)
     if (parent) {
       chain.unshift(parent)
       currentParentId = parent.parentId
