@@ -110,16 +110,65 @@
       <!-- Right Side Box -->
       <div class="col-2 bg-grey-2 rounded-borders q-pa-md" style="margin-left: 10px; width: 350px; height: 100%;">
         <div class="bg-white" style="padding: 15px">
-          <div class="q-my-md flex flex-center">
+          <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
             <q-circular-progress show-value :value="completionPercent" size="80px" color="green" track-color="grey-3">
               {{ completionPercent }}%
             </q-circular-progress>
           </div>
-          <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" />
-          <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="addNewSubitem" />
-          <q-btn label="New Report" color="secondary" class="full-width q-mb-xs" />
-          <q-btn label="Share With" color="secondary" class="full-width q-mb-xs" />
-          <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
+          <div v-if="!toggleSubitemForm">
+            <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" />
+            <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="toggleSubitemForm = true" />
+            <q-btn label="New Report" color="secondary" class="full-width q-mb-xs" />
+            <q-btn label="Share With" color="secondary" class="full-width q-mb-xs" />
+            <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
+          </div>
+          <div v-if="toggleSubitemForm" class="bg-white q-pa-md">
+            <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
+              <q-select
+                v-model="subitemForm.type"
+                :options="['Task', 'Project', 'Portfolio', 'Other']"
+                label="Subitem Type (select or type)"
+                dense
+                use-input
+                input-debounce="0"
+                :error="!subitemForm.type && subitemFormSubmitted"
+                error-message="Subitem Type is required"
+              />
+              <q-input
+                v-model="subitemForm.title"
+                label="Subitem Title"
+                dense
+                :error="!subitemForm.title && subitemFormSubmitted"
+                error-message="Title is required"
+              />
+              <q-input
+                v-model="subitemForm.deadline"
+                label="Deadline"
+                dense
+                type="datetime-local"
+                :error="!subitemForm.deadline && subitemFormSubmitted"
+                error-message="Deadline is required"
+              />
+              <q-select
+                v-model="subitemForm.status"
+                :options="statusOptions"
+                label="Status"
+                dense
+                :error="!subitemForm.status && subitemFormSubmitted"
+                error-message="Status is required"
+              />
+              <q-select
+                v-model="subitemForm.priority"
+                :options="['Low', 'Medium', 'High']"
+                label="Priority"
+                dense
+                :error="!subitemForm.priority && subitemFormSubmitted"
+                error-message="Priority is required"
+              />
+              <q-btn type="submit" label="Save Sub-item" color="secondary" class="q-mt-sm full-width" />
+              <q-btn flat label="Cancel" color="negative" class="q-mt-sm full-width" @click="cancelSubitemForm" />
+            </q-form>
+          </div>
         </div>
       </div>
     </div>
@@ -128,7 +177,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -142,6 +191,15 @@ const formSubmitted = ref(false)
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const isEditing = ref(false)
+const toggleSubitemForm = ref(false)
+const subitemFormSubmitted = ref(false)
+const subitemForm = ref({
+  type: '',
+  title: '',
+  deadline: '',
+  status: '',
+  priority: ''
+})
 
 const findItemById = (items, id) => {
   for (let item of items) {
@@ -155,13 +213,10 @@ const findItemById = (items, id) => {
 }
 
 onMounted(() => {
-  const token = localStorage.getItem('authToken')
-  if (!token) {
-    console.log('User not authenticated, redirecting to login')
-    window.location.href = 'http://localhost:9000/#/login'
-    return
-  }
+  loadItems()
+})
 
+const loadItems = () => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
   const itemId = parseInt(route.params.id)
   console.log('Loading item with id:', itemId, 'from', items)
@@ -184,7 +239,7 @@ onMounted(() => {
     }
   }
   parentItem.value = parentChainTemp.length ? parentChainTemp[0] : null
-})
+}
 
 const startDrag = (item) => {
   draggedItem.value = item
@@ -215,10 +270,14 @@ const deleteItem = (id) => {
     }
     return false
   }
-  deleteRecursive(items, id)
-  localStorage.setItem('kanbanItems', JSON.stringify(items))
-  if (item.value && item.value.id === id) {
-    item.value = null
+  if (deleteRecursive(items, id)) {
+    localStorage.setItem('kanbanItems', JSON.stringify(items))
+    loadItems()
+    if (item.value && item.value.id === id) {
+      router.push('/homepage')
+    }
+  } else {
+    console.warn('Item with id', id, 'not found for deletion')
   }
 }
 
@@ -226,24 +285,36 @@ const viewItem = (id) => {
   router.push(`/itemDetail/${id}`)
 }
 
-const addNewSubitem = () => {
+const addSubitem = () => {
+  subitemFormSubmitted.value = true
+  if (!subitemForm.value.type || !subitemForm.value.title || !subitemForm.value.deadline || !subitemForm.value.status || !subitemForm.value.priority) {
+    return
+  }
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'inProgress',
+    Done: 'done'
+  }
   if (item.value) {
     const newSubitem = {
       id: Date.now() + Math.floor(Math.random() * 1000),
-      type: 'Task',
-      title: 'New Subitem',
-      deadline: '',
-      status: 'backlog',
-      priority: 'Low',
+      type: subitemForm.value.type,
+      title: subitemForm.value.title,
+      deadline: subitemForm.value.deadline,
+      status: statusMap[subitemForm.value.status] || 'backlog',
+      priority: subitemForm.value.priority,
       parentId: item.value.id,
       category: [],
       subitems: [],
       shareWith: [],
       backlog: [],
-      movedToDoneAt: null
+      movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null
     }
+    item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
     saveItem()
+    resetSubitemForm()
+    toggleSubitemForm.value = false
   }
 }
 
@@ -261,7 +332,7 @@ const saveItem = () => {
     }
     return false
   }
-  updateItem(items, item.value)
+  if (item.value) updateItem(items, item.value)
   localStorage.setItem('kanbanItems', JSON.stringify(items))
   console.log('Item saved with status:', item.value.status)
 }
@@ -278,13 +349,21 @@ const toggleEdit = (value) => {
   }
 }
 
-// const completionPercent = computed(() => {
-//   if (!item.value) return 0
-//   const allItems = [item.value].concat(item.value.subitems || []) // فقط خود ایتم و زیرمورد‌های مستقیم
-//   if (allItems.length === 0) return 0
-//   const doneItems = allItems.filter(item => item.status === 'done').length
-//   return Math.round((doneItems / allItems.length) * 100)
-// })
+const cancelSubitemForm = () => {
+  resetSubitemForm()
+  toggleSubitemForm.value = false
+}
+
+function resetSubitemForm() {
+  subitemForm.value = {
+    type: '',
+    title: '',
+    deadline: '',
+    status: '',
+    priority: ''
+  }
+  subitemFormSubmitted.value = false
+}
 
 const completionPercent = computed(() => {
   if (!item.value?.subitems?.length) return 0
@@ -331,6 +410,13 @@ const logout = () => {
 const openProfile = () => {
   window.location.href = 'http://localhost:9000/#/profile'
 }
+
+// Watch for changes in localStorage to sync
+watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
+  if (newValue) {
+    loadItems()
+  }
+})
 </script>
 
 <style scoped>

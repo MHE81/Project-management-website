@@ -1,2 +1,4 @@
+deleting the account
 nested items
-adding the project to git
+item detail buttons
+check the priority changes
