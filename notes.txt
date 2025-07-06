@@ -1,4 +1,13 @@
 deleting the account
 nested items
+percentage in home page
+
 item detail buttons
+order switch
+
 check the priority changes
+
+
+becarfull that if any changes like in the detail of the item happened it should be applied in the home page too. now when i change the status of the item, when i come to home page the item is gone (deleted) instead of changing! but other detailes changes are applied correctly
+and note that in both homepage and item detail when user drag and drop, the status of the item should be changeed based on the part that item goes in
+check if these things are not handled or handled incorrect fix them

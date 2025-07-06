@@ -218,17 +218,15 @@
 </template>
 
 <script setup>
-import { ref, computed,
-  onMounted
-  } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue' // اضافه کردن watch
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const currentDate = new Date().toLocaleDateString()
+const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const items = ref([])
 const sortByPriority = ref(false)
 const toggleForm = ref(false)
-const formSubmitted = ref(false)
+const formSubmitted = ref(false) // شروع با false
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -268,9 +266,9 @@ const logout = () => {
 }
 
 const addItem = () => {
-  formSubmitted.value = true
- if (!itemForm.value.type || !itemForm.value.title || !itemForm.value.deadline || !itemForm.value.status || !itemForm.value.priority){
-    return
+  formSubmitted.value = true; // فعال کردن اعتبارسنجی فقط تو لحظه کلیک
+  if (!itemForm.value.type || !itemForm.value.title || !itemForm.value.deadline || !itemForm.value.status || !itemForm.value.priority) {
+    return; // اگه خطایی باشه، متوقف می‌شه و خطاها نمایش داده می‌شن
   }
   const statusMap = {
     Backlog: 'backlog',
@@ -306,6 +304,7 @@ const addItem = () => {
   items.value.push(newItem)
   resetForm(itemForm)
   toggleForm.value = false
+  formSubmitted.value = false; // ریست اعتبارسنجی بعد از ذخیره موفق
   saveItems()
 }
 
@@ -381,6 +380,14 @@ const sortedItems = (status) => {
   }
   return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
+
+// Watch for localStorage changes
+watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
+  if (newValue) {
+    items.value = JSON.parse(newValue) // به‌روزرسانی items.value با داده‌های جدید
+    console.log('kanbanItems updated, reloading items:', items.value)
+  }
+})
 </script>
 
 <style scoped>

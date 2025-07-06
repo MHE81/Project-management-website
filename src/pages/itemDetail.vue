@@ -13,7 +13,7 @@
     <div v-if="item" class="text-h5 q-mb-md">
       {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
     </div>
-    <div v-else class="text-h5 q-mb-md text-negative">Item not found</div>
+    <div v-else class="text-h5 q-mb-md text-negative">Item not found (ID: {{ route.params.id }})</div>
 
     <!-- Parent Chain Info -->
     <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
@@ -49,6 +49,7 @@
           unchecked-icon="event"
           color="primary"
           class="q-mb-md"
+          @update:model-value="sortSubitems"
         />
         <div class="row" style="height: 100%; flex-wrap: nowrap;">
           <!-- Backlog Column -->
@@ -62,7 +63,7 @@
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
             >
-              <div>
+              <div @click="console.log('Rendering subitem:', subitem)">
                 <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
@@ -80,7 +81,7 @@
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
             >
-              <div>
+              <div @click="console.log('Rendering subitem:', subitem)">
                 <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
@@ -98,7 +99,7 @@
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
             >
-              <div>
+              <div @click="console.log('Rendering subitem:', subitem)">
                 <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" />
@@ -188,11 +189,9 @@ const parentItem = ref(null)
 const sortByPriority = ref(false)
 const draggedItem = ref(null)
 const formSubmitted = ref(false)
-const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
-const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
+const subitemFormSubmitted = ref(false)
 const isEditing = ref(false)
 const toggleSubitemForm = ref(false)
-const subitemFormSubmitted = ref(false)
 const subitemForm = ref({
   type: '',
   title: '',
@@ -200,6 +199,8 @@ const subitemForm = ref({
   status: '',
   priority: ''
 })
+const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
+const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 
 const findItemById = (items, id) => {
   for (let item of items) {
@@ -219,10 +220,10 @@ onMounted(() => {
 const loadItems = () => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
   const itemId = parseInt(route.params.id)
-  console.log('Loading item with id:', itemId, 'from', items)
+  console.log('Loading item with id:', itemId, 'from items:', items)
   item.value = findItemById(items, itemId)
   if (!item.value) {
-    console.error('Item not found for id:', itemId)
+    console.error('Item not found for id:', itemId, 'in items:', items)
     return
   }
 
@@ -240,6 +241,11 @@ const loadItems = () => {
   }
   parentItem.value = parentChainTemp.length ? parentChainTemp[0] : null
 }
+
+watch(() => route.params.id, (newId) => {
+  console.log('Route changed to id:', newId)
+  loadItems()
+})
 
 const startDrag = (item) => {
   draggedItem.value = item
@@ -282,7 +288,12 @@ const deleteItem = (id) => {
 }
 
 const viewItem = (id) => {
-  router.push(`/itemDetail/${id}`)
+  console.log('Clicking subitem with id:', id)
+  if (id) {
+    router.push(`/itemDetail/${id}`);
+  } else {
+    console.error('No valid id provided for viewItem');
+  }
 }
 
 const addSubitem = () => {
@@ -310,6 +321,7 @@ const addSubitem = () => {
       backlog: [],
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null
     }
+    console.log('Adding subitem with id:', newSubitem.id);
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
     saveItem()
@@ -338,6 +350,10 @@ const saveItem = () => {
 }
 
 const saveDetails = () => {
+  formSubmitted.value = true
+  if (!item.value.title) {
+    return
+  }
   saveItem()
   toggleEdit(false)
 }
@@ -371,18 +387,24 @@ const completionPercent = computed(() => {
   return Math.round((doneSubitems / item.value.subitems.length) * 100)
 })
 
+const sortSubitems = () => {
+  console.log('Sort by Priority toggled to:', sortByPriority.value)
+  // اینجا می‌تونی رفرش دستی یا محاسبات اضافی انجام بدی اگه لازم بود
+}
+
 const sortedSubitems = (status) => {
-  const getAllSubitems = (item) => {
-    let allSubitems = []
-    if (item.subitems) {
-      item.subitems.forEach(sub => {
-        allSubitems.push(sub)
-        allSubitems = allSubitems.concat(getAllSubitems(sub))
-      })
-    }
-    return allSubitems
+  let subitems = item.value?.subitems?.filter((s) => s.status === status) || []
+  if (sortByPriority.value) {
+    // مرتب‌سازی بر اساس priority (High > Medium > Low)
+    subitems.sort((a, b) => {
+      const priorityOrder = { High: 0, Medium: 1, Low: 2 }
+      return priorityOrder[a.priority] - priorityOrder[b.priority]
+    })
+  } else {
+    // مرتب‌سازی بر اساس deadline (از قدیمی به جدید)
+    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
   }
-  return getAllSubitems(item.value).filter((s) => s.status === status) || []
+  return subitems
 }
 
 const parentChain = computed(() => {
@@ -411,7 +433,6 @@ const openProfile = () => {
   window.location.href = 'http://localhost:9000/#/profile'
 }
 
-// Watch for changes in localStorage to sync
 watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
   if (newValue) {
     loadItems()
