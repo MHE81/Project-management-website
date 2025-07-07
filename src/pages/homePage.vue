@@ -4,7 +4,13 @@
     <div class="row justify-between items-center q-mb-md">
       <div class="text-h6">Date: {{ currentDate }}</div>
       <div class="q-gutter-sm">
-        <q-btn round color="primary" icon="account_circle" @click="openProfile" aria-label="Go to profile" />
+        <q-btn
+          round
+          color="primary"
+          icon="account_circle"
+          @click="openProfile"
+          aria-label="Go to profile"
+        />
         <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
       </div>
     </div>
@@ -24,7 +30,7 @@
         class="col bg-grey-2 rounded-borders q-pa-md overflow-y-auto"
         style="margin-right: 280px; margin-bottom: 10px; width: calc(100% - 280px)"
       >
-        <div class="row" style="min-height: 100%; flex-wrap: nowrap;">
+        <div class="row" style="min-height: 100%; flex-wrap: nowrap">
           <!-- Backlog Column -->
           <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
             <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
@@ -37,9 +43,17 @@
               @click="viewItem(item.id)"
             >
               <div>
-                <strong>{{ item.type }}</strong>: {{ item.title }} (Due: {{ item.deadline }})
+                <strong>{{ item.type }}</strong
+                >: {{ item.title }} (Due: {{ item.deadline }})
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(item.id)" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(item.id)"
+              />
             </div>
           </div>
 
@@ -55,9 +69,17 @@
               @click="viewItem(item.id)"
             >
               <div>
-                <strong>{{ item.type }}</strong>: {{ item.title }} (Due: {{ item.deadline }})
+                <strong>{{ item.type }}</strong
+                >: {{ item.title }} (Due: {{ item.deadline }})
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(item.id)" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(item.id)"
+              />
             </div>
           </div>
 
@@ -73,9 +95,17 @@
               @click="viewItem(item.id)"
             >
               <div>
-                <strong>{{ item.type }}</strong>: {{ item.title }} (Due: {{ item.deadline }})
+                <strong>{{ item.type }}</strong
+                >: {{ item.title }} (Due: {{ item.deadline }})
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(item.id)" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(item.id)"
+              />
             </div>
           </div>
         </div>
@@ -84,12 +114,31 @@
       <!-- Right-side Form Panel -->
       <div
         class="fixed-top-right"
-        style="width: 260px; top: 60px; right: 10px; bottom: 10px; overflow-y: auto; padding: 10px 0px;"
+        style="
+          width: 260px;
+          top: 60px;
+          right: 10px;
+          bottom: 10px;
+          overflow-y: auto;
+          padding: 10px 0px;
+        "
       >
-        <q-btn label="Add Item" icon="add" color="secondary" class="full-width q-mb-md" @click="toggleForm = !toggleForm" />
+        <q-btn
+          label="Add Item"
+          icon="add"
+          color="secondary"
+          class="full-width q-mb-md"
+          @click="toggleForm = !toggleForm"
+        />
 
         <div class="q-my-md flex flex-center">
-          <q-circular-progress show-value :value="completionPercent" size="80px" color="green" track-color="grey-3">
+          <q-circular-progress
+            show-value
+            :value="completionPercent"
+            size="80px"
+            color="green"
+            track-color="grey-3"
+          >
             {{ completionPercent }}%
           </q-circular-progress>
         </div>
@@ -149,7 +198,11 @@
             />
             <div class="q-mt-sm">
               <div class="text-subtitle2">Subitems</div>
-              <div v-for="(subitem, index) in itemForm.subitems" :key="index" class="row items-center q-mb-xs">
+              <div
+                v-for="(subitem, index) in itemForm.subitems"
+                :key="index"
+                class="row items-center q-mb-xs"
+              >
                 <q-select
                   v-model="itemForm.subitems[index].type"
                   :options="['Task', 'Project', 'Portfolio', 'Other']"
@@ -189,25 +242,80 @@
                   dense
                   class="q-ml-sm"
                 />
-                <q-btn flat round icon="remove" color="negative" size="sm" @click="itemForm.subitems.splice(index, 1)" />
+                <q-btn
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="itemForm.subitems.splice(index, 1)"
+                />
               </div>
-              <q-btn flat icon="add" size="sm" color="secondary" @click="itemForm.subitems.push({ type: '', title: '', deadline: '', status: 'backlog', priority: 'Low' })" />
+              <q-btn
+                flat
+                icon="add"
+                size="sm"
+                color="secondary"
+                @click="
+                  itemForm.subitems.push({
+                    type: '',
+                    title: '',
+                    deadline: '',
+                    status: 'backlog',
+                    priority: 'Low',
+                  })
+                "
+              />
             </div>
             <div class="q-mt-sm">
               <div class="text-subtitle2">Share With</div>
-              <div v-for="(email, index) in itemForm.shareWith" :key="index" class="row items-center q-mb-xs">
+              <div
+                v-for="(email, index) in itemForm.shareWith"
+                :key="index"
+                class="row items-center q-mb-xs"
+              >
                 <q-input v-model="itemForm.shareWith[index]" dense class="col" type="email" />
-                <q-btn flat round icon="remove" color="negative" size="sm" @click="itemForm.shareWith.splice(index, 1)" />
+                <q-btn
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="itemForm.shareWith.splice(index, 1)"
+                />
               </div>
-              <q-btn flat icon="add" size="sm" color="secondary" @click="itemForm.shareWith.push('')" />
+              <q-btn
+                flat
+                icon="add"
+                size="sm"
+                color="secondary"
+                @click="itemForm.shareWith.push('')"
+              />
             </div>
             <div class="q-mt-sm">
               <div class="text-subtitle2">Backlog</div>
-              <div v-for="(b, index) in itemForm.backlog" :key="index" class="row items-center q-mb-xs">
+              <div
+                v-for="(b, index) in itemForm.backlog"
+                :key="index"
+                class="row items-center q-mb-xs"
+              >
                 <q-input v-model="itemForm.backlog[index]" dense class="col" />
-                <q-btn flat round icon="remove" color="negative" size="sm" @click="itemForm.backlog.splice(index, 1)" />
+                <q-btn
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="itemForm.backlog.splice(index, 1)"
+                />
               </div>
-              <q-btn flat icon="add" size="sm" color="secondary" @click="itemForm.backlog.push('')" />
+              <q-btn
+                flat
+                icon="add"
+                size="sm"
+                color="secondary"
+                @click="itemForm.backlog.push('')"
+              />
             </div>
             <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
           </q-form>
@@ -218,7 +326,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue' // اضافه کردن watch
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -226,7 +334,7 @@ const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dub
 const items = ref([])
 const sortByPriority = ref(false)
 const toggleForm = ref(false)
-const formSubmitted = ref(false) // شروع با false
+const formSubmitted = ref(false)
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -240,7 +348,7 @@ const itemForm = ref({
   shareWith: [],
   backlog: [],
   priority: '',
-  status: ''
+  status: '',
 })
 
 onMounted(() => {
@@ -266,14 +374,20 @@ const logout = () => {
 }
 
 const addItem = () => {
-  formSubmitted.value = true; // فعال کردن اعتبارسنجی فقط تو لحظه کلیک
-  if (!itemForm.value.type || !itemForm.value.title || !itemForm.value.deadline || !itemForm.value.status || !itemForm.value.priority) {
-    return; // اگه خطایی باشه، متوقف می‌شه و خطاها نمایش داده می‌شن
+  formSubmitted.value = true
+  if (
+    !itemForm.value.type ||
+    !itemForm.value.title ||
+    !itemForm.value.deadline ||
+    !itemForm.value.status ||
+    !itemForm.value.priority
+  ) {
+    return
   }
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'inProgress',
-    Done: 'done'
+    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
+    Done: 'done',
   }
   const parentId = Date.now()
   const newItem = {
@@ -281,7 +395,7 @@ const addItem = () => {
     type: itemForm.value.type,
     title: itemForm.value.title,
     deadline: itemForm.value.deadline,
-    status: statusMap[itemForm.value.status] || 'inProgress',
+    status: statusMap[itemForm.value.status] || 'in progress', // اصلاح به "in progress" با فاصله
     priority: itemForm.value.priority,
     category: itemForm.value.category,
     subitems: itemForm.value.subitems.map((subitem, index) => ({
@@ -295,16 +409,16 @@ const addItem = () => {
       category: [],
       shareWith: [],
       backlog: [],
-      movedToDoneAt: null
+      movedToDoneAt: null,
     })),
     shareWith: itemForm.value.shareWith,
     backlog: itemForm.value.backlog,
-    movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null
+    movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null,
   }
   items.value.push(newItem)
   resetForm(itemForm)
   toggleForm.value = false
-  formSubmitted.value = false; // ریست اعتبارسنجی بعد از ذخیره موفق
+  formSubmitted.value = false
   saveItems()
 }
 
@@ -313,13 +427,15 @@ const viewItem = (id) => {
 }
 
 function resetForm(form) {
-  Object.keys(form.value).forEach((key) =>
-    form.value[key] = Array.isArray(form.value[key]) ? [] : ''
+  Object.keys(form.value).forEach(
+    (key) => (form.value[key] = Array.isArray(form.value[key]) ? [] : ''),
   )
 }
 
 const deleteItem = (id) => {
-  items.value = items.value.filter((item) => item.id !== id && (!item.subitems || item.subitems.every(s => s.id !== id)))
+  items.value = items.value.filter(
+    (item) => item.id !== id && (!item.subitems || item.subitems.every((s) => s.id !== id)),
+  )
   saveItems()
 }
 
@@ -329,7 +445,9 @@ function openProfile() {
 
 // Drag & Drop
 const draggedItem = ref(null)
-const startDrag = (item) => { draggedItem.value = item }
+const startDrag = (item) => {
+  draggedItem.value = item
+}
 
 const handleDrop = (newStatus) => {
   if (draggedItem.value) {
@@ -337,7 +455,7 @@ const handleDrop = (newStatus) => {
       draggedItem.value.movedToDoneAt = Date.now()
     }
     draggedItem.value.status = newStatus
-    items.value = [...items.value] // Force reactivity
+    items.value = [...items.value]
     saveItems()
     draggedItem.value = null
   }
@@ -345,9 +463,11 @@ const handleDrop = (newStatus) => {
 
 // Completion percentage
 const completionPercent = computed(() => {
-  const rootItems = items.value.filter(item => !item.parentId)
+  const rootItems = items.value.filter((item) => !item.parentId)
+  console.log('Root items:', rootItems)
   if (rootItems.length === 0) return 0
-  const doneItems = rootItems.filter(item => item.status === 'done').length
+  const doneItems = rootItems.filter((item) => item.status?.toLowerCase() === 'done').length
+  console.log('Done items count:', doneItems, 'Total root items:', rootItems.length)
   return Math.round((doneItems / rootItems.length) * 100)
 })
 
@@ -356,18 +476,22 @@ const priorityMap = {
   High: 3,
   Medium: 2,
   Low: 1,
-  '': 0
+  '': 0,
 }
 
 // Sort items
 const sortedItems = (status) => {
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'inProgress',
-    Done: 'done'
+    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
+    Done: 'done',
   }
   const normalizedStatus = statusMap[status] || status.toLowerCase()
-  const filtered = items.value.filter((item) => !item.parentId && (statusMap[item.status] || item.status.toLowerCase()) === normalizedStatus)
+  const filtered = items.value.filter((item) => {
+    const itemStatus = item.status?.toLowerCase() || ''
+    console.log(`Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`) // دیباگ برای همه ستون‌ها
+    return !item.parentId && itemStatus === normalizedStatus
+  })
   if (status === 'done') {
     return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
   }
@@ -381,11 +505,12 @@ const sortedItems = (status) => {
   return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
 
-// Watch for localStorage changes
-watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
+// Watch for localStorage changes with force refresh
+watch(() => localStorage.getItem('kanbanItems'), async (newValue) => {
   if (newValue) {
-    items.value = JSON.parse(newValue) // به‌روزرسانی items.value با داده‌های جدید
+    items.value = JSON.parse(newValue)
     console.log('kanbanItems updated, reloading items:', items.value)
+    await nextTick() // اجبار رفرش برای اطمینان از به‌روز شدن رابط کاربری
   }
 })
 </script>
