@@ -71,10 +71,10 @@
           </div>
 
           <!-- In Progress Column -->
-          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('inProgress')">
+          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
             <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
             <div
-              v-for="subitem in sortedSubitems('inProgress')"
+              v-for="subitem in sortedSubitems('in progress')"
               :key="subitem.id"
               class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
               draggable="true"
@@ -303,7 +303,7 @@ const addSubitem = () => {
   }
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'inProgress',
+    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
     Done: 'done'
   }
   if (item.value) {

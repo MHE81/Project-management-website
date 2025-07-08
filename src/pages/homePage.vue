@@ -58,10 +58,10 @@
           </div>
 
           <!-- In Progress Column -->
-          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('inProgress')">
+          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
             <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
             <div
-              v-for="item in sortedItems('inProgress')"
+              v-for="item in sortedItems('In Progress')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
               draggable="true"
@@ -386,7 +386,7 @@ const addItem = () => {
   }
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
+    'In Progress': 'in progress',
     Done: 'done',
   }
   const parentId = Date.now()
@@ -395,7 +395,7 @@ const addItem = () => {
     type: itemForm.value.type,
     title: itemForm.value.title,
     deadline: itemForm.value.deadline,
-    status: statusMap[itemForm.value.status] || 'in progress', // اصلاح به "in progress" با فاصله
+    status: statusMap[itemForm.value.status] || 'in progress',
     priority: itemForm.value.priority,
     category: itemForm.value.category,
     subitems: itemForm.value.subitems.map((subitem, index) => ({
@@ -483,13 +483,13 @@ const priorityMap = {
 const sortedItems = (status) => {
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
+    'In Progress': 'in progress',
     Done: 'done',
   }
   const normalizedStatus = statusMap[status] || status.toLowerCase()
   const filtered = items.value.filter((item) => {
     const itemStatus = item.status?.toLowerCase() || ''
-    console.log(`Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`) // دیباگ برای همه ستون‌ها
+    console.log(`Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`)
     return !item.parentId && itemStatus === normalizedStatus
   })
   if (status === 'done') {
@@ -510,7 +510,7 @@ watch(() => localStorage.getItem('kanbanItems'), async (newValue) => {
   if (newValue) {
     items.value = JSON.parse(newValue)
     console.log('kanbanItems updated, reloading items:', items.value)
-    await nextTick() // اجبار رفرش برای اطمینان از به‌روز شدن رابط کاربری
+    await nextTick()
   }
 })
 </script>
