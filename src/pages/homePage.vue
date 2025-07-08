@@ -16,7 +16,7 @@
     </div>
     <q-toggle
       v-model="sortByPriority"
-      label="Sort by Priority"
+      label="Sort by"
       left-label
       checked-icon="sort"
       unchecked-icon="event"

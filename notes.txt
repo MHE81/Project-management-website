@@ -1,8 +1,9 @@
 deleting the account
 nested items
 order switch
-
 percentage in home page
 changing the item status
+
 check the priority changes
+errors of sub items date, status , ...
 item detail buttons

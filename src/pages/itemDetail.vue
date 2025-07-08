@@ -43,7 +43,7 @@
       <div class="col-6 bg-grey-2 rounded-borders q-pa-md overflow-y-auto" style="height: 100%;">
         <q-toggle
           v-model="sortByPriority"
-          label="Sort by Priority"
+          label="Sort by"
           left-label
           checked-icon="sort"
           unchecked-icon="event"

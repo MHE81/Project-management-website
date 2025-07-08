@@ -225,6 +225,14 @@
               @click="cancelEdit"
               aria-label="Cancel profile changes"
             />
+            <q-btn
+              label="Delete Account"
+              flat
+              color="negative"
+              class="col"
+              @click="showDeleteDialog = true"
+              aria-label="Delete your account"
+            />
           </div>
         </q-form>
 
@@ -242,6 +250,29 @@
         </router-link>
       </q-card-section>
     </q-card>
+
+    <!-- Delete Confirmation Dialog -->
+    <q-dialog v-model="showDeleteDialog" persistent>
+      <q-card>
+        <q-card-section class="row items-center">
+          <q-icon name="warning" color="negative" size="lg" class="q-mr-sm" />
+          <span class="text-h6">Confirm Account Deletion</span>
+        </q-card-section>
+        <q-card-section>
+          Are you sure you want to delete your account? This action will permanently remove all your data, including your profile and kanban items, and cannot be undone.
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" />
+          <q-btn
+            flat
+            label="Confirm"
+            color="negative"
+            @click="deleteAccount"
+            aria-label="Confirm account deletion"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -271,6 +302,7 @@ const usernameError = ref(false)
 const emailError = ref(false)
 const usernameTouched = ref(false)
 const emailTouched = ref(false)
+const showDeleteDialog = ref(false)
 
 // Email format validator
 const isEmailValid = computed(() => {
@@ -419,7 +451,20 @@ onMounted(() => {
     console.log('User not authenticated, redirecting to login')
     window.location.href = 'http://localhost:9000/#/login'
   }
+  const savedProfile = localStorage.getItem('userProfile')
+  if (savedProfile) {
+    profile.value = JSON.parse(savedProfile)
+  }
 })
+
+// Delete account
+const deleteAccount = () => {
+  showDeleteDialog.value = false
+  localStorage.removeItem('authToken')
+  localStorage.removeItem('kanbanItems')
+  localStorage.removeItem('userProfile')
+  window.location.href = 'http://localhost:9000/#/login'
+}
 
 // Navigate to home
 const goToHome = () => {
