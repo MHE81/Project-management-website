@@ -237,9 +237,10 @@
                   label="Deadline"
                   dense
                   type="datetime-local"
-                  class="q-ml-sm"
+                  :max="itemForm.deadline || undefined"
                   :error="!itemForm.subitems[index].deadline && formSubmitted"
                   error-message="Deadline is required"
+                  class="q-ml-sm"
                 />
                 <q-select
                   v-model="itemForm.subitems[index].status"
@@ -396,12 +397,25 @@ const addItem = () => {
   if (
     !itemForm.value.type ||
     !itemForm.value.title ||
-    !itemForm.value.deadline || // اصلاح شده به .value.deadline
+    !itemForm.value.deadline ||
     !itemForm.value.status ||
     !itemForm.value.priority
   ) {
     return
   }
+
+  // اعتبارسنجی تاریخ ساب‌ایتم‌ها نسبت به والد
+  const hasInvalidSubitemDeadline = itemForm.value.subitems.some(subitem => {
+    if (subitem.deadline && itemForm.value.deadline) {
+      return new Date(subitem.deadline) > new Date(itemForm.value.deadline)
+    }
+    return false
+  })
+  if (hasInvalidSubitemDeadline) {
+    errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
+    return
+  }
+
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',

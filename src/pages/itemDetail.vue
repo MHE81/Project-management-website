@@ -41,7 +41,7 @@
           <div class="text-subtitle2 q-mb-xs">Details</div>
           <div>Type: {{ item.type || 'N/A' }}</div>
           <q-input v-model="item.title" label="Title" dense :error="!item.title && formSubmitted" :disable="!isEditing" error-message="Title is required" class="q-mt-md" />
-          <q-input v-model="item.deadline" label="Deadline" dense type="datetime-local" :disable="!isEditing" class="q-mt-md" />
+          <q-input v-model="item.deadline" label="Deadline" dense type="datetime-local" :disable="!isEditing" :max="directParent?.deadline || undefined" class="q-mt-md" />
           <q-select v-model="item.status" :options="statusOptions" label="Status" dense :disable="!isEditing" class="q-mt-md" />
           <q-select v-model="item.priority" :options="['Low', 'Medium', 'High']" label="Priority" dense :disable="!isEditing" class="q-mt-md" />
           <q-select v-model="item.category" :options="categoryOptions" use-input use-chips label="Category" multiple dense :disable="!isEditing" class="q-mt-md" />
@@ -158,6 +158,7 @@
                 label="Deadline"
                 dense
                 type="datetime-local"
+                :max="item.deadline || undefined"
                 :error="!subitemForm.deadline && subitemFormSubmitted"
                 error-message="Deadline is required"
               />
@@ -196,7 +197,7 @@ const route = useRoute()
 const router = useRouter()
 const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const item = ref(null)
-const parentItem = ref(null)
+const directParent = ref(null) // فقط والد مستقیم
 const sortByPriority = ref(false)
 const draggedItem = ref(null)
 const formSubmitted = ref(false)
@@ -239,19 +240,12 @@ const loadItems = () => {
     return
   }
 
-  // Build parent chain
-  const parentChainTemp = []
-  let currentParentId = item.value.parentId
-  while (currentParentId) {
-    const parent = findItemById(items, currentParentId)
-    if (parent) {
-      parentChainTemp.unshift(parent)
-      currentParentId = parent.parentId
-    } else {
-      break
-    }
+  // فقط والد مستقیم رو پیدا کن
+  if (item.value.parentId) {
+    directParent.value = findItemById(items, item.value.parentId)
+  } else {
+    directParent.value = null
   }
-  parentItem.value = parentChainTemp.length ? parentChainTemp[0] : null
 }
 
 watch(() => route.params.id, (newId) => {
@@ -319,6 +313,15 @@ const addSubitem = () => {
   if (!subitemForm.value.type || !subitemForm.value.title || !subitemForm.value.deadline || !subitemForm.value.status || !subitemForm.value.priority) {
     return
   }
+
+  // اعتبارسنجی تاریخ ساب‌ایتم نسبت به والد
+  if (item.value.deadline && subitemForm.value.deadline) {
+    if (new Date(subitemForm.value.deadline) > new Date(item.value.deadline)) {
+      errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
+      return
+    }
+  }
+
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',
@@ -373,6 +376,15 @@ const saveDetails = () => {
   if (!item.value.title) {
     return
   }
+
+  // اعتبارسنجی تاریخ ساب‌ایتم نسبت به والد مستقیم
+  if (directParent.value?.deadline && item.value.deadline) {
+    if (new Date(item.value.deadline) > new Date(directParent.value.deadline)) {
+      errorMessage.value = 'Item deadline cannot be after the direct parent item deadline.'
+      return
+    }
+  }
+
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',

@@ -7,6 +7,9 @@ check the priority changes
 changing subitem status
 
 errors of sub items date, status , ...
+
+same filings and div status the new item form in item and subitem
+add note for the item
 item detail buttons
 items display
 AI widget
