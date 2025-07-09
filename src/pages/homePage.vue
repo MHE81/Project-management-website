@@ -23,6 +23,17 @@
       color="primary"
     />
 
+    <!-- Error Banner -->
+    <q-banner
+      v-if="errorMessage"
+      dense
+      class="bg-negative text-white q-mb-md"
+      aria-live="polite"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </q-banner>
+
     <!-- Main layout -->
     <div class="row" style="height: calc(100vh - 120px)">
       <!-- Main content area -->
@@ -227,6 +238,8 @@
                   dense
                   type="datetime-local"
                   class="q-ml-sm"
+                  :error="!itemForm.subitems[index].deadline && formSubmitted"
+                  error-message="Deadline is required"
                 />
                 <q-select
                   v-model="itemForm.subitems[index].status"
@@ -234,6 +247,8 @@
                   label="Status"
                   dense
                   class="q-ml-sm"
+                  :error="!itemForm.subitems[index].status && formSubmitted"
+                  error-message="Status is required"
                 />
                 <q-select
                   v-model="itemForm.subitems[index].priority"
@@ -241,6 +256,8 @@
                   label="Priority"
                   dense
                   class="q-ml-sm"
+                  :error="!itemForm.subitems[index].priority && formSubmitted"
+                  error-message="Priority is required"
                 />
                 <q-btn
                   flat
@@ -335,6 +352,7 @@ const items = ref([])
 const sortByPriority = ref(false)
 const toggleForm = ref(false)
 const formSubmitted = ref(false)
+const errorMessage = ref('')
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -378,7 +396,7 @@ const addItem = () => {
   if (
     !itemForm.value.type ||
     !itemForm.value.title ||
-    !itemForm.value.deadline ||
+    !itemForm.value.deadline || // اصلاح شده به .value.deadline
     !itemForm.value.status ||
     !itemForm.value.priority
   ) {
@@ -451,12 +469,20 @@ const startDrag = (item) => {
 
 const handleDrop = (newStatus) => {
   if (draggedItem.value) {
-    if (newStatus === 'done' && draggedItem.value.status !== 'done') {
+    if (newStatus === 'done') {
+      const allSubitemsDone =
+        !draggedItem.value.subitems ||
+        draggedItem.value.subitems.every((sub) => sub.status === 'done')
+      if (!allSubitemsDone) {
+        errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
+        return
+      }
       draggedItem.value.movedToDoneAt = Date.now()
     }
     draggedItem.value.status = newStatus
     items.value = [...items.value]
     saveItems()
+    errorMessage.value = ''
     draggedItem.value = null
   }
 }
@@ -489,7 +515,9 @@ const sortedItems = (status) => {
   const normalizedStatus = statusMap[status] || status.toLowerCase()
   const filtered = items.value.filter((item) => {
     const itemStatus = item.status?.toLowerCase() || ''
-    console.log(`Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`)
+    console.log(
+      `Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`,
+    )
     return !item.parentId && itemStatus === normalizedStatus
   })
   if (status === 'done') {
@@ -506,13 +534,16 @@ const sortedItems = (status) => {
 }
 
 // Watch for localStorage changes with force refresh
-watch(() => localStorage.getItem('kanbanItems'), async (newValue) => {
-  if (newValue) {
-    items.value = JSON.parse(newValue)
-    console.log('kanbanItems updated, reloading items:', items.value)
-    await nextTick()
-  }
-})
+watch(
+  () => localStorage.getItem('kanbanItems'),
+  async (newValue) => {
+    if (newValue) {
+      items.value = JSON.parse(newValue)
+      console.log('kanbanItems updated, reloading items:', items.value)
+      await nextTick()
+    }
+  },
+)
 </script>
 
 <style scoped>

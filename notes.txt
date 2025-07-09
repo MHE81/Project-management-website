@@ -3,7 +3,11 @@ nested items
 order switch
 percentage in home page
 changing the item status
-
 check the priority changes
+changing subitem status
+
 errors of sub items date, status , ...
 item detail buttons
+items display
+AI widget
+deleting "save changes" button in itemdetail

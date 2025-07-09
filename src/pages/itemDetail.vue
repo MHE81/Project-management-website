@@ -9,6 +9,17 @@
       </div>
     </div>
 
+    <!-- Error Banner -->
+    <q-banner
+      v-if="errorMessage"
+      dense
+      class="bg-negative text-white q-mb-md"
+      aria-live="polite"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </q-banner>
+
     <!-- Item Type and Name -->
     <div v-if="item" class="text-h5 q-mb-md">
       {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
@@ -201,6 +212,7 @@ const subitemForm = ref({
 })
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
+const errorMessage = ref('')
 
 const findItemById = (items, id) => {
   for (let item of items) {
@@ -253,11 +265,17 @@ const startDrag = (item) => {
 
 const handleDrop = (newStatus) => {
   if (draggedItem.value) {
-    if (newStatus === 'done' && draggedItem.value.status !== 'done') {
+    if (newStatus === 'done') {
+      const allSubitemsDone = !draggedItem.value.subitems || draggedItem.value.subitems.every(sub => sub.status === 'done')
+      if (!allSubitemsDone) {
+        errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
+        return
+      }
       draggedItem.value.movedToDoneAt = Date.now()
     }
     draggedItem.value.status = newStatus
     saveItem()
+    errorMessage.value = ''
     draggedItem.value = null
   }
 }
@@ -303,7 +321,7 @@ const addSubitem = () => {
   }
   const statusMap = {
     Backlog: 'backlog',
-    'In Progress': 'in progress', // اصلاح به "in progress" با فاصله
+    'In Progress': 'in progress',
     Done: 'done'
   }
   if (item.value) {
@@ -347,6 +365,7 @@ const saveItem = () => {
   if (item.value) updateItem(items, item.value)
   localStorage.setItem('kanbanItems', JSON.stringify(items))
   console.log('Item saved with status:', item.value.status)
+  loadItems() // رفرش دستی بعد از ذخیره
 }
 
 const saveDetails = () => {
@@ -354,8 +373,24 @@ const saveDetails = () => {
   if (!item.value.title) {
     return
   }
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'in progress',
+    Done: 'done'
+  }
+  const newStatus = statusMap[item.value.status] || item.value.status.toLowerCase()
+  if (newStatus === 'done') {
+    const allSubitemsDone = !item.value.subitems || item.value.subitems.every(sub => sub.status === 'done')
+    if (!allSubitemsDone) {
+      errorMessage.value = 'Cannot set to Done: All subitems must be in Done status.'
+      return
+    }
+    item.value.movedToDoneAt = Date.now()
+  }
+  item.value.status = newStatus
   saveItem()
   toggleEdit(false)
+  errorMessage.value = ''
 }
 
 const toggleEdit = (value) => {
@@ -389,19 +424,16 @@ const completionPercent = computed(() => {
 
 const sortSubitems = () => {
   console.log('Sort by Priority toggled to:', sortByPriority.value)
-  // اینجا می‌تونی رفرش دستی یا محاسبات اضافی انجام بدی اگه لازم بود
 }
 
 const sortedSubitems = (status) => {
-  let subitems = item.value?.subitems?.filter((s) => s.status === status) || []
+  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || []
   if (sortByPriority.value) {
-    // مرتب‌سازی بر اساس priority (High > Medium > Low)
     subitems.sort((a, b) => {
       const priorityOrder = { High: 0, Medium: 1, Low: 2 }
       return priorityOrder[a.priority] - priorityOrder[b.priority]
     })
   } else {
-    // مرتب‌سازی بر اساس deadline (از قدیمی به جدید)
     subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
   }
   return subitems
