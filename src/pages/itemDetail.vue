@@ -197,12 +197,11 @@ const route = useRoute()
 const router = useRouter()
 const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const item = ref(null)
-const directParent = ref(null) // فقط والد مستقیم
+const directParent = ref(null)
 const sortByPriority = ref(false)
 const draggedItem = ref(null)
 const formSubmitted = ref(false)
 const subitemFormSubmitted = ref(false)
-const isEditing = ref(false)
 const toggleSubitemForm = ref(false)
 const subitemForm = ref({
   type: '',
@@ -214,6 +213,16 @@ const subitemForm = ref({
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const errorMessage = ref('')
+const itemId = ref(0) // تعریف itemId به‌صورت سراسری
+
+// مدیریت مستقل isEditing و toggleSubitemForm برای هر ایتم
+const isEditing = ref(false)
+const setEditingState = (id, state) => {
+  localStorage.setItem(`isEditing_${id}`, JSON.stringify(state))
+}
+const setSubitemFormState = (id, state) => {
+  localStorage.setItem(`toggleSubitemForm_${id}`, JSON.stringify(state))
+}
 
 const findItemById = (items, id) => {
   for (let item of items) {
@@ -232,11 +241,11 @@ onMounted(() => {
 
 const loadItems = () => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
-  const itemId = parseInt(route.params.id)
-  console.log('Loading item with id:', itemId, 'from items:', items)
-  item.value = findItemById(items, itemId)
+  itemId.value = parseInt(route.params.id) // آپدیت itemId
+  console.log('Loading item with id:', itemId.value, 'from items:', items)
+  item.value = findItemById(items, itemId.value)
   if (!item.value) {
-    console.error('Item not found for id:', itemId, 'in items:', items)
+    console.error('Item not found for id:', itemId.value, 'in items:', items)
     return
   }
 
@@ -246,6 +255,13 @@ const loadItems = () => {
   } else {
     directParent.value = null
   }
+
+  // ریست حالت ویرایش و فرم ساب‌ایتم با ورود به صفحه
+  isEditing.value = false
+  setEditingState(itemId.value, false)
+  toggleSubitemForm.value = false
+  setSubitemFormState(itemId.value, false)
+  resetSubitemForm() // ریست فرم با ورود به صفحه
 }
 
 watch(() => route.params.id, (newId) => {
@@ -314,7 +330,6 @@ const addSubitem = () => {
     return
   }
 
-  // اعتبارسنجی تاریخ ساب‌ایتم نسبت به والد
   if (item.value.deadline && subitemForm.value.deadline) {
     if (new Date(subitemForm.value.deadline) > new Date(item.value.deadline)) {
       errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
@@ -348,6 +363,7 @@ const addSubitem = () => {
     saveItem()
     resetSubitemForm()
     toggleSubitemForm.value = false
+    setSubitemFormState(itemId.value, false)
   }
 }
 
@@ -368,7 +384,7 @@ const saveItem = () => {
   if (item.value) updateItem(items, item.value)
   localStorage.setItem('kanbanItems', JSON.stringify(items))
   console.log('Item saved with status:', item.value.status)
-  loadItems() // رفرش دستی بعد از ذخیره
+  loadItems()
 }
 
 const saveDetails = () => {
@@ -377,7 +393,6 @@ const saveDetails = () => {
     return
   }
 
-  // اعتبارسنجی تاریخ ساب‌ایتم نسبت به والد مستقیم
   if (directParent.value?.deadline && item.value.deadline) {
     if (new Date(item.value.deadline) > new Date(directParent.value.deadline)) {
       errorMessage.value = 'Item deadline cannot be after the direct parent item deadline.'
@@ -407,6 +422,7 @@ const saveDetails = () => {
 
 const toggleEdit = (value) => {
   isEditing.value = value
+  setEditingState(itemId.value, value)
   if (!value) {
     formSubmitted.value = true
   }
@@ -415,6 +431,7 @@ const toggleEdit = (value) => {
 const cancelSubitemForm = () => {
   resetSubitemForm()
   toggleSubitemForm.value = false
+  setSubitemFormState(itemId.value, false)
 }
 
 function resetSubitemForm() {
