@@ -26,6 +26,29 @@
     </div>
     <div v-else class="text-h5 q-mb-md text-negative">Item not found (ID: {{ route.params.id }})</div>
 
+    <!-- Note Display -->
+    <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
+      <div class="text-subtitle1">Note:</div>
+      <div class="q-pa-sm bg-grey-2 rounded-borders resizable-note" v-html="item.note.replace(/\n/g, '<br>')"></div>
+      <q-btn label="Edit Note" color="primary" @click="toggleNoteEdit(true)" class="q-mt-sm q-mr-sm" />
+      <q-btn label="Delete Note" color="negative" flat @click="deleteNote" class="q-mt-sm" />
+    </div>
+
+    <!-- Note Edit Form -->
+    <div v-if="item && isEditingNote" class="q-mb-md">
+      <div class="text-subtitle1">Edit Note:</div>
+      <q-input
+        v-model="item.note"
+        filled
+        type="textarea"
+        placeholder="Enter your note here..."
+        class="q-mb-sm resizable-input"
+      />
+      <q-btn label="Save Note" color="positive" @click="saveNote" class="q-mr-sm" />
+      <q-btn label="Cancel" color="negative" flat @click="toggleNoteEdit(false)" />
+    </div>
+    <q-btn v-if="item && !item.note && !isEditingNote" label="Add Note" color="secondary" @click="toggleNoteEdit(true)" class="q-mb-md" />
+
     <!-- Parent Chain Info -->
     <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
       <span v-for="(parent, index) in parentChain" :key="parent.id">
@@ -130,6 +153,7 @@
           <div v-if="!toggleSubitemForm">
             <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" />
             <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="toggleSubitemForm = true" />
+            <!-- <q-btn label="Add/Edit Note" color="secondary" class="full-width q-mb-xs" @click="toggleNoteEdit(true)" /> -->
             <q-btn label="New Report" color="secondary" class="full-width q-mb-xs" />
             <q-btn label="Share With" color="secondary" class="full-width q-mb-xs" />
             <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
@@ -214,6 +238,7 @@ const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const errorMessage = ref('')
 const itemId = ref(0) // تعریف itemId به‌صورت سراسری
+const isEditingNote = ref(false) // برای مدیریت حالت ویرایش یادداشت
 
 // مدیریت مستقل isEditing و toggleSubitemForm برای هر ایتم
 const isEditing = ref(false)
@@ -261,7 +286,9 @@ const loadItems = () => {
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
   setSubitemFormState(itemId.value, false)
+  isEditingNote.value = false // ریست حالت ویرایش یادداشت
   resetSubitemForm() // ریست فرم با ورود به صفحه
+  if (!item.value.note) item.value.note = '' // اگه note وجود نداشته باشه، مقدار خالی ست کن
 }
 
 watch(() => route.params.id, (newId) => {
@@ -355,7 +382,8 @@ const addSubitem = () => {
       subitems: [],
       shareWith: [],
       backlog: [],
-      movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null
+      movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
+      note: '' // اضافه کردن فیلد note به ساب‌ایتم‌ها
     }
     console.log('Adding subitem with id:', newSubitem.id);
     item.value.subitems = item.value.subitems || []
@@ -434,6 +462,29 @@ const cancelSubitemForm = () => {
   setSubitemFormState(itemId.value, false)
 }
 
+const toggleNoteEdit = (value) => {
+  isEditingNote.value = value
+  if (!value && !item.value.note) {
+    item.value.note = '' // اگه لغو بشه و یادداشت خالی باشه، مقدار رو نگه دار
+  }
+}
+
+const saveNote = () => {
+  if (item.value.note && item.value.note.trim()) {
+    saveItem()
+    isEditingNote.value = false
+    errorMessage.value = ''
+  } else {
+    errorMessage.value = 'Note cannot be empty.'
+  }
+}
+
+const deleteNote = () => {
+  item.value.note = ''
+  saveItem()
+  errorMessage.value = ''
+}
+
 function resetSubitemForm() {
   subitemForm.value = {
     type: '',
@@ -502,6 +553,25 @@ watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
 </script>
 
 <style scoped>
+.resizable-note {
+  resize: both;
+  overflow: auto;
+  min-height: 50px;
+  max-height: 200px;
+  min-width: 200px;
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.resizable-input .q-field__inner {
+  resize: both;
+  overflow: auto;
+  min-height: 50px;
+  max-height: 200px;
+  min-width: 200px;
+  max-width: 100%;
+}
+
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;

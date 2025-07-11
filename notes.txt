@@ -6,13 +6,17 @@ changing the item status
 check the priority changes
 changing subitem status
 same filings and div status the new item form in item and subitem
+add note for the item
 
 
 errors of sub items date, status , ...
 
 
-add note for the item
 item detail buttons
 items display
 AI widget
 deleting "save changes" button in itemdetail
+backlog?!
+
+
+check GPTs
