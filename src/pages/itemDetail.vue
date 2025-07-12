@@ -30,22 +30,24 @@
     <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
       <div class="text-subtitle1">Note:</div>
       <div class="q-pa-sm bg-grey-2 rounded-borders resizable-note" v-html="item.note.replace(/\n/g, '<br>')"></div>
-      <q-btn label="Edit Note" color="primary" @click="toggleNoteEdit(true)" class="q-mt-sm q-mr-sm" />
-      <q-btn label="Delete Note" color="negative" flat @click="deleteNote" class="q-mt-sm" />
+      <div class="row q-mt-sm">
+        <q-btn label="Edit Note" color="primary" @click="toggleNoteEdit(true)" class="q-mr-sm" />
+        <q-btn label="Delete Note" color="negative" flat @click="deleteNote" />
+      </div>
     </div>
 
     <!-- Note Edit Form -->
     <div v-if="item && isEditingNote" class="q-mb-md">
       <div class="text-subtitle1">Edit Note:</div>
-      <q-input
+      <textarea
         v-model="item.note"
-        filled
-        type="textarea"
         placeholder="Enter your note here..."
-        class="q-mb-sm resizable-input"
+        class="resizable-note custom-textarea"
       />
-      <q-btn label="Save Note" color="positive" @click="saveNote" class="q-mr-sm" />
-      <q-btn label="Cancel" color="negative" flat @click="toggleNoteEdit(false)" />
+      <div class="row q-mt-sm">
+        <q-btn label="Save Note" color="positive" @click="saveNote" class="q-mr-sm" />
+        <q-btn label="Cancel" color="negative" flat @click="toggleNoteEdit(false)" />
+      </div>
     </div>
     <q-btn v-if="item && !item.note && !isEditingNote" label="Add Note" color="secondary" @click="toggleNoteEdit(true)" class="q-mb-md" />
 
@@ -106,7 +108,7 @@
 
           <!-- In Progress Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
-            <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
+            <div class="text-center text-subtitle2 q-mb-md">In Progress</div>
             <div
               v-for="subitem in sortedSubitems('in progress')"
               :key="subitem.id"
@@ -124,7 +126,7 @@
 
           <!-- Done Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
-            <div class="text-center text-subtitle2 q-mb-sm">Done</div>
+            <div class="text-center text-subtitle2 q-mb-md">Done</div>
             <div
               v-for="subitem in sortedSubitems('done')"
               :key="subitem.id"
@@ -161,45 +163,45 @@
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md">
             <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
               <q-select
-                v-model="subitemForm.type"
+                v-model="subitemForm.value.type"
                 :options="['Task', 'Project', 'Portfolio', 'Other']"
                 label="Subitem Type (select or type)"
                 dense
                 use-input
                 input-debounce="0"
-                :error="!subitemForm.type && subitemFormSubmitted"
+                :error="!subitemForm.value.type && subitemFormSubmitted.value"
                 error-message="Subitem Type is required"
               />
               <q-input
-                v-model="subitemForm.title"
+                v-model="subitemForm.value.title"
                 label="Subitem Title"
                 dense
-                :error="!subitemForm.title && subitemFormSubmitted"
+                :error="!subitemForm.value.title && subitemFormSubmitted.value"
                 error-message="Title is required"
               />
               <q-input
-                v-model="subitemForm.deadline"
+                v-model="subitemForm.value.deadline"
                 label="Deadline"
                 dense
                 type="datetime-local"
-                :max="item.deadline || undefined"
-                :error="!subitemForm.deadline && subitemFormSubmitted"
+                :max="item.value.deadline || undefined"
+                :error="!subitemForm.value.deadline && subitemFormSubmitted.value"
                 error-message="Deadline is required"
               />
               <q-select
-                v-model="subitemForm.status"
+                v-model="subitemForm.value.status"
                 :options="statusOptions"
                 label="Status"
                 dense
-                :error="!subitemForm.status && subitemFormSubmitted"
+                :error="!subitemForm.value.status && subitemFormSubmitted.value"
                 error-message="Status is required"
               />
               <q-select
-                v-model="subitemForm.priority"
+                v-model="subitemForm.value.priority"
                 :options="['Low', 'Medium', 'High']"
                 label="Priority"
                 dense
-                :error="!subitemForm.priority && subitemFormSubmitted"
+                :error="!subitemForm.value.priority && subitemFormSubmitted.value"
                 error-message="Priority is required"
               />
               <q-btn type="submit" label="Save Sub-item" color="secondary" class="q-mt-sm full-width" />
@@ -560,16 +562,28 @@ watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
   max-height: 200px;
   min-width: 200px;
   max-width: 100%;
+  width: 50%;
   word-wrap: break-word;
+  padding: 8px; /* برای تطابق با q-pa-sm */
+  background-color: #f5f5f5; /* برای تطابق با bg-grey-2 */
+  border-radius: 4px; /* برای تطابق با rounded-borders */
+  border: 1px solid #ddd; /* برای ظاهر بهتر */
 }
 
-.resizable-input .q-field__inner {
+.custom-textarea {
   resize: both;
   overflow: auto;
   min-height: 50px;
   max-height: 200px;
   min-width: 200px;
   max-width: 100%;
+  width: 50%;
+  word-wrap: break-word;
+  padding: 8px;
+  background-color: #fff; /* برای تطابق با ظاهر پیش‌فرض q-input */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .divider-col {

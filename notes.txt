@@ -20,3 +20,6 @@ backlog?!
 
 
 check GPTs
+
+
+nono  . the defuat hight of the box shlould be like the previouse code but the width should be like the box in uneditable mode and it should be resized like the box in uneditable mode
