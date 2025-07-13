@@ -13,13 +13,16 @@ errors of sub items date, status , ...
 
 
 item detail buttons
+ثبت فعالیت‌های انجام‌شده توسط هر عضو
+مقایسه زمان صرف‌شده با زمان تخمینی
+دلیل توقف یا تأخیر در پروژه‌ها
+آیا کسی باید کاری رو تموم کنه تا این مورد جلو بره؟
 items display
 AI widget
+پیشنهاد برای حل مشکلات
+پیش‌بینی زمان‌بندی پروژه‌های آینده
 deleting "save changes" button in itemdetail
 backlog?!
 
 
 check GPTs
-
-
-nono  . the defuat hight of the box shlould be like the previouse code but the width should be like the box in uneditable mode and it should be resized like the box in uneditable mode

@@ -26,6 +26,20 @@
     </div>
     <div v-else class="text-h5 q-mb-md text-negative">Item not found (ID: {{ route.params.id }})</div>
 
+    <!-- Selected Report Display (Editable) -->
+    <div v-if="item && selectedReport" class="q-mb-md">
+      <div class="text-subtitle1">Editing Report:</div>
+      <textarea
+        v-model="selectedReport.details"
+        placeholder="Edit your report here..."
+        class="resizable-note custom-textarea"
+      />
+      <div class="row q-mt-sm">
+        <q-btn label="Save Report" color="positive" @click="saveEditedReport" class="q-mr-sm" />
+        <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" />
+      </div>
+    </div>
+
     <!-- Note Display -->
     <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
       <div class="text-subtitle1">Note:</div>
@@ -46,15 +60,35 @@
       />
       <div class="row q-mt-sm">
         <q-btn label="Save Note" color="positive" @click="saveNote" class="q-mr-sm" />
-        <q-btn label="Cancel" color="negative" flat @click="toggleNoteEdit(false)" />
+        <q-btn label="Cancel" color="negative" flat @click="cancelNoteEdit" />
       </div>
     </div>
     <q-btn v-if="item && !item.note && !isEditingNote" label="Add Note" color="secondary" @click="toggleNoteEdit(true)" class="q-mb-md" />
 
+    <!-- Report Form -->
+    <div v-if="item && isAddingReport && !selectedReport" class="q-mb-md">
+      <div class="text-subtitle1">New Report:</div>
+      <q-input
+        v-model="newReportDetails"
+        placeholder="Enter what you have done..."
+        dense
+        :error="!newReportDetails && reportFormSubmitted"
+        error-message="Details are required"
+        class="q-mb-md"
+      />
+      <div class="row">
+        <q-btn label="Save Report" color="positive" @click="saveReport" class="q-mr-sm" />
+        <q-btn label="Cancel" color="negative" flat @click="cancelReport" />
+      </div>
+    </div>
+
     <!-- Parent Chain Info -->
     <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
-      <span v-for="(parent, index) in parentChain" :key="parent.id">
-        Parent: {{ parent.type }}: {{ parent.title }}{{ index < parentChain.length - 1 ? ' > ' : '' }}
+      <span>
+        <span v-for="(parent, index) in parentChain" :key="parent.id">
+          {{ parent.type }}: {{ parent.title }}{{ index < parentChain.length - 1 ? ' -> ' : '' }}
+        </span>
+        -> <strong>{{ item.type }}: {{ item.title }}</strong>
       </span>
     </div>
 
@@ -146,6 +180,33 @@
 
       <!-- Right Side Box -->
       <div class="col-2 bg-grey-2 rounded-borders q-pa-md" style="margin-left: 10px; width: 350px; height: 100%;">
+        <!-- Add New Report Button (Plus Icon) -->
+        <q-btn
+          v-if="item && !isAddingReport && !selectedReport"
+          round
+          color="secondary"
+          icon="add"
+          @click="toggleReportForm(true)"
+          class="q-mb-md"
+          size="sm"
+        />
+
+        <!-- Reports Box -->
+        <div v-if="item && item.reports && item.reports.length" class="q-mb-md">
+          <div class="text-subtitle1">Reports:</div>
+          <div class="bg-grey-2 rounded-borders q-pa-sm reports-box">
+            <div
+              v-for="(report, index) in item.reports"
+              :key="index"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+              @click="selectReport(report, index)"
+            >
+              <div class="text-ellipsis single-line">{{ report.date }} - {{ truncateText(report.details) }}</div>
+              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteReportFromBox(report, index)" />
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white" style="padding: 15px">
           <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
             <q-circular-progress show-value :value="completionPercent" size="80px" color="green" track-color="grey-3">
@@ -156,7 +217,6 @@
             <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" />
             <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="toggleSubitemForm = true" />
             <!-- <q-btn label="Add/Edit Note" color="secondary" class="full-width q-mb-xs" @click="toggleNoteEdit(true)" /> -->
-            <q-btn label="New Report" color="secondary" class="full-width q-mb-xs" />
             <q-btn label="Share With" color="secondary" class="full-width q-mb-xs" />
             <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
           </div>
@@ -211,7 +271,7 @@
         </div>
       </div>
     </div>
-    <div v-else class="text-center q-mt-lg text-negative">Loading item details...</div>
+    <div v-else class="text-center q-mt-lg text-negative">Loading item reports...</div>
   </q-page>
 </template>
 
@@ -241,6 +301,12 @@ const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', '
 const errorMessage = ref('')
 const itemId = ref(0) // تعریف itemId به‌صورت سراسری
 const isEditingNote = ref(false) // برای مدیریت حالت ویرایش یادداشت
+const originalNote = ref('') // برای ذخیره یادداشت اصلی
+const isAddingReport = ref(false) // برای مدیریت حالت افزودن گزارش
+const newReportDetails = ref('') // برای وارد کردن جزئیات گزارش
+const reportFormSubmitted = ref(false) // برای اعتبارسنجی فرم گزارش
+const selectedReport = ref(null) // برای انتخاب گزارش جهت ویرایش/حذف
+const selectedReportIndex = ref(null) // برای ذخیره ایندکس گزارش انتخاب‌شده
 
 // مدیریت مستقل isEditing و toggleSubitemForm برای هر ایتم
 const isEditing = ref(false)
@@ -273,6 +339,7 @@ const loadItems = () => {
   item.value = findItemById(items, itemId.value)
   if (!item.value) {
     console.error('Item not found for id:', itemId.value, 'in items:', items)
+    errorMessage.value = 'Item not found.'
     return
   }
 
@@ -283,14 +350,19 @@ const loadItems = () => {
     directParent.value = null
   }
 
-  // ریست حالت ویرایش و فرم ساب‌ایتم با ورود به صفحه
+  // ریست حالت‌ها با ورود به صفحه
   isEditing.value = false
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
   setSubitemFormState(itemId.value, false)
-  isEditingNote.value = false // ریست حالت ویرایش یادداشت
-  resetSubitemForm() // ریست فرم با ورود به صفحه
-  if (!item.value.note) item.value.note = '' // اگه note وجود نداشته باشه، مقدار خالی ست کن
+  isEditingNote.value = false
+  isAddingReport.value = false
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  resetSubitemForm()
+  if (!item.value.note) item.value.note = ''
+  if (!item.value.reports) item.value.reports = [] // اطمینان از وجود آرایه reports
+  console.log('Loaded item reports:', item.value.reports)
 }
 
 watch(() => route.params.id, (newId) => {
@@ -385,7 +457,7 @@ const addSubitem = () => {
       shareWith: [],
       backlog: [],
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
-      note: '' // اضافه کردن فیلد note به ساب‌ایتم‌ها
+      note: ''
     }
     console.log('Adding subitem with id:', newSubitem.id);
     item.value.subitems = item.value.subitems || []
@@ -402,7 +474,7 @@ const saveItem = () => {
   const updateItem = (items, itemToUpdate) => {
     for (let i = 0; i < items.length; i++) {
       if (items[i].id === itemToUpdate.id) {
-        items[i] = { ...itemToUpdate }
+        items[i] = { ...itemToUpdate } // کپی کامل ایتم
         return true
       }
       if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
@@ -411,10 +483,12 @@ const saveItem = () => {
     }
     return false
   }
-  if (item.value) updateItem(items, item.value)
-  localStorage.setItem('kanbanItems', JSON.stringify(items))
-  console.log('Item saved with status:', item.value.status)
-  loadItems()
+  if (item.value) {
+    updateItem(items, item.value)
+    localStorage.setItem('kanbanItems', JSON.stringify(items))
+    console.log('Item saved with reports:', item.value.reports)
+    loadItems() // رفرش داده‌ها بعد از ذخیره
+  }
 }
 
 const saveDetails = () => {
@@ -465,26 +539,113 @@ const cancelSubitemForm = () => {
 }
 
 const toggleNoteEdit = (value) => {
-  isEditingNote.value = value
-  if (!value && !item.value.note) {
-    item.value.note = '' // اگه لغو بشه و یادداشت خالی باشه، مقدار رو نگه دار
+  if (value) {
+    originalNote.value = item.value.note;
   }
+  isEditingNote.value = value;
+  if (!value && !item.value.note) {
+    item.value.note = '';
+  }
+}
+
+const cancelNoteEdit = () => {
+  item.value.note = originalNote.value;
+  isEditingNote.value = false;
 }
 
 const saveNote = () => {
   if (item.value.note && item.value.note.trim()) {
-    saveItem()
-    isEditingNote.value = false
-    errorMessage.value = ''
+    saveItem();
+    isEditingNote.value = false;
+    errorMessage.value = '';
   } else {
-    errorMessage.value = 'Note cannot be empty.'
+    errorMessage.value = 'Note cannot be empty.';
   }
 }
 
 const deleteNote = () => {
-  item.value.note = ''
-  saveItem()
-  errorMessage.value = ''
+  item.value.note = '';
+  saveItem();
+  errorMessage.value = '';
+}
+
+const toggleReportForm = (value) => {
+  if (value) {
+    newReportDetails.value = '';
+    reportFormSubmitted.value = false;
+  }
+  isAddingReport.value = value;
+  if (value) {
+    selectedReport.value = null;
+    selectedReportIndex.value = null;
+  }
+}
+
+const cancelReport = () => {
+  isAddingReport.value = false;
+}
+
+const saveReport = () => {
+  reportFormSubmitted.value = true;
+  if (!newReportDetails.value || !newReportDetails.value.trim()) {
+    errorMessage.value = 'Report details cannot be empty.';
+    return;
+  }
+
+  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' });
+  const newReport = {
+    date: currentDateTime,
+    details: newReportDetails.value
+  };
+
+  item.value.reports = item.value.reports || [];
+  item.value.reports.push(newReport);
+  console.log('New report added:', newReport);
+  saveItem(); // ذخیره کل ایتم
+  isAddingReport.value = false;
+  newReportDetails.value = '';
+  errorMessage.value = '';
+}
+
+const selectReport = (report, index) => {
+  selectedReport.value = { ...report }; // کپی گزارش برای ویرایش
+  selectedReportIndex.value = index; // ذخیره ایندکس گزارش
+  isAddingReport.value = false; // بستن فرم جدید
+}
+
+const cancelEditReport = () => {
+  selectedReport.value = null;
+  selectedReportIndex.value = null;
+}
+
+const saveEditedReport = () => {
+  if (!selectedReport.value || !selectedReport.value.details || !selectedReport.value.details.trim()) {
+    errorMessage.value = 'Report details cannot be empty.';
+    return;
+  }
+  if (selectedReportIndex.value !== null && item.value.reports && item.value.reports.length > selectedReportIndex.value) {
+    // به‌روزرسانی مستقیم آرایه reports با استفاده از ایندکس
+    item.value.reports[selectedReportIndex.value] = { ...selectedReport.value, date: item.value.reports[selectedReportIndex.value].date }; // حفظ تاریخ اصلی
+    console.log('Report updated at index:', selectedReportIndex.value, 'new details:', selectedReport.value.details);
+    saveItem(); // ذخیره کل ایتم
+  } else {
+    console.error('Invalid report index:', selectedReportIndex.value, 'or reports array:', item.value.reports);
+    errorMessage.value = 'Error updating report.';
+  }
+  selectedReport.value = null;
+  selectedReportIndex.value = null;
+  errorMessage.value = '';
+}
+
+const deleteReportFromBox = (report, index) => {
+  if (item.value.reports && item.value.reports.length > index) {
+    item.value.reports.splice(index, 1);
+    console.log('Report deleted at index:', index);
+    saveItem(); // ذخیره کل ایتم
+  } else {
+    console.error('Invalid report index or reports array:', index, item.value.reports);
+  }
+  errorMessage.value = '';
 }
 
 function resetSubitemForm() {
@@ -494,64 +655,70 @@ function resetSubitemForm() {
     deadline: '',
     status: '',
     priority: ''
-  }
-  subitemFormSubmitted.value = false
+  };
+  subitemFormSubmitted.value = false;
 }
 
 const completionPercent = computed(() => {
-  if (!item.value?.subitems?.length) return 0
-  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length
-  return Math.round((doneSubitems / item.value.subitems.length) * 100)
-})
+  if (!item.value?.subitems?.length) return 0;
+  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length;
+  return Math.round((doneSubitems / item.value.subitems.length) * 100);
+});
 
 const sortSubitems = () => {
-  console.log('Sort by Priority toggled to:', sortByPriority.value)
-}
+  console.log('Sort by Priority toggled to:', sortByPriority.value);
+};
 
 const sortedSubitems = (status) => {
-  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || []
+  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || [];
   if (sortByPriority.value) {
     subitems.sort((a, b) => {
-      const priorityOrder = { High: 0, Medium: 1, Low: 2 }
-      return priorityOrder[a.priority] - priorityOrder[b.priority]
-    })
+      const priorityOrder = { High: 0, Medium: 1, Low: 2 };
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
   } else {
-    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
   }
-  return subitems
-}
+  return subitems;
+};
 
 const parentChain = computed(() => {
-  const chain = []
-  let currentParentId = item.value?.parentId
-  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
+  const chain = [];
+  let currentParentId = item.value?.parentId;
+  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]');
   while (currentParentId) {
-    const parent = findItemById(items, currentParentId)
+    const parent = findItemById(items, currentParentId);
     if (parent) {
-      chain.unshift(parent)
-      currentParentId = parent.parentId
+      chain.unshift(parent);
+      currentParentId = parent.parentId;
     } else {
-      break
+      break;
     }
   }
-  return chain
-})
+  return chain;
+});
 
 const logout = () => {
-  localStorage.removeItem('authToken')
-  localStorage.removeItem('kanbanItems')
-  window.location.href = 'http://localhost:9000/#/login'
-}
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('kanbanItems');
+  window.location.href = 'http://localhost:9000/#/login';
+};
 
 const openProfile = () => {
-  window.location.href = 'http://localhost:9000/#/profile'
-}
+  window.location.href = 'http://localhost:9000/#/profile';
+};
 
 watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
   if (newValue) {
-    loadItems()
+    loadItems();
   }
-})
+});
+
+// تابع کوتاه کردن متن
+const truncateText = (text) => {
+  const maxLength = 30; // حداکثر طول متن در یک خط
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+};
 </script>
 
 <style scoped>
@@ -589,6 +756,25 @@ watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;
-  height: calc(100vh - 255px)
+  height: calc(100vh - 255px);
+}
+
+.reports-box {
+  max-height: 100px; /* باکس کوچیک‌تر */
+  overflow-y: auto;
+  width: 100%; /* پهنای کامل باکس سمت راست */
+}
+
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.single-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* تنظیم حداکثر عرض برای یک خط */
 }
 </style>
