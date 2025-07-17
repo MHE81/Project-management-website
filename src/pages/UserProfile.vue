@@ -199,6 +199,66 @@
             no-error-icon
           />
 
+          <!-- Change Password Section (visible in edit mode) -->
+          <q-expansion-item
+            v-if="editMode"
+            label="Change Password"
+            icon="lock"
+            dense
+            class="q-mt-md"
+            expand-icon="chevron_right"
+            expanded-icon="chevron_down"
+          >
+            <q-card>
+              <q-card-section>
+                <q-input
+                  filled
+                  v-model="password.new"
+                  :type="showPassword ? 'text' : 'password'"
+                  label="New Password"
+                  dense
+                  class="uniform-input"
+                  :error="passwordError"
+                  :error-message="passwordErrorMessage"
+                  @input="clearPasswordError"
+                  aria-label="Enter new password"
+                  no-error-icon
+                >
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPassword ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="showPassword = !showPassword"
+                      aria-label="Toggle password visibility"
+                    />
+                  </template>
+                </q-input>
+                <q-input
+                  filled
+                  v-model="password.confirm"
+                  :type="showPassword ? 'text' : 'password'"
+                  label="Confirm New Password"
+                  dense
+                  class="uniform-input"
+                  :error="confirmPasswordError"
+                  error-message="Passwords do not match"
+                  @input="clearConfirmPasswordError"
+                  aria-label="Confirm new password"
+                  no-error-icon
+                >
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPassword ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="showPassword = !showPassword"
+                      aria-label="Toggle password visibility"
+                    />
+                  </template>
+                </q-input>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
           <!-- Buttons -->
           <q-btn
             v-if="!editMode"
@@ -278,6 +338,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 // Profile data
 const profile = ref({
@@ -291,18 +352,30 @@ const profile = ref({
   picture: ''
 })
 
+// Password change data
+const password = ref({
+  new: '',
+  confirm: ''
+})
+
+const router = useRouter()
 const editMode = ref(false)
 const isLoading = ref(false)
-const apiError = ref('')
-const successMessage = ref('')
+const showPassword = ref(false)
 const backupProfile = ref(null)
 const showDatePicker = ref(false)
+const showDeleteDialog = ref(false)
+const usernameTouched = ref(false)
+const emailTouched = ref(false)
+const passwordTouched = ref(false)
+const confirmTouched = ref(false)
 const dobError = ref('')
 const usernameError = ref(false)
 const emailError = ref(false)
-const usernameTouched = ref(false)
-const emailTouched = ref(false)
-const showDeleteDialog = ref(false)
+const passwordError = ref(false)
+const confirmPasswordError = ref(false)
+const apiError = ref('')
+const successMessage = ref('')
 
 // Email format validator
 const isEmailValid = computed(() => {
@@ -313,6 +386,17 @@ const isEmailValid = computed(() => {
 const emailErrorMessage = computed(() => {
   if (emailTouched.value && profile.value.email === '') return 'Email is required'
   if (emailTouched.value && !isEmailValid.value) return 'Invalid email format'
+  return ''
+})
+
+// Password validator
+const isPasswordValid = computed(() => {
+  return password.value.new.length >= 8
+})
+
+const passwordErrorMessage = computed(() => {
+  if (passwordTouched.value && password.value.new === '') return 'Password is required'
+  if (passwordTouched.value && !isPasswordValid.value) return 'Password must be at least 8 characters'
   return ''
 })
 
@@ -330,12 +414,15 @@ const validateDob = () => {
   const date = new Date(profile.value.dob)
   const today = new Date()
   const minDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate())
+  const maxDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate())
   if (isNaN(date.getTime())) {
     dobError.value = 'Invalid date'
   } else if (date > today) {
     dobError.value = 'Date of birth cannot be in the future'
   } else if (date > minDate) {
     dobError.value = 'You must be at least 13 years old'
+  } else if (date < maxDate) {
+    dobError.value = 'Date of birth is too far in the past'
   } else {
     dobError.value = ''
   }
@@ -343,8 +430,11 @@ const validateDob = () => {
 
 // Save profile
 const saveProfile = () => {
+  console.log('saveProfile called')
   usernameTouched.value = true
   emailTouched.value = true
+  passwordTouched.value = !!password.value.new
+  confirmTouched.value = !!password.value.confirm
   apiError.value = ''
   successMessage.value = ''
   isLoading.value = true
@@ -353,30 +443,61 @@ const saveProfile = () => {
   validateDob()
   usernameError.value = !profile.value.username
   emailError.value = !profile.value.email || !isEmailValid.value
+  passwordError.value = passwordTouched.value && (!password.value.new || !isPasswordValid.value)
+  confirmPasswordError.value = confirmTouched.value && password.value.new !== password.value.confirm
 
-  if (usernameError.value || emailError.value || dobError.value) {
+  console.log('Validation errors:', {
+    usernameError: usernameError.value,
+    emailError: emailError.value,
+    dobError: dobError.value,
+    passwordError: passwordError.value,
+    confirmPasswordError: confirmPasswordError.value
+  })
+
+  if (usernameError.value || emailError.value || dobError.value || passwordError.value || confirmPasswordError.value) {
     isLoading.value = false
+    // apiError.value = 'Please fix the errors in the form'
+    console.log('Validation failed, stopping save')
     return
   }
 
   // Simulate backend API call
   setTimeout(() => {
+    console.log('Simulating API call')
     const random = Math.random()
     if (random < 0.1) {
       apiError.value = 'Username already taken'
+      console.log('API simulation: Username already taken')
     } else if (random < 0.2) {
       apiError.value = 'Email already in use'
+      console.log('API simulation: Email already in use')
     } else {
-      backupProfile.value = null
-      editMode.value = false
-      successMessage.value = 'Profile saved successfully'
-      console.log('Profile saved:', profile.value)
-      setTimeout(() => {
-        successMessage.value = ''
-      }, 3000) // Clear success message after 3 seconds
+      // Save profile
+      try {
+        localStorage.setItem('userProfile', JSON.stringify(profile.value))
+        console.log('Profile saved to localStorage:', profile.value)
+        backupProfile.value = null
+        editMode.value = false
+        if (password.value.new) {
+          console.log('Password changed to:', password.value.new)
+          password.value.new = ''
+          password.value.confirm = ''
+          passwordTouched.value = false
+          confirmTouched.value = false
+        }
+        successMessage.value = 'Profile saved successfully'
+        console.log('Profile save successful')
+        setTimeout(() => {
+          successMessage.value = ''
+        }, 3000) // Clear success message after 3 seconds
+      } catch (e) {
+        apiError.value = 'Failed to save profile due to storage error'
+        console.error('Error saving to localStorage:', e)
+      }
     }
     isLoading.value = false
-  }, 1000) // Simulate API delay
+    console.log('API simulation complete, isLoading set to false')
+  }, 1000)
 }
 
 // Cancel edit
@@ -384,20 +505,28 @@ const cancelEdit = () => {
   if (backupProfile.value) {
     profile.value = { ...backupProfile.value }
   }
+  password.value.new = ''
+  password.value.confirm = ''
   usernameError.value = false
   emailError.value = false
   dobError.value = ''
+  passwordError.value = false
+  confirmPasswordError.value = false
   usernameTouched.value = false
   emailTouched.value = false
+  passwordTouched.value = false
+  confirmTouched.value = false
   editMode.value = false
   apiError.value = ''
   successMessage.value = ''
+  console.log('Edit cancelled, state reset')
 }
 
 // Backup profile when entering edit mode
 watch(editMode, (newVal) => {
   if (newVal) {
     backupProfile.value = { ...profile.value }
+    console.log('Edit mode enabled, profile backed up')
   }
 })
 
@@ -407,6 +536,7 @@ const fileInput = ref(null)
 const triggerFileInput = () => {
   if (editMode.value) {
     fileInput.value.click()
+    console.log('File input triggered')
   }
 }
 
@@ -415,15 +545,20 @@ const onFileChange = (event) => {
   if (file) {
     if (!file.type.startsWith('image/')) {
       apiError.value = 'Please upload an image file'
+      console.log('Invalid file type, cleared input')
+      fileInput.value.value = ''
       return
     }
     if (file.size > 5 * 1024 * 1024) {
       apiError.value = 'Image size must be less than 5MB'
+      console.log('File too large, cleared input')
+      fileInput.value.value = ''
       return
     }
     const reader = new FileReader()
     reader.onload = (e) => {
       profile.value.picture = e.target.result
+      console.log('Image loaded successfully')
     }
     reader.readAsDataURL(file)
   }
@@ -432,6 +567,7 @@ const onFileChange = (event) => {
 const removePicture = () => {
   if (editMode.value) {
     profile.value.picture = ''
+    console.log('Profile picture removed')
   }
 }
 
@@ -444,31 +580,58 @@ const clearEmailError = () => {
   if (profile.value.email && isEmailValid.value) emailError.value = false
 }
 
-// Check authentication
+const clearPasswordError = () => {
+  if (password.value.new && isPasswordValid.value) passwordError.value = false
+}
+
+const clearConfirmPasswordError = () => {
+  if (password.value.new === password.value.confirm) confirmPasswordError.value = false
+}
+
+// Check authentication and load profile
 onMounted(() => {
   const token = localStorage.getItem('authToken')
   if (!token) {
-    console.log('User not authenticated, redirecting to login')
-    window.location.href = 'http://localhost:9000/#/login'
+    apiError.value = 'User not authenticated, redirecting to login'
+    console.log('No auth token, redirecting to login')
+    setTimeout(() => {
+      router.push('/login')
+    }, 3000)
   }
   const savedProfile = localStorage.getItem('userProfile')
   if (savedProfile) {
-    profile.value = JSON.parse(savedProfile)
+    try {
+      profile.value = JSON.parse(savedProfile)
+      console.log('Profile loaded from localStorage:', profile.value)
+    } catch (e) {
+      apiError.value = 'Failed to load profile data'
+      console.error('Error loading profile from localStorage:', e)
+    }
   }
 })
 
 // Delete account
 const deleteAccount = () => {
   showDeleteDialog.value = false
-  localStorage.removeItem('authToken')
-  localStorage.removeItem('kanbanItems')
-  localStorage.removeItem('userProfile')
-  window.location.href = 'http://localhost:9000/#/login'
+  try {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('kanbanItems')
+    localStorage.removeItem('userProfile')
+    successMessage.value = 'Account deleted successfully'
+    console.log('Account deleted successfully')
+    setTimeout(() => {
+      router.push('/login')
+    }, 3000)
+  } catch (e) {
+    apiError.value = 'Failed to delete account'
+    console.error('Error deleting account:', e)
+  }
 }
 
 // Navigate to home
 const goToHome = () => {
-  window.location.href = 'http://localhost:9000/#/home'
+  router.push('/home')
+  console.log('Navigating to home')
 }
 </script>
 
@@ -479,7 +642,7 @@ const goToHome = () => {
 .constrained-card {
   width: 400px;
   max-width: 90vw;
-  max-height: calc(100vh - 32px); /* Account for q-pa-md */
+  max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
 }
@@ -487,37 +650,44 @@ const goToHome = () => {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: white; /* Match q-card background */
-  padding-bottom: 0; /* Reduce spacing */
+  background: white;
+  padding-bottom: 0;
 }
 .scrollable-section {
   overflow-y: auto;
-  max-height: calc(100vh - 180px); /* Adjust for fixed section (80px avatar) and padding */
-  padding-right: 8px; /* Prevent scrollbar overlap */
+  max-height: calc(100vh - 180px);
+  padding-right: 8px;
 }
 .uniform-input {
-  margin-bottom: 0px !important; /* Consistent spacing */
+  margin-bottom: 0px !important;
 }
 .uniform-input .q-field__control {
-  padding-bottom: 0 !important; /* Normalize textarea */
-  height: 40px !important; /* Match dense input height */
+  padding-bottom: 0 !important;
+  height: 40px !important;
 }
 .uniform-input .q-field__bottom {
-  padding-top: 4px !important; /* Consistent hint/error spacing */
+  padding-top: 4px !important;
   min-height: 0 !important;
   height: auto !important;
 }
 .uniform-input.q-field--readonly .q-field__control {
-  padding-bottom: 0 !important; /* Normalize readonly inputs */
-  background: var(--q-filled-bg) !important; /* Match filled style */
-  opacity: 1 !important; /* Prevent fading */
-  cursor: default !important; /* Standard cursor on hover */
+  padding-bottom: 0 !important;
+  background: var(--q-filled-bg) !important;
+  opacity: 1 !important;
+  cursor: default !important;
 }
-/* Hide bottom slot when no error or hint */
 .uniform-input:not(.q-field--error) .q-field__bottom {
-  display: none !important; /* Remove reserved space in view mode */
+  display: none !important;
 }
 .uniform-input.q-field--error .q-field__bottom {
-  padding-top: 4px !important; /* Ensure error message spacing */
+  padding-top: 4px !important;
+}
+@media (max-height: 600px) {
+  .fixed-section {
+    padding: 8px;
+  }
+  .fixed-section .q-avatar {
+    size: 60px;
+  }
 }
 </style>

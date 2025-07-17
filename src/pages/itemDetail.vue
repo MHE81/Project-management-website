@@ -1,5 +1,11 @@
 <template>
   <q-page class="q-pa-md">
+    <!-- Item Name at the Top Center -->
+    <div v-if="item" class="text-h4 q-mb-md text-center full-width">
+      {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+    </div>
+    <div v-else class="text-h4 q-mb-md text-center full-width text-negative">Item not found (ID: {{ route.params.id }})</div>
+
     <!-- Top bar -->
     <div class="row justify-between items-center q-mb-md">
       <div class="text-h6">Date: {{ currentDate }}</div>
@@ -20,11 +26,16 @@
       {{ errorMessage }}
     </q-banner>
 
-    <!-- Item Type and Name -->
-    <div v-if="item" class="text-h5 q-mb-md">
-      {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
-    </div>
-    <div v-else class="text-h5 q-mb-md text-negative">Item not found (ID: {{ route.params.id }})</div>
+    <!-- Debug Banner for toggleSubitemForm -->
+    <!-- <q-banner
+      v-if="item"
+      dense
+      class="bg-blue text-white q-mb-md"
+      aria-live="polite"
+      role="status"
+    >
+      Subitem Form Status: {{ toggleSubitemForm ? 'Open' : 'Closed' }}
+    </q-banner> -->
 
     <!-- Selected Report Display (Editable) -->
     <div v-if="item && selectedReport" class="q-mb-md">
@@ -95,7 +106,7 @@
     <!-- Main layout -->
     <div v-if="item" class="row" style="height: calc(100vh - 180px)">
       <!-- Left Side Box (Item Details) -->
-      <div class="col-3 bg-grey-2 rounded-borders q-pa-md" style="margin-right: 10px; height: 100%;">
+      <div class="col-2 bg-grey-2 rounded-borders q-pa-md" style="margin-right: 10px; height: 100%;">
         <div class="bg-white" style="padding: 15px">
           <div class="text-subtitle2 q-mb-xs">Details</div>
           <div>Type: {{ item.type || 'N/A' }}</div>
@@ -110,7 +121,7 @@
       </div>
 
       <!-- Main Content Area (Subitems Kanban) -->
-      <div class="col-6 bg-grey-2 rounded-borders q-pa-md overflow-y-auto" style="height: 100%;">
+      <div class="col-7 bg-grey-2 rounded-borders q-pa-md overflow-y-auto" style="height: 100%;">
         <q-toggle
           v-model="sortByPriority"
           label="Sort by"
@@ -196,7 +207,7 @@
           <div class="text-subtitle1">Reports:</div>
           <div class="bg-grey-2 rounded-borders q-pa-sm reports-box">
             <div
-              v-for="(report, index) in item.reports"
+              v-for="(report, index) in sortedReports"
               :key="index"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
               @click="selectReport(report, index)"
@@ -207,6 +218,7 @@
           </div>
         </div>
 
+        <!-- Subitem Form and Buttons -->
         <div class="bg-white" style="padding: 15px">
           <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
             <q-circular-progress show-value :value="completionPercent" size="80px" color="green" track-color="grey-3">
@@ -215,57 +227,58 @@
           </div>
           <div v-if="!toggleSubitemForm">
             <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" />
-            <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="toggleSubitemForm = true" />
-            <!-- <q-btn label="Add/Edit Note" color="secondary" class="full-width q-mb-xs" @click="toggleNoteEdit(true)" /> -->
+            <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="openSubitemForm" />
             <q-btn label="Share With" color="secondary" class="full-width q-mb-xs" />
             <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
           </div>
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md">
             <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
               <q-select
-                v-model="subitemForm.value.type"
+                v-model="subitemForm.type"
                 :options="['Task', 'Project', 'Portfolio', 'Other']"
                 label="Subitem Type (select or type)"
                 dense
                 use-input
                 input-debounce="0"
-                :error="!subitemForm.value.type && subitemFormSubmitted.value"
+                :error="!subitemForm.type && subitemFormSubmitted"
                 error-message="Subitem Type is required"
               />
               <q-input
-                v-model="subitemForm.value.title"
+                v-model="subitemForm.title"
                 label="Subitem Title"
                 dense
-                :error="!subitemForm.value.title && subitemFormSubmitted.value"
+                :error="!subitemForm.title && subitemFormSubmitted"
                 error-message="Title is required"
               />
               <q-input
-                v-model="subitemForm.value.deadline"
+                v-model="subitemForm.deadline"
                 label="Deadline"
                 dense
                 type="datetime-local"
-                :max="item.value.deadline || undefined"
-                :error="!subitemForm.value.deadline && subitemFormSubmitted.value"
+                :max="item.deadline || undefined"
+                :error="!subitemForm.deadline && subitemFormSubmitted"
                 error-message="Deadline is required"
               />
               <q-select
-                v-model="subitemForm.value.status"
+                v-model="subitemForm.status"
                 :options="statusOptions"
                 label="Status"
                 dense
-                :error="!subitemForm.value.status && subitemFormSubmitted.value"
+                :error="!subitemForm.status && subitemFormSubmitted"
                 error-message="Status is required"
               />
               <q-select
-                v-model="subitemForm.value.priority"
+                v-model="subitemForm.priority"
                 :options="['Low', 'Medium', 'High']"
                 label="Priority"
                 dense
-                :error="!subitemForm.value.priority && subitemFormSubmitted.value"
+                :error="!subitemForm.priority && subitemFormSubmitted"
                 error-message="Priority is required"
               />
-              <q-btn type="submit" label="Save Sub-item" color="secondary" class="q-mt-sm full-width" />
-              <q-btn flat label="Cancel" color="negative" class="q-mt-sm full-width" @click="cancelSubitemForm" />
+              <div class="row q-mt-sm">
+                <q-btn type="submit" label="Save Subitem" color="secondary" class="full-width q-mr-sm" />
+                <q-btn flat label="Cancel" color="negative" class="full-width" @click="cancelSubitemForm" />
+              </div>
             </q-form>
           </div>
         </div>
@@ -299,22 +312,18 @@ const subitemForm = ref({
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const errorMessage = ref('')
-const itemId = ref(0) // تعریف itemId به‌صورت سراسری
-const isEditingNote = ref(false) // برای مدیریت حالت ویرایش یادداشت
-const originalNote = ref('') // برای ذخیره یادداشت اصلی
-const isAddingReport = ref(false) // برای مدیریت حالت افزودن گزارش
-const newReportDetails = ref('') // برای وارد کردن جزئیات گزارش
-const reportFormSubmitted = ref(false) // برای اعتبارسنجی فرم گزارش
-const selectedReport = ref(null) // برای انتخاب گزارش جهت ویرایش/حذف
-const selectedReportIndex = ref(null) // برای ذخیره ایندکس گزارش انتخاب‌شده
-
-// مدیریت مستقل isEditing و toggleSubitemForm برای هر ایتم
+const itemId = ref(0)
+const isEditingNote = ref(false)
+const originalNote = ref('')
+const isAddingReport = ref(false)
+const newReportDetails = ref('')
+const reportFormSubmitted = ref(false)
+const selectedReport = ref(null)
+const selectedReportIndex = ref(null)
 const isEditing = ref(false)
+
 const setEditingState = (id, state) => {
   localStorage.setItem(`isEditing_${id}`, JSON.stringify(state))
-}
-const setSubitemFormState = (id, state) => {
-  localStorage.setItem(`toggleSubitemForm_${id}`, JSON.stringify(state))
 }
 
 const findItemById = (items, id) => {
@@ -334,34 +343,34 @@ onMounted(() => {
 
 const loadItems = () => {
   const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
-  itemId.value = parseInt(route.params.id) // آپدیت itemId
+  itemId.value = parseInt(route.params.id)
   console.log('Loading item with id:', itemId.value, 'from items:', items)
   item.value = findItemById(items, itemId.value)
   if (!item.value) {
     console.error('Item not found for id:', itemId.value, 'in items:', items)
     errorMessage.value = 'Item not found.'
+    setTimeout(() => {
+      router.push('/home')
+    }, 3000)
     return
   }
 
-  // فقط والد مستقیم رو پیدا کن
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
   } else {
     directParent.value = null
   }
 
-  // ریست حالت‌ها با ورود به صفحه
   isEditing.value = false
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
-  setSubitemFormState(itemId.value, false)
   isEditingNote.value = false
   isAddingReport.value = false
   selectedReport.value = null
   selectedReportIndex.value = null
   resetSubitemForm()
   if (!item.value.note) item.value.note = ''
-  if (!item.value.reports) item.value.reports = [] // اطمینان از وجود آرایه reports
+  if (!item.value.reports) item.value.reports = []
   console.log('Loaded item reports:', item.value.reports)
 }
 
@@ -369,6 +378,12 @@ watch(() => route.params.id, (newId) => {
   console.log('Route changed to id:', newId)
   loadItems()
 })
+
+const openSubitemForm = () => {
+  console.log('Opening subitem form, setting toggleSubitemForm to true, subitemForm:', subitemForm.value)
+  toggleSubitemForm.value = true
+  errorMessage.value = ''
+}
 
 const startDrag = (item) => {
   draggedItem.value = item
@@ -409,7 +424,7 @@ const deleteItem = (id) => {
     localStorage.setItem('kanbanItems', JSON.stringify(items))
     loadItems()
     if (item.value && item.value.id === id) {
-      router.push('/homepage')
+      router.push('/home')
     }
   } else {
     console.warn('Item with id', id, 'not found for deletion')
@@ -419,15 +434,16 @@ const deleteItem = (id) => {
 const viewItem = (id) => {
   console.log('Clicking subitem with id:', id)
   if (id) {
-    router.push(`/itemDetail/${id}`);
+    router.push(`/itemDetail/${id}`)
   } else {
-    console.error('No valid id provided for viewItem');
+    console.error('No valid id provided for viewItem')
   }
 }
 
 const addSubitem = () => {
   subitemFormSubmitted.value = true
   if (!subitemForm.value.type || !subitemForm.value.title || !subitemForm.value.deadline || !subitemForm.value.status || !subitemForm.value.priority) {
+    errorMessage.value = 'Please fill all required fields'
     return
   }
 
@@ -459,13 +475,13 @@ const addSubitem = () => {
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
       note: ''
     }
-    console.log('Adding subitem with id:', newSubitem.id);
+    console.log('Adding subitem with id:', newSubitem.id)
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
     saveItem()
     resetSubitemForm()
     toggleSubitemForm.value = false
-    setSubitemFormState(itemId.value, false)
+    errorMessage.value = ''
   }
 }
 
@@ -474,7 +490,7 @@ const saveItem = () => {
   const updateItem = (items, itemToUpdate) => {
     for (let i = 0; i < items.length; i++) {
       if (items[i].id === itemToUpdate.id) {
-        items[i] = { ...itemToUpdate } // کپی کامل ایتم
+        items[i] = { ...itemToUpdate }
         return true
       }
       if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
@@ -487,13 +503,14 @@ const saveItem = () => {
     updateItem(items, item.value)
     localStorage.setItem('kanbanItems', JSON.stringify(items))
     console.log('Item saved with reports:', item.value.reports)
-    loadItems() // رفرش داده‌ها بعد از ذخیره
+    loadItems()
   }
 }
 
 const saveDetails = () => {
   formSubmitted.value = true
   if (!item.value.title) {
+    errorMessage.value = 'Please fill all required fields'
     return
   }
 
@@ -535,117 +552,119 @@ const toggleEdit = (value) => {
 const cancelSubitemForm = () => {
   resetSubitemForm()
   toggleSubitemForm.value = false
-  setSubitemFormState(itemId.value, false)
+  errorMessage.value = ''
 }
 
 const toggleNoteEdit = (value) => {
   if (value) {
-    originalNote.value = item.value.note;
+    originalNote.value = item.value.note
   }
-  isEditingNote.value = value;
+  isEditingNote.value = value
   if (!value && !item.value.note) {
-    item.value.note = '';
+    item.value.note = ''
   }
 }
 
 const cancelNoteEdit = () => {
-  item.value.note = originalNote.value;
-  isEditingNote.value = false;
+  item.value.note = originalNote.value
+  isEditingNote.value = false
+  errorMessage.value = ''
 }
 
 const saveNote = () => {
   if (item.value.note && item.value.note.trim()) {
-    saveItem();
-    isEditingNote.value = false;
-    errorMessage.value = '';
+    saveItem()
+    isEditingNote.value = false
+    errorMessage.value = ''
   } else {
-    errorMessage.value = 'Note cannot be empty.';
+    errorMessage.value = 'Note cannot be empty.'
   }
 }
 
 const deleteNote = () => {
-  item.value.note = '';
-  saveItem();
-  errorMessage.value = '';
+  item.value.note = ''
+  saveItem()
+  errorMessage.value = ''
 }
 
 const toggleReportForm = (value) => {
   if (value) {
-    newReportDetails.value = '';
-    reportFormSubmitted.value = false;
+    newReportDetails.value = ''
+    reportFormSubmitted.value = false
   }
-  isAddingReport.value = value;
+  isAddingReport.value = value
   if (value) {
-    selectedReport.value = null;
-    selectedReportIndex.value = null;
+    selectedReport.value = null
+    selectedReportIndex.value = null
   }
 }
 
 const cancelReport = () => {
-  isAddingReport.value = false;
+  isAddingReport.value = false
+  errorMessage.value = ''
 }
 
 const saveReport = () => {
-  reportFormSubmitted.value = true;
+  reportFormSubmitted.value = true
   if (!newReportDetails.value || !newReportDetails.value.trim()) {
-    errorMessage.value = 'Report details cannot be empty.';
-    return;
+    errorMessage.value = 'Report details cannot be empty.'
+    return
   }
 
-  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' });
+  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
   const newReport = {
     date: currentDateTime,
     details: newReportDetails.value
-  };
+  }
 
-  item.value.reports = item.value.reports || [];
-  item.value.reports.push(newReport);
-  console.log('New report added:', newReport);
-  saveItem(); // ذخیره کل ایتم
-  isAddingReport.value = false;
-  newReportDetails.value = '';
-  errorMessage.value = '';
+  item.value.reports = item.value.reports || []
+  item.value.reports.unshift(newReport)
+  console.log('New report added:', newReport)
+  saveItem()
+  isAddingReport.value = false
+  newReportDetails.value = ''
+  errorMessage.value = ''
 }
 
 const selectReport = (report, index) => {
-  selectedReport.value = { ...report }; // کپی گزارش برای ویرایش
-  selectedReportIndex.value = index; // ذخیره ایندکس گزارش
-  isAddingReport.value = false; // بستن فرم جدید
+  selectedReport.value = { ...report }
+  selectedReportIndex.value = index
+  isAddingReport.value = false
 }
 
 const cancelEditReport = () => {
-  selectedReport.value = null;
-  selectedReportIndex.value = null;
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  errorMessage.value = ''
 }
 
 const saveEditedReport = () => {
   if (!selectedReport.value || !selectedReport.value.details || !selectedReport.value.details.trim()) {
-    errorMessage.value = 'Report details cannot be empty.';
-    return;
+    errorMessage.value = 'Report details cannot be empty.'
+    return
   }
   if (selectedReportIndex.value !== null && item.value.reports && item.value.reports.length > selectedReportIndex.value) {
-    // به‌روزرسانی مستقیم آرایه reports با استفاده از ایندکس
-    item.value.reports[selectedReportIndex.value] = { ...selectedReport.value, date: item.value.reports[selectedReportIndex.value].date }; // حفظ تاریخ اصلی
-    console.log('Report updated at index:', selectedReportIndex.value, 'new details:', selectedReport.value.details);
-    saveItem(); // ذخیره کل ایتم
+    item.value.reports[selectedReportIndex.value] = { ...selectedReport.value, date: item.value.reports[selectedReportIndex.value].date }
+    console.log('Report updated at index:', selectedReportIndex.value, 'new details:', selectedReport.value.details)
+    saveItem()
   } else {
-    console.error('Invalid report index:', selectedReportIndex.value, 'or reports array:', item.value.reports);
-    errorMessage.value = 'Error updating report.';
+    console.error('Invalid report index:', selectedReportIndex.value, 'or reports array:', item.value.reports)
+    errorMessage.value = 'Error updating report.'
   }
-  selectedReport.value = null;
-  selectedReportIndex.value = null;
-  errorMessage.value = '';
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  errorMessage.value = ''
 }
 
 const deleteReportFromBox = (report, index) => {
   if (item.value.reports && item.value.reports.length > index) {
-    item.value.reports.splice(index, 1);
-    console.log('Report deleted at index:', index);
-    saveItem(); // ذخیره کل ایتم
+    item.value.reports.splice(index, 1)
+    console.log('Report deleted at index:', index)
+    saveItem()
   } else {
-    console.error('Invalid report index or reports array:', index, item.value.reports);
+    console.error('Invalid report index or reports array:', index, item.value.reports)
   }
-  errorMessage.value = '';
+  errorMessage.value = ''
 }
 
 function resetSubitemForm() {
@@ -655,70 +674,75 @@ function resetSubitemForm() {
     deadline: '',
     status: '',
     priority: ''
-  };
-  subitemFormSubmitted.value = false;
+  }
+  subitemFormSubmitted.value = false
 }
 
 const completionPercent = computed(() => {
-  if (!item.value?.subitems?.length) return 0;
-  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length;
-  return Math.round((doneSubitems / item.value.subitems.length) * 100);
-});
+  if (!item.value?.subitems?.length) return 0
+  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length
+  return Math.round((doneSubitems / item.value.subitems.length) * 100)
+})
 
 const sortSubitems = () => {
-  console.log('Sort by Priority toggled to:', sortByPriority.value);
-};
+  console.log('Sort by Priority toggled to:', sortByPriority.value)
+}
 
 const sortedSubitems = (status) => {
-  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || [];
+  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || []
   if (sortByPriority.value) {
     subitems.sort((a, b) => {
-      const priorityOrder = { High: 0, Medium: 1, Low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
-    });
+      const priorityOrder = { High: 0, Medium: 1, Low: 2 }
+      return priorityOrder[a.priority] - priorityOrder[b.priority]
+    })
   } else {
-    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
   }
-  return subitems;
-};
+  return subitems
+}
 
 const parentChain = computed(() => {
-  const chain = [];
-  let currentParentId = item.value?.parentId;
-  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]');
+  const chain = []
+  let currentParentId = item.value?.parentId
+  const items = JSON.parse(localStorage.getItem('kanbanItems') || '[]')
   while (currentParentId) {
-    const parent = findItemById(items, currentParentId);
+    const parent = findItemById(items, currentParentId)
     if (parent) {
-      chain.unshift(parent);
-      currentParentId = parent.parentId;
+      chain.unshift(parent)
+      currentParentId = parent.parentId
     } else {
-      break;
+      break
     }
   }
-  return chain;
-});
+  return chain
+})
+
+const sortedReports = computed(() => {
+  return [...(item.value?.reports || [])].sort((a, b) => new Date(b.date) - new Date(a.date))
+})
 
 const logout = () => {
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('kanbanItems');
-  window.location.href = 'http://localhost:9000/#/login';
-};
+  localStorage.removeItem('authToken')
+  localStorage.removeItem('kanbanItems')
+  router.push('/login')
+  console.log('User logged out')
+}
 
 const openProfile = () => {
-  window.location.href = 'http://localhost:9000/#/profile';
-};
+  router.push('/profile')
+  console.log('Navigating to profile')
+}
 
 watch(() => localStorage.getItem('kanbanItems'), (newValue) => {
   if (newValue) {
-    loadItems();
+    loadItems()
   }
-});
+})
 
-// تابع کوتاه کردن متن
 const truncateText = (text) => {
-  const maxLength = 30; // حداکثر طول متن در یک خط
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-};
+  const maxLength = 30
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+}
 </script>
 
 <style scoped>
@@ -731,10 +755,10 @@ const truncateText = (text) => {
   max-width: 100%;
   width: 50%;
   word-wrap: break-word;
-  padding: 8px; /* برای تطابق با q-pa-sm */
-  background-color: #f5f5f5; /* برای تطابق با bg-grey-2 */
-  border-radius: 4px; /* برای تطابق با rounded-borders */
-  border: 1px solid #ddd; /* برای ظاهر بهتر */
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #ddd;
 }
 
 .custom-textarea {
@@ -747,7 +771,7 @@ const truncateText = (text) => {
   width: 50%;
   word-wrap: break-word;
   padding: 8px;
-  background-color: #fff; /* برای تطابق با ظاهر پیش‌فرض q-input */
+  background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 4px;
   box-sizing: border-box;
@@ -760,9 +784,9 @@ const truncateText = (text) => {
 }
 
 .reports-box {
-  max-height: 100px; /* باکس کوچیک‌تر */
+  max-height: 100px;
   overflow-y: auto;
-  width: 100%; /* پهنای کامل باکس سمت راست */
+  width: 100%;
 }
 
 .text-ellipsis {
@@ -775,6 +799,10 @@ const truncateText = (text) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px; /* تنظیم حداکثر عرض برای یک خط */
+  max-width: 200px;
+}
+
+.full-width {
+  width: 100%;
 }
 </style>

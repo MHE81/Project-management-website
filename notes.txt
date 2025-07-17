@@ -13,6 +13,14 @@ errors of sub items date, status , ...
 
 
 item detail buttons
+who wrote the report?
+each user has a picture and a uername. on left of each report in the box, it should be a thing that says who has writen this report. if user had picture, his picture should be there, of not, his username should be there
+
+profile saving!
+
+نمایش جزئیات آیتم‌ها تو یه دیالوگ (مثل QDialog) وقتی روشون کلیک می‌کنید
+
+فیلتر کردن آیتم‌ها بر اساس دسته‌بندی (Category) یا اولویت (Priority)
 ثبت فعالیت‌های انجام‌شده توسط هر عضو
 مقایسه زمان صرف‌شده با زمان تخمینی
 دلیل توقف یا تأخیر در پروژه‌ها
@@ -26,3 +34,8 @@ backlog?!
 
 
 check GPTs
+
+
+
+
+

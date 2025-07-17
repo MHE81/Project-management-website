@@ -374,7 +374,7 @@ onMounted(() => {
   const token = localStorage.getItem('authToken')
   if (!token) {
     console.log('User not authenticated, redirecting to login')
-    window.location.href = 'http://localhost:9000/#/login'
+    router.push('/login')
   }
   const savedItems = localStorage.getItem('kanbanItems')
   if (savedItems) {
@@ -389,7 +389,8 @@ const saveItems = () => {
 const logout = () => {
   localStorage.removeItem('authToken')
   localStorage.removeItem('kanbanItems')
-  window.location.href = 'http://localhost:9000/#/login'
+  router.push('/login')
+  console.log('User logged out')
 }
 
 const addItem = () => {
@@ -401,6 +402,7 @@ const addItem = () => {
     !itemForm.value.status ||
     !itemForm.value.priority
   ) {
+    // errorMessage.value = 'Please fill all required fields'
     return
   }
 
@@ -452,6 +454,7 @@ const addItem = () => {
   toggleForm.value = false
   formSubmitted.value = false
   saveItems()
+  errorMessage.value = ''
 }
 
 const viewItem = (id) => {
@@ -472,7 +475,8 @@ const deleteItem = (id) => {
 }
 
 function openProfile() {
-  window.location.href = 'http://localhost:9000/#/profile'
+  router.push('/profile')
+  console.log('Navigating to profile')
 }
 
 // Drag & Drop
