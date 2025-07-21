@@ -143,11 +143,10 @@
 </template>
 
 <script setup>
-import { ref, computed,
-  //  onMounted
-  } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
-// Form fields and state
+const router = useRouter()
 const username = ref('')
 const email = ref('')
 const password = ref('')
@@ -157,25 +156,20 @@ const isLoading = ref(false)
 const apiError = ref('')
 const acceptTerms = ref(false)
 const termsTouched = ref(false)
-
-// Track if fields should show error
 const usernameTouched = ref(false)
 const emailTouched = ref(false)
 const passwordTouched = ref(false)
 const confirmTouched = ref(false)
 
-// Email format validator
 const isEmailValid = computed(() => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email.value)
 })
 
-// Password validator (minimum 8 characters)
 const isPasswordValid = computed(() => {
   return password.value.length >= 8
 })
 
-// Derived error booleans
 const usernameError = computed(() => usernameTouched.value && username.value === '')
 const emailError = computed(() => emailTouched.value && (email.value === '' || !isEmailValid.value))
 const passwordError = computed(() => passwordTouched.value && (password.value === '' || !isPasswordValid.value))
@@ -194,9 +188,7 @@ const passwordErrorMessage = computed(() => {
   return ''
 })
 
-// Sign Up handler
 const signUp = () => {
-  // Mark fields as touched
   usernameTouched.value = true
   emailTouched.value = true
   passwordTouched.value = true
@@ -205,7 +197,6 @@ const signUp = () => {
   apiError.value = ''
   isLoading.value = true
 
-  // Check for errors
   if (
     usernameError.value ||
     emailError.value ||
@@ -217,24 +208,27 @@ const signUp = () => {
     return
   }
 
-  // Simulate backend API call
-  setTimeout(() => {
-    // Demo: Simulate backend errors
-    const random = Math.random()
-    if (random < 0.1) {
-      apiError.value = 'Email already exists'
-    } else if (random < 0.2) {
-      apiError.value = 'Username already taken'
-    } else {
-      console.log('Username:', username.value)
-      console.log('Email:', email.value)
-      console.log('Password:', password.value)
-      console.log('Terms Accepted:', acceptTerms.value)
-      alert('Sign up successful (demo only). Please check your email to verify your account.')
-      window.location.href = 'http://localhost:9000/#/login'
-    }
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  if (kanbanUsers.some(user => user.username === username.value)) {
+    apiError.value = 'Username already taken'
     isLoading.value = false
-  }, 1000) // Simulate 1-second API delay
+    return
+  }
+
+  setTimeout(() => {
+    kanbanUsers.push({ username: username.value })
+    localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
+    localStorage.setItem('userProfile', JSON.stringify({ username: username.value }))
+    localStorage.setItem('authToken', 'demo-token-' + Date.now())
+
+    console.log('Username:', username.value)
+    console.log('Email:', email.value)
+    console.log('Password:', password.value)
+    console.log('Terms Accepted:', acceptTerms.value)
+    alert('Sign up successful (demo only).')
+    router.push('/home')
+    isLoading.value = false
+  }, 1000)
 }
 
 const signUpWithGoogle = () => {
@@ -242,10 +236,9 @@ const signUpWithGoogle = () => {
 }
 
 const goToLogin = () => {
-  window.location.href = 'http://localhost:9000/#/login'
+  router.push('/login')
 }
 
-// Clear error states on input
 const clearUsernameError = () => {
   if (username.value !== '') usernameTouched.value = false
 }
@@ -265,13 +258,4 @@ const clearConfirmError = () => {
 const clearTermsError = () => {
   if (acceptTerms.value) termsTouched.value = false
 }
-
-// Redirect authenticated users
-// onMounted(() => {
-//   const token = localStorage.getItem('authToken')
-//   if (token) {
-//     console.log('User already authenticated, redirecting to home')
-//     window.location.href = 'http://localhost:9000/#/home'
-//   }
-// })
 </script>

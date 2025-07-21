@@ -23,6 +23,28 @@
       color="primary"
     />
 
+    <!-- Invitations Banner -->
+    <q-banner
+      dense
+      class="bg-yellow-9 text-white q-mb-md"
+      aria-live="polite"
+      role="alert"
+    >
+      <template v-if="pendingInvitations.length">
+        You have {{ pendingInvitations.length }} pending invitation(s).
+        <q-btn
+          flat
+          label="View Invitations"
+          color="white"
+          @click="showInvitationsDialog = true"
+          aria-label="View pending invitations"
+        />
+      </template>
+      <template v-else>
+        No pending invitations.
+      </template>
+    </q-banner>
+
     <!-- Error Banner -->
     <q-banner
       v-if="errorMessage"
@@ -55,7 +77,7 @@
             >
               <div>
                 <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline }})
+                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
               </div>
               <q-btn
                 flat
@@ -64,6 +86,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
+                :disable="!isCreator(item)"
               />
             </div>
           </div>
@@ -81,7 +104,7 @@
             >
               <div>
                 <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline }})
+                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
               </div>
               <q-btn
                 flat
@@ -90,6 +113,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
+                :disable="!isCreator(item)"
               />
             </div>
           </div>
@@ -107,7 +131,7 @@
             >
               <div>
                 <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline }})
+                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
               </div>
               <q-btn
                 flat
@@ -116,6 +140,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
+                :disable="!isCreator(item)"
               />
             </div>
           </div>
@@ -288,11 +313,18 @@
             <div class="q-mt-sm">
               <div class="text-subtitle2">Share With</div>
               <div
-                v-for="(email, index) in itemForm.shareWith"
+                v-for="(share, index) in itemForm.shareWith"
                 :key="index"
                 class="row items-center q-mb-xs"
               >
-                <q-input v-model="itemForm.shareWith[index]" dense class="col" type="email" />
+                <q-input v-model="share.username" label="Username" dense class="col q-mr-sm" />
+                <q-select
+                  v-model="share.role"
+                  :options="['admin', 'observer']"
+                  label="Role"
+                  dense
+                  class="col"
+                />
                 <q-btn
                   flat
                   round
@@ -307,7 +339,7 @@
                 icon="add"
                 size="sm"
                 color="secondary"
-                @click="itemForm.shareWith.push('')"
+                @click="itemForm.shareWith.push({ username: '', role: 'observer' })"
               />
             </div>
             <div class="q-mt-sm">
@@ -340,6 +372,50 @@
         </div>
       </div>
     </div>
+
+    <!-- Invitations Dialog -->
+    <q-dialog v-model="showInvitationsDialog" persistent>
+      <q-card style="width: 600px; max-width: 90vw;">
+        <q-card-section>
+          <div class="text-h6">Pending Invitations</div>
+        </q-card-section>
+        <q-card-section>
+          <q-list v-if="pendingInvitations.length" bordered>
+            <q-item
+              v-for="invitation in pendingInvitations"
+              :key="invitation.itemId + '-' + invitation.username"
+            >
+              <q-item-section>
+                <q-item-label>
+                  Invited to: {{ getItemTitle(invitation.itemId) }} (Role: {{ invitation.role }})
+                </q-item-label>
+                <q-item-label caption>
+                  Invited at: {{ new Date(invitation.invitedAt).toLocaleString('en-US', { timeZone: 'Asia/Dubai' }) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  flat
+                  color="positive"
+                  label="Accept"
+                  @click="acceptInvitation(invitation)"
+                />
+                <q-btn
+                  flat
+                  color="negative"
+                  label="Reject"
+                  @click="rejectInvitation(invitation)"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="text-negative">No pending invitations</div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -354,6 +430,8 @@ const sortByPriority = ref(false)
 const toggleForm = ref(false)
 const formSubmitted = ref(false)
 const errorMessage = ref('')
+const pendingInvitations = ref([])
+const showInvitationsDialog = ref(false)
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -370,25 +448,103 @@ const itemForm = ref({
   status: '',
 })
 
+const currentUser = ref(JSON.parse(localStorage.getItem('userProfile') || '{}')?.username || '')
+
 onMounted(() => {
   const token = localStorage.getItem('authToken')
   if (!token) {
     console.log('User not authenticated, redirecting to login')
     router.push('/login')
   }
-  const savedItems = localStorage.getItem('kanbanItems')
+  const savedItems = localStorage.getItem(`kanbanItems_${currentUser.value}`)
   if (savedItems) {
     items.value = JSON.parse(savedItems)
   }
+  loadInvitations()
 })
 
+const loadInvitations = () => {
+  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
+  pendingInvitations.value = invitations.filter(
+    inv => inv.username === currentUser.value && inv.status === 'pending'
+  )
+}
+
 const saveItems = () => {
-  localStorage.setItem('kanbanItems', JSON.stringify(items.value))
+  localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items.value))
+}
+
+const saveInvitations = (invitations, username) => {
+  localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(invitations))
+}
+
+const isCreator = (item) => {
+  return item.creator === currentUser.value
+}
+
+const acceptInvitation = (invitation) => {
+  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
+  const index = invitations.findIndex(
+    inv => inv.itemId === invitation.itemId && inv.username === invitation.username
+  )
+  if (index !== -1) {
+    invitations[index].status = 'accepted'
+    saveInvitations(invitations, currentUser.value)
+
+    const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
+    const sharedItem = findItemById(creatorItems, invitation.itemId)
+    if (sharedItem) {
+      const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
+      const itemCopy = JSON.parse(JSON.stringify(sharedItem))
+      itemCopy.shareWith = itemCopy.shareWith || []
+      if (!itemCopy.shareWith.some(u => u.username === currentUser.value)) {
+        itemCopy.shareWith.push({ username: currentUser.value, role: invitation.role })
+      }
+      // Copy shareWith to subitems
+      if (itemCopy.subitems) {
+        itemCopy.subitems.forEach(subitem => {
+          subitem.shareWith = [...itemCopy.shareWith]
+        })
+      }
+      userItems.push(itemCopy)
+      localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
+      items.value = userItems
+    }
+    loadInvitations()
+  }
+}
+
+const rejectInvitation = (invitation) => {
+  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
+  const index = invitations.findIndex(
+    inv => inv.itemId === invitation.itemId && inv.username === invitation.username
+  )
+  if (index !== -1) {
+    invitations[index].status = 'rejected'
+    saveInvitations(invitations, currentUser.value)
+    loadInvitations()
+  }
+}
+
+const findItemById = (items, id) => {
+  for (let item of items) {
+    if (item.id === id) return item
+    if (item.subitems) {
+      const found = findItemById(item.subitems, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const getItemTitle = (itemId) => {
+  const item = findItemById(items.value, itemId)
+  return item ? `${item.type}: ${item.title}` : 'Unknown Item'
 }
 
 const logout = () => {
   localStorage.removeItem('authToken')
-  localStorage.removeItem('kanbanItems')
+  localStorage.removeItem('userProfile')
   router.push('/login')
   console.log('User logged out')
 }
@@ -402,11 +558,10 @@ const addItem = () => {
     !itemForm.value.status ||
     !itemForm.value.priority
   ) {
-    // errorMessage.value = 'Please fill all required fields'
+    errorMessage.value = 'Please fill all required fields'
     return
   }
 
-  // اعتبارسنجی تاریخ ساب‌ایتم‌ها نسبت به والد
   const hasInvalidSubitemDeadline = itemForm.value.subitems.some(subitem => {
     if (subitem.deadline && itemForm.value.deadline) {
       return new Date(subitem.deadline) > new Date(itemForm.value.deadline)
@@ -441,15 +596,39 @@ const addItem = () => {
       priority: subitem.priority || 'Low',
       parentId: parentId,
       category: [],
-      shareWith: [],
+      shareWith: [...itemForm.value.shareWith],
       backlog: [],
       movedToDoneAt: null,
+      creator: currentUser.value,
+      assignedTo: null,
     })),
-    shareWith: itemForm.value.shareWith,
+    shareWith: [{ username: currentUser.value, role: 'owner' }, ...itemForm.value.shareWith],
     backlog: itemForm.value.backlog,
     movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null,
+    creator: currentUser.value,
+    assignedTo: null,
   }
   items.value.push(newItem)
+
+  const shareUsernames = itemForm.value.shareWith
+    .filter(share => share.username && share.username !== currentUser.value)
+    .map(share => share.username)
+  shareUsernames.forEach(username => {
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
+    const share = itemForm.value.shareWith.find(s => s.username === username)
+    if (share) {
+      invitations.push({
+        itemId: parentId,
+        username: username,
+        role: share.role,
+        status: 'pending',
+        invitedAt: Date.now(),
+        invitedBy: currentUser.value,
+      })
+      saveInvitations(invitations, username)
+    }
+  })
+
   resetForm(itemForm)
   toggleForm.value = false
   formSubmitted.value = false
@@ -465,9 +644,15 @@ function resetForm(form) {
   Object.keys(form.value).forEach(
     (key) => (form.value[key] = Array.isArray(form.value[key]) ? [] : ''),
   )
+  form.value.shareWith = []
 }
 
 const deleteItem = (id) => {
+  const item = findItemById(items.value, id)
+  if (!isCreator(item)) {
+    errorMessage.value = 'Only the owner can delete this item.'
+    return
+  }
   items.value = items.value.filter(
     (item) => item.id !== id && (!item.subitems || item.subitems.every((s) => s.id !== id)),
   )
@@ -479,43 +664,39 @@ function openProfile() {
   console.log('Navigating to profile')
 }
 
-// Drag & Drop
 const draggedItem = ref(null)
 const startDrag = (item) => {
-  draggedItem.value = item
-}
-
-const handleDrop = (newStatus) => {
-  if (draggedItem.value) {
-    if (newStatus === 'done') {
-      const allSubitemsDone =
-        !draggedItem.value.subitems ||
-        draggedItem.value.subitems.every((sub) => sub.status === 'done')
-      if (!allSubitemsDone) {
-        errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
-        return
-      }
-      draggedItem.value.movedToDoneAt = Date.now()
-    }
-    draggedItem.value.status = newStatus
-    items.value = [...items.value]
-    saveItems()
-    errorMessage.value = ''
-    draggedItem.value = null
+  if (isCreator(item)) {
+    draggedItem.value = item
   }
 }
 
-// Completion percentage
+const handleDrop = (newStatus) => {
+  if (!draggedItem.value || !isCreator(draggedItem.value)) return
+  if (newStatus === 'done') {
+    const allSubitemsDone =
+      !draggedItem.value.subitems ||
+      draggedItem.value.subitems.every((sub) => sub.status === 'done')
+    if (!allSubitemsDone) {
+      errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
+      return
+    }
+    draggedItem.value.movedToDoneAt = Date.now()
+  }
+  draggedItem.value.status = newStatus
+  items.value = [...items.value]
+  saveItems()
+  errorMessage.value = ''
+  draggedItem.value = null
+}
+
 const completionPercent = computed(() => {
   const rootItems = items.value.filter((item) => !item.parentId)
-  console.log('Root items:', rootItems)
   if (rootItems.length === 0) return 0
   const doneItems = rootItems.filter((item) => item.status?.toLowerCase() === 'done').length
-  console.log('Done items count:', doneItems, 'Total root items:', rootItems.length)
   return Math.round((doneItems / rootItems.length) * 100)
 })
 
-// Priority mapping for sorting
 const priorityMap = {
   High: 3,
   Medium: 2,
@@ -523,7 +704,6 @@ const priorityMap = {
   '': 0,
 }
 
-// Sort items
 const sortedItems = (status) => {
   const statusMap = {
     Backlog: 'backlog',
@@ -533,9 +713,6 @@ const sortedItems = (status) => {
   const normalizedStatus = statusMap[status] || status.toLowerCase()
   const filtered = items.value.filter((item) => {
     const itemStatus = item.status?.toLowerCase() || ''
-    console.log(
-      `Checking item - Column: ${status}, Item ID: ${item.id}, Item Status: ${item.status}, Normalized Item Status: ${itemStatus}, Normalized Status: ${normalizedStatus}`,
-    )
     return !item.parentId && itemStatus === normalizedStatus
   })
   if (status === 'done') {
@@ -551,15 +728,20 @@ const sortedItems = (status) => {
   return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
 
-// Watch for localStorage changes with force refresh
 watch(
-  () => localStorage.getItem('kanbanItems'),
+  () => localStorage.getItem(`kanbanItems_${currentUser.value}`),
   async (newValue) => {
     if (newValue) {
       items.value = JSON.parse(newValue)
-      console.log('kanbanItems updated, reloading items:', items.value)
       await nextTick()
     }
+  },
+)
+
+watch(
+  () => localStorage.getItem(`kanbanInvitations_${currentUser.value}`),
+  () => {
+    loadInvitations()
   },
 )
 </script>
