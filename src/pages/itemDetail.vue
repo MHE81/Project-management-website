@@ -1,3 +1,4 @@
+```vue
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto;">
     <!-- Loading State -->
@@ -5,9 +6,12 @@
       <q-spinner color="primary" size="3em" />
       <div>Loading item...</div>
     </div>
-    <!-- Item Name -->
+    <!-- Item Name and User Role -->
     <div v-if="item" class="text-h4 q-mb-md text-center full-width">
       {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+    </div>
+    <div v-if="item" class="text-subtitle1 q-mb-md text-center">
+      Your Role: {{ currentUserRole }}
     </div>
     <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">{{ errorMessage }} (ID: {{ route.params.id }})</div>
 
@@ -100,38 +104,6 @@
       </span>
     </div>
 
-    <!-- Shared With Info -->
-    <div v-if="item && item.shareWith && item.shareWith.length" class="q-mb-md">
-      <div class="text-subtitle1">Shared With:</div>
-      <div class="q-pa-sm bg-grey-2 rounded-borders">
-        <div v-for="(share, index) in item.shareWith" :key="index" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
-          {{ share.username }} <span class="text-weight-bold">({{ share.role }})</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Assigned Users Info -->
-    <!-- <div v-if="item" class="q-mb-md">
-      <div class="text-subtitle1">Assigned To:</div>
-      <div class="q-pa-sm bg-grey-2 rounded-borders">
-        <div v-if="item.assignedTo" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
-          {{ item.assignedTo.username }} <span class="text-weight-bold">({{ item.assignedTo.role }})</span>
-          <q-btn
-            v-if="canAssign"
-            flat
-            round
-            icon="remove"
-            color="negative"
-            size="sm"
-            @click="removeAssignment"
-          />
-        </div>
-        <div v-else class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative">
-          Not assigned
-        </div>
-      </div>
-    </div> -->
-
     <!-- Main layout -->
     <div v-if="item" class="row equal-height-row">
       <!-- Left Side Box (Item Details) -->
@@ -179,7 +151,7 @@
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role}${s.status ? ', ' + s.status : ''})`).join(', ') }}
                 </div>
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
@@ -203,7 +175,7 @@
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role}${s.status ? ', ' + s.status : ''})`).join(', ') }}
                 </div>
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
@@ -227,7 +199,7 @@
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role}${s.status ? ', ' + s.status : ''})`).join(', ') }}
                 </div>
               </div>
               <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
@@ -238,6 +210,37 @@
 
       <!-- Right Side Box -->
       <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto;">
+        <!-- Shared With Section -->
+        <div v-if="item" class="q-mb-md">
+          <div class="text-subtitle1">Shared With:</div>
+          <div class="q-pa-sm bg-grey-2 rounded-borders">
+            <div v-if="item.shareWith && item.shareWith.length" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
+              <div v-for="(share, index) in item.shareWith" :key="index" class="row items-center q-mb-xs">
+                {{ share.username }} <span class="text-weight-bold">({{ share.role }}{{ share.status ? ', ' + share.status : '' }})</span>
+                <q-btn
+                  v-if="isOwner && share.role !== 'owner' && (!share.status || share.status === 'accepted')"
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="removeSharedUser(index)"
+                />
+              </div>
+            </div>
+            <div v-else class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative">
+              Not shared with anyone
+            </div>
+          </div>
+          <q-btn
+            v-if="isOwner"
+            label="Share With"
+            color="secondary"
+            class="full-width"
+            @click="openShareDialog"
+          />
+        </div>
+
         <!-- Assignment Section -->
         <div v-if="item" class="q-mb-md">
           <div class="text-subtitle1">Assigned To:</div>
@@ -308,13 +311,6 @@
           <div v-if="!toggleSubitemForm">
             <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" :disable="!canEdit && !isOwner" />
             <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="openSubitemForm" :disable="!canEdit" />
-            <q-btn
-              label="Share With"
-              color="secondary"
-              class="full-width q-mb-xs"
-              @click="openShareDialog"
-              :disable="!isOwner"
-            />
             <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
           </div>
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
@@ -383,52 +379,77 @@
           <div class="text-h6">Share With</div>
         </q-card-section>
         <q-card-section>
-          <q-input
-            v-model="searchUsername"
-            label="Search Username"
-            dense
-            @input="searchUsers"
-            :debounce="300"
-            aria-label="Search for users by username"
-          />
-          <q-list v-if="filteredUsers.length" bordered class="q-mt-md">
-            <q-item
-              v-for="user in filteredUsers"
-              :key="user.username"
-              clickable
-              @click="addSharedUser(user)"
-            >
-              <q-item-section>{{ user.username }}</q-item-section>
-            </q-item>
-          </q-list>
-          <div v-else-if="searchUsername" class="q-mt-md text-negative">No users found</div>
-          <div v-if="newSharedUsers.length" class="q-mt-md">
-            <div class="text-subtitle2">Selected Users:</div>
-            <div v-for="(share, index) in newSharedUsers" :key="index" class="row items-center q-mb-xs">
-              <q-item-section>{{ share.username }}</q-item-section>
+          <q-form @submit.prevent="addSharedUser">
+            <div class="row items-center q-mb-md">
+              <q-input
+                v-model="searchUsername"
+                label="Username"
+                dense
+                class="col-7 q-mr-sm"
+                :error="usernameError"
+                error-message="Invalid or already shared username"
+                @input="searchUsers"
+                aria-label="Enter username to share with"
+                autocomplete="off"
+                debounce="300"
+              >
+                <template v-slot:append>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
               <q-select
-                v-model="share.role"
+                v-model="selectedRole"
                 :options="['admin', 'observer']"
                 label="Role"
                 dense
-                class="col-4 q-ml-sm"
+                class="col-4"
               />
+            </div>
+            <q-list bordered class="q-mb-md user-list" v-if="searchUsername && filteredUsers.value.length">
+              <q-item
+                v-for="user in filteredUsers.value"
+                :key="user.username"
+                clickable
+                @click="selectUser(user)"
+                class="user-item"
+              >
+                <q-item-section>{{ user.username }}</q-item-section>
+              </q-item>
+            </q-list>
+            <q-item v-if="searchUsername && !filteredUsers.value.length && !isLoadingUsers" class="text-negative">
+              <q-item-section>No users found</q-item-section>
+            </q-item>
+            <q-item v-if="isLoadingUsers" class="text-grey">
+              <q-item-section>Loading users...</q-item-section>
+            </q-item>
+            <q-btn
+              label="Add User"
+              color="positive"
+              type="submit"
+              class="full-width q-mb-md"
+              :disable="!searchUsername || usernameError || !isValidUsername"
+            />
+          </q-form>
+          <div v-if="newSharedUsers.length" class="q-mt-md">
+            <div class="text-subtitle2">Selected Users:</div>
+            <div v-for="(share, index) in newSharedUsers" :key="index" class="row items-center q-mb-xs">
+              <q-item-section>{{ share.username }} <span class="text-weight-bold">({{ share.role }})</span></q-item-section>
               <q-btn
                 flat
                 round
                 icon="remove"
                 color="negative"
                 size="sm"
-                @click="newSharedUsers.splice(index, 1)"
+                @click="newSharedUsers.splice(index, 1); searchUsers()"
               />
             </div>
           </div>
           <div v-if="item?.shareWith?.length" class="q-mt-md">
             <div class="text-subtitle2">Currently Shared With:</div>
             <div v-for="(share, index) in item.shareWith" :key="index" class="row items-center q-mb-xs">
-              <q-item-section>{{ share.username }} <span class="text-weight-bold">({{ share.role }})</span></q-item-section>
+              <q-item-section>{{ share.username }} <span class="text-weight-bold">({{ share.role }}{{ share.status ? ', ' + share.status : '' }})</span></q-item-section>
               <q-btn
-                v-if="share.role !== 'owner'"
+                v-if="share.role !== 'owner' && (!share.status || share.status === 'accepted')"
                 flat
                 round
                 icon="remove"
@@ -458,20 +479,38 @@
             label="Search Username"
             dense
             @input="searchAssignUsers"
-            :debounce="300"
             aria-label="Search for users to assign"
+            autocomplete="off"
+            debounce="300"
           />
-          <q-list v-if="filteredAssignUsers.length" bordered class="q-mt-md">
+          <q-list bordered class="q-mt-md user-list" v-if="filteredAssignUsers.value && filteredAssignUsers.value.length">
             <q-item
-              v-for="user in filteredAssignUsers"
+              v-for="user in filteredAssignUsers.value"
               :key="user.username"
               clickable
               @click="selectAssignee(user)"
+              class="user-item"
             >
               <q-item-section>{{ user.username }} <span class="text-weight-bold">({{ user.role }})</span></q-item-section>
             </q-item>
           </q-list>
-          <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">No eligible users found</div>
+          <div v-if="!filteredAssignUsers.value || !filteredAssignUsers.value.length" class="q-mt-md text-negative">
+            No eligible admin users found
+          </div>
+          <div v-if="selectedAssignee.value" class="q-mt-md">
+            <div class="text-subtitle2">Selected Assignee:</div>
+            <div class="row items-center q-mb-xs">
+              <q-item-section>{{ selectedAssignee.value.username }} <span class="text-weight-bold">({{ selectedAssignee.value.role }})</span></q-item-section>
+              <q-btn
+                flat
+                round
+                icon="remove"
+                color="negative"
+                size="sm"
+                @click="selectedAssignee.value = null; searchAssignUsers()"
+              />
+            </div>
+          </div>
           <div v-if="item?.assignedTo" class="q-mt-md">
             <div class="text-subtitle2">Currently Assigned To:</div>
             <div class="row items-center q-mb-xs">
@@ -489,7 +528,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
-          <q-btn label="Save" color="positive" @click="saveAssignment" />
+          <q-btn label="Save" color="positive" :disable="!selectedAssignee.value" @click="saveAssignment" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -531,32 +570,58 @@ const selectedReportIndex = ref(null)
 const isEditing = ref(false)
 const showShareDialog = ref(false)
 const searchUsername = ref('')
+const selectedRole = ref('observer')
+const usernameError = ref(false)
 const filteredUsers = ref([])
 const newSharedUsers = ref([])
 const showAssignDialog = ref(false)
 const searchAssignUsername = ref('')
 const filteredAssignUsers = ref([])
-const availableUsers = ref(JSON.parse(localStorage.getItem('kanbanUsers') || '[]'))
+const availableUsers = ref([])
+const isLoadingUsers = ref(false)
+const selectedAssignee = ref(null)
 const currentUser = ref(JSON.parse(localStorage.getItem('userProfile') || '{}')?.username || '')
+
+// Compute current user's role
+const currentUserRole = computed(() => {
+  if (!item.value) return 'N/A'
+  if (item.value.creator === currentUser.value) return 'owner'
+  const userShare = item.value.shareWith?.find(share => share.username === currentUser.value && (!share.status || share.status === 'accepted'))
+  return userShare ? userShare.role : 'observer'
+})
 
 const isOwner = computed(() => {
   return item.value?.creator === currentUser.value
 })
 
+const isValidUsername = computed(() => {
+  if (!searchUsername.value || !Array.isArray(availableUsers.value)) {
+    console.log('isValidUsername: Invalid input or availableUsers is not an array')
+    return false
+  }
+  const isValid = availableUsers.value.some(user =>
+    user.username && user.username.toLowerCase() === searchUsername.value.toLowerCase()
+  )
+  console.log('isValidUsername:', isValid, 'for username:', searchUsername.value)
+  return isValid
+})
+
 const canEdit = computed(() => {
   if (isOwner.value) return true
-  const userShare = item.value?.shareWith?.find(share => share.username === currentUser.value)
+  const userShare = item.value?.shareWith?.find(share => share.username === currentUser.value && (!share.status || share.status === 'accepted'))
   return userShare?.role === 'admin'
 })
 
 const canAssign = computed(() => {
-  return isOwner.value || item.value?.shareWith?.find(share => share.username === currentUser.value)?.role === 'admin'
+  const result = isOwner.value || item.value?.shareWith?.find(share => share.username === currentUser.value && share.role === 'admin' && (!share.status || share.status === 'accepted'))?.role === 'admin'
+  console.log('canAssign:', result, 'isOwner:', isOwner.value, 'shareWith:', item.value?.shareWith, 'currentUser:', currentUser.value)
+  return result
 })
 
 watch(() => localStorage.getItem('kanbanUsers'), (newValue) => {
-  if (newValue) {
-    availableUsers.value = JSON.parse(newValue)
-  }
+  const users = JSON.parse(newValue || '[]')
+  availableUsers.value = Array.isArray(users) ? users : []
+  console.log('kanbanUsers updated:', availableUsers.value)
 })
 
 const setEditingState = (id, state) => {
@@ -576,6 +641,9 @@ const findItemById = (items, id) => {
 
 onMounted(() => {
   loadItems()
+  console.log('Initial kanbanUsers:', localStorage.getItem('kanbanUsers'))
+  console.log('Initial userProfile:', localStorage.getItem('userProfile'))
+  console.log('availableUsers on mount:', availableUsers.value)
 })
 
 const loadItems = () => {
@@ -607,6 +675,8 @@ const loadItems = () => {
   resetSubitemForm()
   if (!item.value.note) item.value.note = ''
   if (!item.value.reports) item.value.reports = []
+  console.log('Loaded item:', item.value)
+  console.log('shareWith data:', item.value.shareWith)
 }
 
 watch(() => route.params.id, () => {
@@ -910,40 +980,114 @@ const openShareDialog = () => {
   if (!isOwner.value) return
   showShareDialog.value = true
   searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
   filteredUsers.value = []
   newSharedUsers.value = []
+  isLoadingUsers.value = true
+  const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  availableUsers.value = Array.isArray(users) ? users : []
+  isLoadingUsers.value = false
+  console.log('Opening Share Dialog, availableUsers:', availableUsers.value)
 }
 
 const closeShareDialog = () => {
   showShareDialog.value = false
   searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
   filteredUsers.value = []
   newSharedUsers.value = []
+  isLoadingUsers.value = false
 }
 
 const searchUsers = () => {
-  if (!searchUsername.value) {
+  console.log('searchUsers called, searchUsername:', searchUsername.value)
+  console.log('availableUsers:', availableUsers.value)
+  console.log('currentUser:', currentUser.value)
+  console.log('item.shareWith:', item.value?.shareWith)
+  console.log('newSharedUsers:', newSharedUsers.value)
+
+  if (!Array.isArray(availableUsers.value)) {
+    console.log('Error: availableUsers is not an array:', availableUsers.value)
     filteredUsers.value = []
+    usernameError.value = true
+    console.log('filteredUsers set to:', filteredUsers.value)
     return
   }
-  filteredUsers.value = availableUsers.value.filter(user =>
-    user.username.toLowerCase().includes(searchUsername.value.toLowerCase()) &&
-    user.username !== currentUser.value &&
-    !item.value.shareWith.some(share => share.username === user.username) &&
-    !newSharedUsers.value.some(share => share.username === user.username)
-  )
+
+  if (!searchUsername.value) {
+    filteredUsers.value = []
+    usernameError.value = false
+    console.log('No search term, clearing filteredUsers:', filteredUsers.value)
+    return
+  }
+
+  filteredUsers.value = availableUsers.value.filter(user => {
+    if (!user.username) {
+      console.log('Invalid user object:', user)
+      return false
+    }
+    return user.username.toLowerCase().includes(searchUsername.value.toLowerCase())
+  })
+  usernameError.value = searchUsername.value && !filteredUsers.value.length
+  console.log('filteredUsers set to:', filteredUsers.value)
+  console.log('usernameError:', usernameError.value)
 }
 
-const addSharedUser = (user) => {
-  newSharedUsers.value.push({ username: user.username, role: 'observer' })
+const selectUser = (user) => {
+  console.log('Selected user:', user)
+  searchUsername.value = user.username
+  usernameError.value = false
+  filteredUsers.value = availableUsers.value.filter(u =>
+    u.username.toLowerCase().includes(searchUsername.value.toLowerCase())
+  )
+  console.log('After selectUser, searchUsername:', searchUsername.value)
+  console.log('After selectUser, filteredUsers:', filteredUsers.value)
+}
+
+const addSharedUser = () => {
+  console.log('Adding user:', searchUsername.value, 'Role:', selectedRole.value)
+  if (!searchUsername.value) {
+    errorMessage.value = 'لطفاً یک نام کاربری وارد کنید'
+    usernameError.value = true
+    console.log('No username entered')
+    return
+  }
+  if (!isValidUsername.value) {
+    errorMessage.value = 'لطفاً یک نام کاربری معتبر انتخاب کنید'
+    usernameError.value = true
+    console.log('Invalid username:', searchUsername.value)
+    return
+  }
+  if (item.value.shareWith?.some(s => s.username === searchUsername.value) ||
+      newSharedUsers.value.some(s => s.username === searchUsername.value)) {
+    errorMessage.value = 'این کاربر قبلاً به اشتراک گذاشته شده است'
+    usernameError.value = true
+    console.log('User already shared:', searchUsername.value)
+    return
+  }
+  newSharedUsers.value.push({ username: searchUsername.value, role: selectedRole.value, status: 'pending' })
   searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
   filteredUsers.value = []
+  console.log('newSharedUsers:', newSharedUsers.value)
+  console.log('After addSharedUser, filteredUsers:', filteredUsers.value)
 }
 
 const removeSharedUser = (index) => {
   if (!isOwner.value) return
+  const user = item.value.shareWith[index]
+  if (user.status === 'pending') {
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${user.username}`) || '[]')
+    const inviteIndex = invitations.findIndex(inv => inv.itemId === item.value.id && inv.username === user.username)
+    if (inviteIndex !== -1) {
+      invitations.splice(inviteIndex, 1)
+      localStorage.setItem(`kanbanInvitations_${user.username}`, JSON.stringify(invitations))
+    }
+  }
   item.value.shareWith.splice(index, 1)
-  // Update subitems' shareWith
   if (item.value.subitems) {
     item.value.subitems.forEach(subitem => {
       subitem.shareWith = [...item.value.shareWith]
@@ -973,7 +1117,6 @@ const saveSharedUsers = () => {
     }
   })
   item.value.shareWith = [...item.value.shareWith, ...newSharedUsers.value]
-  // Update subitems' shareWith
   if (item.value.subitems) {
     item.value.subitems.forEach(subitem => {
       subitem.shareWith = [...item.value.shareWith]
@@ -982,44 +1125,90 @@ const saveSharedUsers = () => {
   saveItem()
   showShareDialog.value = false
   searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
   filteredUsers.value = []
   newSharedUsers.value = []
 }
 
 const openAssignDialog = () => {
-  if (!canAssign.value) return
+  if (!canAssign.value) {
+    console.log('Cannot open Assign Dialog: canAssign is false')
+    return
+  }
+  console.log('Assign Item button clicked, opening dialog')
   showAssignDialog.value = true
   searchAssignUsername.value = ''
-  filteredAssignUsers.value = []
+  selectedAssignee.value = null
+  if (!item.value || !Array.isArray(item.value.shareWith)) {
+    console.log('Error: item.shareWith is not valid:', item.value?.shareWith)
+    filteredAssignUsers.value = []
+    return
+  }
+  filteredAssignUsers.value = item.value.shareWith.filter(share => {
+    if (!share.username || !share.role) {
+      console.log('Invalid share object:', share)
+      return false
+    }
+    const isAdmin = share.role.toLowerCase() === 'admin'
+    const isNotAssigned = !item.value.assignedTo || item.value.assignedTo.username !== share.username
+    const isAccepted = !share.status || share.status === 'accepted'
+    console.log(`Checking user: ${share.username}, isAdmin: ${isAdmin}, isNotAssigned: ${isNotAssigned}, isAccepted: ${isAccepted}`)
+    return isAdmin && isNotAssigned && isAccepted
+  })
+  console.log('Opening Assign Dialog, shareWith:', item.value.shareWith)
+  console.log('Initial filteredAssignUsers:', filteredAssignUsers.value)
 }
 
 const closeAssignDialog = () => {
   showAssignDialog.value = false
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
+  selectedAssignee.value = null
+  console.log('Closed Assign Dialog')
 }
 
 const searchAssignUsers = () => {
-  if (!searchAssignUsername.value) {
+  console.log('searchAssignUsers called, searchAssignUsername:', searchAssignUsername.value)
+  if (!item.value || !Array.isArray(item.value.shareWith)) {
+    console.log('Error: item.shareWith is not valid:', item.value?.shareWith)
     filteredAssignUsers.value = []
     return
   }
-  filteredAssignUsers.value = item.value.shareWith.filter(share =>
-    share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()) &&
-    (share.role === 'owner' || share.role === 'admin') &&
-    (!item.value.assignedTo || item.value.assignedTo.username !== share.username)
-  )
+  filteredAssignUsers.value = item.value.shareWith.filter(share => {
+    if (!share.username || !share.role) {
+      console.log('Invalid share object:', share)
+      return false
+    }
+    const matchesSearch = !searchAssignUsername.value ||
+      share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase())
+    const isAdmin = share.role.toLowerCase() === 'admin'
+    const isNotAssigned = !item.value.assignedTo || item.value.assignedTo.username !== share.username
+    const isAccepted = !share.status || share.status === 'accepted'
+    console.log(`Checking user: ${share.username}, matchesSearch: ${matchesSearch}, isAdmin: ${isAdmin}, isNotAssigned: ${isNotAssigned}, isAccepted: ${isAccepted}`)
+    return matchesSearch && isAdmin && isNotAssigned && isAccepted
+  })
+  console.log('filteredAssignUsers:', filteredAssignUsers.value)
 }
 
 const selectAssignee = (user) => {
-  item.value.assignedTo = { username: user.username, role: user.role }
+  console.log('Selecting assignee:', user)
+  selectedAssignee.value = { username: user.username, role: user.role }
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
+  console.log('Selected assignee:', selectedAssignee.value)
 }
 
 const saveAssignment = () => {
-  if (!canAssign.value) return
-  // Update subitems' assignedTo if necessary
+  if (!canAssign.value) {
+    console.log('Cannot save assignment: canAssign is false')
+    return
+  }
+  if (!selectedAssignee.value) {
+    errorMessage.value = 'لطفاً یک کاربر را برای اختصاص دادن انتخاب کنید'
+    return
+  }
+  item.value.assignedTo = { ...selectedAssignee.value }
   if (item.value.subitems) {
     item.value.subitems.forEach(subitem => {
       if (subitem.assignedTo && subitem.assignedTo.username === item.value.assignedTo?.username) {
@@ -1031,12 +1220,16 @@ const saveAssignment = () => {
   showAssignDialog.value = false
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
+  selectedAssignee.value = null
+  console.log('Assignment saved, item:', item.value)
 }
 
 const removeAssignment = () => {
-  if (!canAssign.value) return
+  if (!canAssign.value) {
+    console.log('Cannot remove assignment: canAssign is false')
+    return
+  }
   item.value.assignedTo = null
-  // Update subitems' assignedTo if necessary
   if (item.value.subitems) {
     item.value.subitems.forEach(subitem => {
       if (subitem.assignedTo && subitem.assignedTo.username === item.value.assignedTo?.username) {
@@ -1045,6 +1238,7 @@ const removeAssignment = () => {
     })
   }
   saveItem()
+  console.log('Assignment removed, item:', item.value)
 }
 
 function saveInvitations(invitations, username) {
@@ -1205,7 +1399,23 @@ const truncateText = (text) => {
   overflow-y: auto;
 }
 
-body {
-  background-color: var(--q-primary);
+.user-list {
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 2000;
+  background-color: white;
+  border: 1px solid #ccc;
+  position: relative;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.user-item {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.user-item:hover {
+  background-color: #f5f5f5;
 }
 </style>
+```
