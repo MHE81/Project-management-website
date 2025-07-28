@@ -22,14 +22,14 @@
           <q-input
             filled
             v-model="username"
-            label="Username"
+            label="Username or Email"
             class="q-mb-md"
             dense
             :error="usernameError"
-            error-message="Username is required"
+            error-message="Username or Email is required"
             @input="clearUsernameError"
             autofocus
-            aria-label="Enter your username"
+            aria-label="Enter your username or email"
           />
 
           <!-- Password input -->
@@ -84,7 +84,7 @@
             class="full-width q-mt-md"
             :loading="isLoading"
             type="submit"
-            aria-label="Login with username and password"
+            aria-label="Login with username or email and password"
           />
 
           <q-separator class="q-my-md" />
@@ -115,106 +115,140 @@
 </template>
 
 <script setup>
-import { ref, computed,
-  // onMounted
-} from 'vue'
+import { ref, computed, onMounted } from 'vue';
 
 // Form fields and state
-const username = ref('')
-const password = ref('')
-const showPassword = ref(false)
-const isLoading = ref(false)
-const apiError = ref('')
-const rememberMe = ref(false)
+const username = ref('');
+const password = ref('');
+const showPassword = ref(false);
+const isLoading = ref(false);
+const apiError = ref('');
+const rememberMe = ref(false);
 
 // Error states for validation
-const usernameError = ref(false)
-const passwordError = ref(false)
+const usernameError = ref(false);
+const passwordError = ref(false);
 
 // Password strength validator
 const isPasswordValid = computed(() => {
-  return password.value.length >= 8
-})
+  return password.value.length >= 8;
+});
 
 const passwordErrorMessage = computed(() => {
-  if (!password.value) return 'Password is required'
-  if (!isPasswordValid.value) return 'Password must be at least 8 characters'
-  return ''
-})
+  if (!password.value) return 'Password is required';
+  if (!isPasswordValid.value) return 'Password must be at least 8 characters';
+  return '';
+});
+
+// Load saved credentials on mount
+onMounted(() => {
+  const savedCredentials = localStorage.getItem('rememberedCredentials');
+  if (savedCredentials) {
+    const { username: savedUsername, password: savedPassword } = JSON.parse(savedCredentials);
+    username.value = savedUsername;
+    password.value = savedPassword;
+    rememberMe.value = true;
+    console.log('Loaded remembered credentials:', savedUsername);
+  }
+});
 
 const login = () => {
   // Reset error states
-  usernameError.value = false
-  passwordError.value = false
-  apiError.value = ''
-  isLoading.value = true
+  usernameError.value = false;
+  passwordError.value = false;
+  apiError.value = '';
+  isLoading.value = true;
 
   // Validate fields
   if (!username.value) {
-    usernameError.value = true
+    usernameError.value = true;
   }
   if (!password.value || !isPasswordValid.value) {
-    passwordError.value = true
+    passwordError.value = true;
   }
 
   // If any validation fails, prevent login
   if (usernameError.value || passwordError.value) {
-    isLoading.value = false
-    return
+    isLoading.value = false;
+    return;
   }
 
   // Simulate backend API call
   setTimeout(() => {
-    // Demo: Simulate backend errors
-    const random = Math.random()
-    if (random < 0.1) {
-      apiError.value = 'Invalid username or password'
-    } else if (random < 0.2) {
-      apiError.value = 'Account locked, please reset password'
-    } else {
-      console.log('Username:', username.value)
-      console.log('Password:', password.value)
-      console.log('Remember Me:', rememberMe.value)
-      // Store demo token for authenticated redirect
-      localStorage.setItem('authToken', 'demo-token')
-      alert('Login successful (demo only)')
-      window.location.href = 'http://localhost:9000/#/home'
+    // Check if username or email exists in kanbanUsers
+    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+    const user = kanbanUsers.find(
+      user => (user.username === username.value || user.email === username.value)
+    );
+    if (!user) {
+      apiError.value = 'Invalid username or email';
+      isLoading.value = false;
+      return;
     }
-    isLoading.value = false
-  }, 1000) // Simulate 1-second delay
-}
 
-// Clear error states on input change
+    // Handle Remember Me
+    if (rememberMe.value) {
+      localStorage.setItem(
+        'rememberedCredentials',
+        JSON.stringify({
+          username: username.value,
+          password: password.value
+        })
+      );
+      console.log('Credentials saved for Remember Me');
+    } else {
+      localStorage.removeItem('rememberedCredentials');
+      console.log('Remember Me not selected, cleared saved credentials');
+    }
+
+    // Load user profile
+    const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (userProfile.username !== user.username) {
+      // Update userProfile to match the logged-in user
+      const newProfile = {
+        username: user.username,
+        email: user.email,
+        firstName: userProfile.firstName || '',
+        lastName: userProfile.lastName || '',
+        dob: userProfile.dob || '',
+        job: userProfile.job || '',
+        bio: userProfile.bio || '',
+        picture: userProfile.picture || ''
+      };
+      localStorage.setItem('userProfile', JSON.stringify(newProfile));
+    }
+
+    // Store demo token for authenticated redirect
+    localStorage.setItem('authToken', 'demo-token');
+    console.log('Login successful, redirecting to /home');
+    alert('Login successful (demo only)');
+    window.location.href = 'http://localhost:9000/#/home';
+    isLoading.value = false;
+  }, 1000); // Simulate 1-second delay
+};
+
+// Clear error states on input
 const clearUsernameError = () => {
   if (username.value !== '') {
-    usernameError.value = false
+    usernameError.value = false;
   }
-}
+};
 
 const clearPasswordError = () => {
   if (password.value && isPasswordValid.value) {
-    passwordError.value = false
+    passwordError.value = false;
   }
-}
+};
 
 const loginWithGoogle = () => {
-  console.log('Google Login clicked (no Firebase connected yet)')
-}
+  console.log('Google Login clicked (no Firebase connected yet)');
+};
 
 const signup = () => {
-  window.location.href = 'http://localhost:9000/#/signup'
-}
+  window.location.href = 'http://localhost:9000/#/signup';
+};
 
 const forgotPassword = () => {
-  window.location.href = 'http://localhost:9000/#/forgetPass'
-}
-
-// Check if already authenticated
-// onMounted(() => {
-//   const token = localStorage.getItem('authToken')
-//   if (token) {
-//     console.log('User already authenticated, redirecting to home')
-//     window.location.href = 'http://localhost:9000/#/home'
-//   }
-// })
+  window.location.href = 'http://localhost:9000/#/forgetPass';
+};
 </script>

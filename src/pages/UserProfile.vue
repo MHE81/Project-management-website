@@ -79,7 +79,7 @@
             class="uniform-input"
             :readonly="!editMode"
             :error="usernameError"
-            error-message="Username is required"
+            error-message="Username is required or already taken"
             @input="clearUsernameError"
             autofocus
             aria-label="Enter your username"
@@ -377,6 +377,10 @@ const confirmPasswordError = ref(false)
 const apiError = ref('')
 const successMessage = ref('')
 
+// Original username and email for comparison
+const originalUsername = ref('')
+const originalEmail = ref('')
+
 // Email format validator
 const isEmailValid = computed(() => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -456,44 +460,108 @@ const saveProfile = () => {
 
   if (usernameError.value || emailError.value || dobError.value || passwordError.value || confirmPasswordError.value) {
     isLoading.value = false
-    // apiError.value = 'Please fix the errors in the form'
     console.log('Validation failed, stopping save')
+    return
+  }
+
+  // Check uniqueness of username and email
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  if (profile.value.username !== originalUsername.value && kanbanUsers.some(user => user.username === profile.value.username)) {
+    apiError.value = 'Username already taken'
+    usernameError.value = true
+    isLoading.value = false
+    return
+  }
+  if (profile.value.email !== originalEmail.value && kanbanUsers.some(user => user.email === profile.value.email)) {
+    apiError.value = 'Email already taken'
+    isLoading.value = false
     return
   }
 
   // Simulate backend API call
   setTimeout(() => {
     console.log('Simulating API call')
-    const random = Math.random()
-    if (random < 0.1) {
-      apiError.value = 'Username already taken'
-      console.log('API simulation: Username already taken')
-    } else if (random < 0.2) {
-      apiError.value = 'Email already in use'
-      console.log('API simulation: Email already in use')
-    } else {
-      // Save profile
-      try {
-        localStorage.setItem('userProfile', JSON.stringify(profile.value))
-        console.log('Profile saved to localStorage:', profile.value)
-        backupProfile.value = null
-        editMode.value = false
-        if (password.value.new) {
-          console.log('Password changed to:', password.value.new)
-          password.value.new = ''
-          password.value.confirm = ''
-          passwordTouched.value = false
-          confirmTouched.value = false
+    try {
+      // Update kanbanUsers: Remove old username/email and add new ones
+      const updatedUsers = kanbanUsers.filter(user =>
+        user.username !== originalUsername.value || user.email !== originalEmail.value
+      )
+      updatedUsers.push({ username: profile.value.username, email: profile.value.email })
+      localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
+
+      // If username changed, transfer kanbanItems and kanbanInvitations to new username
+      if (profile.value.username !== originalUsername.value) {
+        const oldItems = JSON.parse(localStorage.getItem(`kanbanItems_${originalUsername.value}`) || '[]')
+        const oldInvitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${originalUsername.value}`) || '[]')
+
+        // Transfer items
+        if (oldItems.length > 0) {
+          localStorage.setItem(`kanbanItems_${profile.value.username}`, JSON.stringify(oldItems))
+          localStorage.removeItem(`kanbanItems_${originalUsername.value}`)
         }
-        successMessage.value = 'Profile saved successfully'
-        console.log('Profile save successful')
-        setTimeout(() => {
-          successMessage.value = ''
-        }, 3000) // Clear success message after 3 seconds
-      } catch (e) {
-        apiError.value = 'Failed to save profile due to storage error'
-        console.error('Error saving to localStorage:', e)
+
+        // Transfer invitations
+        if (oldInvitations.length > 0) {
+          localStorage.setItem(`kanbanInvitations_${profile.value.username}`, JSON.stringify(oldInvitations))
+          localStorage.removeItem(`kanbanInvitations_${originalUsername.value}`)
+        }
+
+        // Update creator and shareWith fields in items
+        const items = JSON.parse(localStorage.getItem(`kanbanItems_${profile.value.username}`) || '[]')
+        items.forEach(item => {
+          if (item.creator === originalUsername.value) {
+            item.creator = profile.value.username
+          }
+          if (item.shareWith) {
+            item.shareWith = item.shareWith.map(share => {
+              if (share.username === originalUsername.value) {
+                return { ...share, username: profile.value.username }
+              }
+              return share
+            })
+          }
+          if (item.subitems) {
+            item.subitems.forEach(subitem => {
+              if (subitem.creator === originalUsername.value) {
+                subitem.creator = profile.value.username
+              }
+              if (subitem.shareWith) {
+                subitem.shareWith = subitem.shareWith.map(share => {
+                  if (share.username === originalUsername.value) {
+                    return { ...share, username: profile.value.username }
+                  }
+                  return share
+                })
+              }
+            })
+          }
+        })
+        localStorage.setItem(`kanbanItems_${profile.value.username}`, JSON.stringify(items))
       }
+
+      // Save updated profile
+      localStorage.setItem('userProfile', JSON.stringify(profile.value))
+      console.log('Profile saved to localStorage:', profile.value)
+      backupProfile.value = null
+      editMode.value = false
+      if (password.value.new) {
+        console.log('Password changed to:', password.value.new)
+        password.value.new = ''
+        password.value.confirm = ''
+        passwordTouched.value = false
+        confirmTouched.value = false
+      }
+      successMessage.value = 'Profile saved successfully'
+      console.log('Profile save successful')
+      // Update original values
+      originalUsername.value = profile.value.username
+      originalEmail.value = profile.value.email
+      setTimeout(() => {
+        successMessage.value = ''
+      }, 3000) // Clear success message after 3 seconds
+    } catch (e) {
+      apiError.value = 'Failed to save profile due to storage error'
+      console.error('Error saving to localStorage:', e)
     }
     isLoading.value = false
     console.log('API simulation complete, isLoading set to false')
@@ -602,6 +670,8 @@ onMounted(() => {
   if (savedProfile) {
     try {
       profile.value = JSON.parse(savedProfile)
+      originalUsername.value = profile.value.username
+      originalEmail.value = profile.value.email
       console.log('Profile loaded from localStorage:', profile.value)
     } catch (e) {
       apiError.value = 'Failed to load profile data'
@@ -614,8 +684,17 @@ onMounted(() => {
 const deleteAccount = () => {
   showDeleteDialog.value = false
   try {
+    // Remove user from kanbanUsers
+    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+    const updatedUsers = kanbanUsers.filter(user =>
+      user.username !== profile.value.username || user.email !== profile.value.email
+    )
+    localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
+
+    // Remove user-specific data
+    localStorage.removeItem(`kanbanItems_${profile.value.username}`)
+    localStorage.removeItem(`kanbanInvitations_${profile.value.username}`)
     localStorage.removeItem('authToken')
-    localStorage.removeItem('kanbanItems')
     localStorage.removeItem('userProfile')
     successMessage.value = 'Account deleted successfully'
     console.log('Account deleted successfully')

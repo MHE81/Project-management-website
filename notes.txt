@@ -13,6 +13,7 @@ errors of sub items date, status , ...
 item detail buttons
 shared roles and permissions
 type cant be typed!
+invitation!
 
 who wrote the report?
 

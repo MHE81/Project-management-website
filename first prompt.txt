@@ -1,0 +1,5 @@
+im designing a project management website and im just handeling the front-end and coding with quasar.
+
+
+codes are all sent.
+note that the back-end will be handeled later

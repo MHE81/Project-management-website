@@ -214,11 +214,29 @@ const signUp = () => {
     isLoading.value = false
     return
   }
+  if (kanbanUsers.some(user => user.email === email.value)) {
+    apiError.value = 'Email already taken'
+    isLoading.value = false
+    return
+  }
 
   setTimeout(() => {
-    kanbanUsers.push({ username: username.value })
+    // Create full profile with empty fields
+    const userProfile = {
+      username: username.value,
+      email: email.value,
+      firstName: '',
+      lastName: '',
+      dob: '',
+      job: '',
+      bio: '',
+      picture: ''
+    }
+
+    // Add user to kanbanUsers
+    kanbanUsers.push({ username: username.value, email: email.value })
     localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
-    localStorage.setItem('userProfile', JSON.stringify({ username: username.value }))
+    localStorage.setItem('userProfile', JSON.stringify(userProfile))
     localStorage.setItem('authToken', 'demo-token-' + Date.now())
 
     console.log('Username:', username.value)
