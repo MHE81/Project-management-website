@@ -116,6 +116,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 
 // Form fields and state
 const username = ref('');
@@ -128,6 +129,9 @@ const rememberMe = ref(false);
 // Error states for validation
 const usernameError = ref(false);
 const passwordError = ref(false);
+
+// Router instance
+const router = useRouter();
 
 // Password strength validator
 const isPasswordValid = computed(() => {
@@ -162,13 +166,12 @@ const login = () => {
   // Validate fields
   if (!username.value) {
     usernameError.value = true;
+    apiError.value = 'Username or Email is required';
+    isLoading.value = false;
+    return;
   }
   if (!password.value || !isPasswordValid.value) {
     passwordError.value = true;
-  }
-
-  // If any validation fails, prevent login
-  if (usernameError.value || passwordError.value) {
     isLoading.value = false;
     return;
   }
@@ -182,6 +185,7 @@ const login = () => {
     );
     if (!user) {
       apiError.value = 'Invalid username or email';
+      usernameError.value = true;
       isLoading.value = false;
       return;
     }
@@ -201,28 +205,24 @@ const login = () => {
       console.log('Remember Me not selected, cleared saved credentials');
     }
 
-    // Load user profile
-    const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-    if (userProfile.username !== user.username) {
-      // Update userProfile to match the logged-in user
-      const newProfile = {
-        username: user.username,
-        email: user.email,
-        firstName: userProfile.firstName || '',
-        lastName: userProfile.lastName || '',
-        dob: userProfile.dob || '',
-        job: userProfile.job || '',
-        bio: userProfile.bio || '',
-        picture: userProfile.picture || ''
-      };
-      localStorage.setItem('userProfile', JSON.stringify(newProfile));
-    }
+    // Load user profile from kanbanUsers
+    const newProfile = {
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      dob: user.dob || '',
+      job: user.job || '',
+      bio: user.bio || '',
+      picture: user.picture || ''
+    };
+    localStorage.setItem('userProfile', JSON.stringify(newProfile));
 
     // Store demo token for authenticated redirect
     localStorage.setItem('authToken', 'demo-token');
     console.log('Login successful, redirecting to /home');
     alert('Login successful (demo only)');
-    window.location.href = 'http://localhost:9000/#/home';
+    router.push('/home');
     isLoading.value = false;
   }, 1000); // Simulate 1-second delay
 };
@@ -231,12 +231,14 @@ const login = () => {
 const clearUsernameError = () => {
   if (username.value !== '') {
     usernameError.value = false;
+    apiError.value = '';
   }
 };
 
 const clearPasswordError = () => {
   if (password.value && isPasswordValid.value) {
     passwordError.value = false;
+    apiError.value = '';
   }
 };
 
@@ -245,10 +247,10 @@ const loginWithGoogle = () => {
 };
 
 const signup = () => {
-  window.location.href = 'http://localhost:9000/#/signup';
+  router.push('/signup');
 };
 
 const forgotPassword = () => {
-  window.location.href = 'http://localhost:9000/#/forgetPass';
+  router.push('/forgot-password');
 };
 </script>

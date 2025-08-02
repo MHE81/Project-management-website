@@ -482,11 +482,25 @@ const saveProfile = () => {
   setTimeout(() => {
     console.log('Simulating API call')
     try {
-      // Update kanbanUsers: Remove old username/email and add new ones
+      // Preserve existing password if not changed
+      const existingUser = kanbanUsers.find(user => user.username === originalUsername.value)
+      const existingPassword = existingUser?.password
+
+      // Update kanbanUsers: Remove old user and add new one with all profile data
       const updatedUsers = kanbanUsers.filter(user =>
         user.username !== originalUsername.value || user.email !== originalEmail.value
       )
-      updatedUsers.push({ username: profile.value.username, email: profile.value.email })
+      updatedUsers.push({
+        username: profile.value.username,
+        email: profile.value.email,
+        firstName: profile.value.firstName,
+        lastName: profile.value.lastName,
+        dob: profile.value.dob,
+        job: profile.value.job,
+        bio: profile.value.bio,
+        picture: profile.value.picture,
+        password: password.value.new || existingPassword || ''
+      })
       localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
 
       // If username changed, transfer kanbanItems and kanbanInvitations to new username

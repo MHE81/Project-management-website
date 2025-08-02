@@ -23,28 +23,6 @@
       color="primary"
     />
 
-    <!-- Invitations Banner -->
-    <q-banner
-      dense
-      class="bg-yellow-9 text-white q-mb-md"
-      aria-live="polite"
-      role="alert"
-    >
-      <template v-if="pendingInvitations.length">
-        You have {{ pendingInvitations.length }} pending invitation(s).
-        <q-btn
-          flat
-          label="View Invitations"
-          color="white"
-          @click="showInvitationsDialog = true"
-          aria-label="View pending invitations"
-        />
-      </template>
-      <template v-else>
-        No pending invitations.
-      </template>
-    </q-banner>
-
     <!-- Error Banner -->
     <q-banner
       v-if="errorMessage"
@@ -167,6 +145,29 @@
           @click="toggleForm = !toggleForm"
         />
 
+        <!-- Invitations Banner -->
+        <q-banner
+          dense
+          class="bg-yellow-9 text-white q-mb-md"
+          aria-live="polite"
+          role="alert"
+        >
+          <template v-if="pendingInvitations.length">
+            Invitations ({{ pendingInvitations.length }})
+            <q-btn
+              flat
+              label="View"
+              color="white"
+              @click="showInvitationsDialog = true"
+              aria-label="View pending invitations"
+            />
+          </template>
+          <template v-else>
+            Invitations
+          </template>
+        </q-banner>
+
+        <!-- Progress Chart -->
         <div class="q-my-md flex flex-center">
           <q-circular-progress
             show-value

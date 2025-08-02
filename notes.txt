@@ -1,40 +1,62 @@
-deleting the account
-nested items
-order switch
-percentage in home page
-changing the item status
-check the priority changes
-changing subitem status
-same filings and div status the new item form in item and subitem
-add note for the item
-profile saving!
-errors of sub items date, status , ...
-
-item detail buttons
+check if email exits 
+the picture should be shown in the pages
+forget pass!
 shared roles and permissions
+
 type cant be typed!
-invitation!
+invitation:
 
-who wrote the report?
+when i share an item with a user an invitaion has to be sent to him and he wont be had the item in his homepage or itemdetail until he accept the invitaion. so until the user accepts the invite, the sharing has to be in "pending" status in the "shared with" box of itemdeail page. if the target user accepts it the item will be shared with him and his name will be in shared with box without any status. if he rejects it, his name and the invitation will be deleted and for the invitation sender will send a message that "{username} rejected yout invite} in the sender homepage messages box. and the message can be deleted by users choice
+explain in farsi
 
+
+for owner t is not shown that the sharing is pending rejectd or accepted
+when a new subitem is added or any changes happens (report and deleing the item and editing the item and ...) is wont be updated in other shared users..... all things from the sahred item until the last layer ofthe subs should be shared
+if an subitem is shared instead of an item the invite will be sent but it cant be accepted or rejected or if its accepted (nothing happens)
+after rejection the shared will not be updated for the invitor
+if a user is deleted from shared by owner, it wont be updated (deleted) for others and it wont be nested in subs for the owner too
+the admin cant share the item!
+invitaions dispay(name, invitor, date)
+
+
+owner can be changed by the owner himself
+
+
+assigning:
+assigning an item to a user with a note (what to do) from the shared users (admins)
+
+
+
+
+reports:
+a link of git can be shared!(optional)
+who wrote the report?:
 each user has a picture and a username. on left of each report in the box, it should be a thing that says who has writen this report. if user had picture, his picture should be there, of not, his username should be there
 why is the author of reports are unknown?
 the report author should be the one who has added that report. as you know each user has a homepage and some items for his own.
 
+
+
+call:
+call should be about to happen with shared users via google meet
+it can be arranged
+the target users should be notified (send the link or time and usernames in the call)
+
+
+
 priority colors and adding one
-نمایش جزئیات آیتم‌ها تو یه دیالوگ (مثل QDialog) وقتی روشون کلیک می‌کنی
-فیلتر کردن آیتم‌ها بر اساس دسته‌بندی (Category) یا اولویت (Priority)
+نمایش جزئیات آیتم‌ها تو یه دیالوگ وقتی روشون کلیک می‌کنی
+فیلتر کردن آیتم‌ها بر اساس دسته‌بندی یا اولویت
 ثبت فعالیت‌های انجام‌شده توسط هر عضو
 مقایسه زمان صرف‌شده با زمان تخمینی
 دلیل توقف یا تأخیر در پروژه‌ها
 آیا کسی باید کاری رو تموم کنه تا این مورد جلو بره؟
 items display
-پیشنهاد برای حل مشکلات
-پیش‌بینی زمان‌بندی پروژه‌های آینده
-deleting "save changes" button in itemdetail
-backlog?!
+
 
 AI widget
+پیشنهاد برای حل مشکلات
+پیش‌بینی زمان‌بندی پروژه‌های آینده
 check GPTs
 
 

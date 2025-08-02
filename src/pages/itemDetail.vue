@@ -308,7 +308,7 @@
             </q-circular-progress>
           </div>
           <div v-if="!toggleSubitemForm">
-            <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" :disable="!canEdit && !isOwner" />
+            <!-- <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" :disable="!canEdit && !isOwner" /> -->
             <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="openSubitemForm" :disable="!canEdit" />
             <!-- <q-btn
               label="Share With"
