@@ -1,7 +1,1668 @@
 if user has chosen a profile image the picture should be shown in the pages (circle) instead of the profile icon and if there is no profile image, the current icon should be there.
 if both senarios the imapge or icon should be the button that goes to the user profile
 explain in farsi.
-homepage:
+
+
+
+
+
+
+این اتفاقیه که توی اجرا افتاد:
+کاربر 1 به عنوان مالک در صفحه ایتم 1، آیتم1 (که شامل زیر ایتم های 1.1 . 1.2 هست) رو با  کاربر 2 با یک نقشی به اشتراک گذاشت و در ایتم و همه زیرایتم هاش حالت کاربر 2 pending شد
+کاربر 2 دعوتنامه رو قبول کرد و ایتم به صفحه کاربر 2 اضافه شد و در صفحه ایتم1 و زیر ایتم ها در صفحه کاربر 2 حالت کاربر 2 بدون pending شد
+در صفحه کاربر 1 در صفحه جزییات ایتم 1 کاربر 2 بدون حالت شد اما در صفحه زیرایتم های 1.1 و 1.2 حالت کاربر 2 همچنان pending بود
+سپس کاربر 1 به عنوان مالک در صفحه ایتم 1، آیتم1 (که شامل زیر ایتم های 1.1 . 1.2 هست) رو با  کاربر 3 با یک نقشی به اشتراک گذاشت و در ایتم و همه زیرایتم هاش حالت کاربر 3 pending شد و حالت pending کاربر 2 در زیر ایتیم ها از بین رفت
+کاربر 3 دعوتنامه رو قبول کرد و ایتم به صفحه کاربر 3 اضافه شد و در صفحه ایتم1 و زیر ایتم ها در صفحه کاربر 3 حالت کاربر 3 بدون pending شد
+در صفحه کاربر 1 در صفحه جزییات کار ایتم 1 کاربر 3 بدون حالت شد اما در صفحه زیرایتم های 1.1 و 1.2 حالت کاربر 3 همچنان pending بود و کاربر 2 بدون حالت شد
+
+یک بار هم کاربر 1 به  عنوان مالک، آیتم 1 را همزمان با هر دو کاربر 2 و 3 را به اشتراک گذاشت
+هر دو کاربر دعوتنامه را پذیرفتند و ایتم به صفحه هر دو اضافه شد و حالت هر دو کاربر در صفحه های ایتم1 و زیر ایتم های ان بدون حالت شد
+و در صفحه ایتم 1 کاربر 1 هر دو بدون حالت شدند اما در صفحه زیر ایتم های ایتم 1 حالت کاربر 2 و 3 pending بود!
+
+باید اینجوری باشه که تا قبل از اینکه کاربر دعوت شده دعوتنامه رو بپذیرفت توی ایتم و همه زیرایتم هاش حالت pending داشته باشن
+ولی بعد از پذیرش دعوتنامه، حالت کاربر در صفحه همه کاربران و خود اتیم و زیر ایتم هاش بدوم حالت باشه
+و این اتفاق باید بدون استثنا اتفاق بیوفته
+ازت میخوام فقط این مشکل رو حل کنی و به هیچ چیز دیگه ای در کد ها دست نزنی چون همه چیز عالیه
+کد itemdetail فعلی:
+<template>
+  <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
+    <!-- Loading State -->
+    <div v-if="!item && !errorMessage" class="text-center q-mt-lg">
+      <q-spinner color="primary" size="3em" />
+      <div>Loading item...</div>
+    </div>
+    <!-- Item Name and User Role -->
+    <div v-if="item" class="text-h4 q-mb-md text-center full-width">
+      {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+    </div>
+    <div v-if="item" class="text-subtitle1 q-mb-md text-center">
+      Your Role: {{ currentUserRole }}
+    </div>
+    <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">
+      {{ errorMessage }} (ID: {{ route.params.id }})
+    </div>
+
+    <!-- Top bar -->
+    <div class="row justify-between items-center q-mb-md">
+      <div class="text-h6">Date: {{ currentDate }}</div>
+      <div class="q-gutter-sm">
+        <q-btn
+          round
+          color="primary"
+          icon="account_circle"
+          @click="openProfile"
+          aria-label="Go to profile"
+        />
+        <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <q-banner
+      v-if="errorMessage"
+      dense
+      class="bg-negative text-white q-mb-md"
+      aria-live="polite"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </q-banner>
+
+    <!-- New Report Form -->
+    <div v-if="item && isAddingReport && !selectedReport" class="q-mb-md">
+      <div class="text-subtitle1">New Report:</div>
+      <q-input
+        v-model="newReportDetails"
+        placeholder="Enter what you have done..."
+        dense
+        :error="!newReportDetails && reportFormSubmitted"
+        error-message="Details are required"
+        class="q-mb-md"
+        :disable="!canEdit"
+      />
+      <div class="row">
+        <q-btn
+          label="Save Report"
+          color="positive"
+          @click="saveReport"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
+        <q-btn label="Cancel" color="negative" flat @click="cancelReport" />
+      </div>
+    </div>
+
+    <!-- Selected Report Display (Editable) -->
+    <div v-if="item && selectedReport" class="q-mb-md">
+      <div class="text-subtitle1">Editing Report:</div>
+      <textarea
+        v-model="selectedReport.details"
+        placeholder="Edit your report here..."
+        class="resizable-note custom-textarea"
+        :disabled="!canEdit"
+      />
+      <div class="row q-mt-sm">
+        <q-btn
+          label="Save Report"
+          color="positive"
+          @click="saveEditedReport"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
+        <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" />
+      </div>
+    </div>
+
+    <!-- Note Display -->
+    <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
+      <div class="text-subtitle1">Note:</div>
+      <div
+        class="q-pa-sm bg-grey-2 rounded-borders resizable-note"
+        v-html="item.note.replace(/\n/g, '<br>')"
+      ></div>
+      <div class="row q-mt-sm">
+        <q-btn
+          label="Edit Note"
+          color="primary"
+          @click="toggleNoteEdit(true)"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
+        <q-btn label="Delete Note" color="negative" flat @click="deleteNote" :disable="!canEdit" />
+      </div>
+    </div>
+
+    <!-- Note Edit Form -->
+    <div v-if="item && isEditingNote" class="q-mb-md">
+      <div class="text-subtitle1">Edit Note:</div>
+      <textarea
+        v-model="item.note"
+        placeholder="Enter your note here..."
+        class="resizable-note custom-textarea"
+        :disabled="!canEdit"
+      />
+      <div class="row q-mt-sm">
+        <q-btn
+          label="Save Note"
+          color="positive"
+          @click="saveNote"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
+        <q-btn label="Cancel" color="negative" flat @click="cancelNoteEdit" />
+      </div>
+    </div>
+    <q-btn
+      v-if="item && !item.note && !isEditingNote"
+      label="Add Note"
+      color="secondary"
+      @click="toggleNoteEdit(true)"
+      class="q-mb-md"
+      :disable="!canEdit"
+    />
+
+    <!-- Parent Chain Info -->
+    <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
+      <span>
+        <span v-for="(parent, index) in parentChain" :key="parent.id">
+          {{ parent.type }}: {{ parent.title }}{{ index < parentChain.length - 1 ? ' -> ' : '' }}
+        </span>
+        -> <strong>{{ item.type }}: {{ item.title }}</strong>
+      </span>
+    </div>
+
+    <!-- Main layout -->
+    <div v-if="item" class="row equal-height-row">
+      <!-- Left Side Box (Item Details) -->
+      <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-right: 10px">
+        <div class="bg-white" style="padding: 15px">
+          <div class="text-subtitle2 q-mb-xs">Details</div>
+          <div>Type: {{ item.type || 'N/A' }}</div>
+          <q-input
+            v-model="item.title"
+            label="Title"
+            dense
+            :error="!item.title && formSubmitted"
+            :disable="!isEditing || !canEdit"
+            error-message="Title is required"
+            class="q-mt-md"
+          />
+          <q-input
+            v-model="item.deadline"
+            label="Deadline"
+            dense
+            type="datetime-local"
+            :disable="!isEditing || !canEdit"
+            :max="directParent?.deadline || undefined"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.status"
+            :options="statusOptions"
+            label="Status"
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.priority"
+            :options="['Low', 'Medium', 'High']"
+            label="Priority"
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.category"
+            :options="categoryOptions"
+            use-input
+            use-chips
+            label="Category"
+            multiple
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-btn
+            v-if="!isEditing"
+            label="Edit"
+            color="primary"
+            class="full-width q-mt-md"
+            @click="toggleEdit(true)"
+            :disable="!canEdit"
+          />
+          <q-btn
+            v-else
+            label="Save"
+            color="positive"
+            class="full-width q-mt-md"
+            @click="saveDetails"
+            :disable="!canEdit"
+          />
+        </div>
+      </div>
+
+      <!-- Main Content Area (Subitems Kanban) -->
+      <div class="col-7 bg-grey-2 rounded-borders q-pa-md column-box" style="overflow-y: auto">
+        <q-toggle
+          v-model="sortByPriority"
+          label="Sort by"
+          left-label
+          checked-icon="sort"
+          unchecked-icon="event"
+          color="primary"
+          class="q-mb-md"
+          @update:model-value="sortSubitems"
+        />
+        <div class="row" style="flex-wrap: nowrap; height: 100%">
+          <!-- Backlog Column -->
+          <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
+            <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
+            <div
+              v-for="subitem in sortedSubitems('backlog')"
+              :key="subitem.id"
+              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              :draggable="canEdit"
+              @dragstart="startDrag(subitem)"
+              @click="viewItem(subitem.id)"
+            >
+              <div>
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <div v-if="subitem.assignedTo" class="text-caption">
+                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                </div>
+                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
+                </div>
+              </div>
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
+            </div>
+          </div>
+
+          <!-- In Progress Column -->
+          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
+            <div class="text-center text-subtitle2 q-mb-md">In Progress</div>
+            <div
+              v-for="subitem in sortedSubitems('in progress')"
+              :key="subitem.id"
+              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              :draggable="canEdit"
+              @dragstart="startDrag(subitem)"
+              @click="viewItem(subitem.id)"
+            >
+              <div>
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <div v-if="subitem.assignedTo" class="text-caption">
+                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                </div>
+                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
+                </div>
+              </div>
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
+            </div>
+          </div>
+
+          <!-- Done Column -->
+          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
+            <div class="text-center text-subtitle2 q-mb-md">Done</div>
+            <div
+              v-for="subitem in sortedSubitems('done')"
+              :key="subitem.id"
+              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              :draggable="canEdit"
+              @dragstart="startDrag(subitem)"
+              @click="viewItem(subitem.id)"
+            >
+              <div>
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <div v-if="subitem.assignedTo" class="text-caption">
+                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                </div>
+                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
+                </div>
+              </div>
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side Box -->
+      <div
+        class="col-2 bg-grey-2 rounded-borders q-pa-md column-box"
+        style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto"
+      >
+        <!-- Shared With Section -->
+        <div v-if="item" class="q-mb-md">
+          <div class="text-subtitle1">Shared With:</div>
+          <div class="q-pa-sm bg-grey-2 rounded-borders">
+            <div
+              v-if="item.shareWith && item.shareWith.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+            >
+              <div
+                v-for="(share, index) in item.shareWith"
+                :key="index"
+                class="row items-center q-mb-xs"
+              >
+                {{ share.username }}
+                <span class="text-weight-bold"
+                  >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
+                >
+                <q-btn
+                  v-if="canShare && share.role !== 'owner'"
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="removeSharedUser(index)"
+                />
+              </div>
+            </div>
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
+              Not shared with anyone
+            </div>
+          </div>
+          <q-btn
+            v-if="canShare"
+            label="Share With"
+            color="secondary"
+            class="full-width"
+            @click="openShareDialog"
+          />
+        </div>
+
+        <!-- Assignment Section -->
+        <div v-if="item" class="q-mb-md">
+          <div class="text-subtitle1">Assigned To:</div>
+          <div class="q-pa-sm bg-grey-2 rounded-borders">
+            <div v-if="item.assignedTo" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
+              {{ item.assignedTo.username }}
+              <span class="text-weight-bold">({{ item.assignedTo.role }})</span>
+              <q-btn
+                v-if="canAssign"
+                flat
+                round
+                icon="remove"
+                color="negative"
+                size="sm"
+                @click="removeAssignment"
+              />
+            </div>
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
+              Not assigned
+            </div>
+          </div>
+          <q-btn
+            v-if="canAssign"
+            label="Assign Item"
+            color="secondary"
+            class="full-width"
+            @click="openAssignDialog"
+          />
+        </div>
+
+        <!-- Add New Report Button (Plus Icon) -->
+        <q-btn
+          v-if="item && !isAddingReport && !selectedReport"
+          round
+          color="secondary"
+          icon="add"
+          @click="toggleReportForm(true)"
+          class="q-mb-md"
+          size="sm"
+          :disable="!canEdit"
+        />
+
+        <!-- Reports Box -->
+        <div v-if="item && item.reports && item.reports.length" class="q-mb-md">
+          <div class="text-subtitle1">Reports:</div>
+          <div class="bg-grey-2 rounded-borders q-pa-sm reports-box">
+            <div
+              v-for="(report, index) in sortedReports"
+              :key="index"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+              @click="selectReport(report, index)"
+            >
+              <div class="text-ellipsis single-line">
+                {{ report.date }} - {{ truncateText(report.details) }}
+              </div>
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteReportFromBox(report, index)"
+                :disable="!canEdit"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          v-else-if="item && item.reports && !item.reports.length"
+          class="q-mb-md text-center text-negative"
+        >
+          No reports available.
+        </div>
+
+        <!-- Subitem Form and Buttons -->
+        <div class="bg-white" style="padding: 15px">
+          <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
+            <q-circular-progress
+              show-value
+              :value="completionPercent"
+              size="80px"
+              color="green"
+              track-color="grey-3"
+            >
+              {{ completionPercent }}%
+            </q-circular-progress>
+          </div>
+          <div v-if="!toggleSubitemForm">
+            <q-btn
+              label="New Subitem"
+              color="secondary"
+              class="full-width q-mb-xs"
+              @click="openSubitemForm"
+              :disable="!canAddSubitems"
+            />
+            <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
+          </div>
+          <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
+            <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
+              <q-select
+                v-model="subitemForm.type"
+                :options="['Task', 'Project', 'Portfolio', 'Other']"
+                label="Subitem Type (select or type)"
+                dense
+                use-input
+                input-debounce="0"
+                :error="!subitemForm.type && subitemFormSubmitted"
+                error-message="Subitem Type is required"
+                :disable="!canAddSubitems"
+              />
+              <q-input
+                v-model="subitemForm.title"
+                label="Subitem Title"
+                dense
+                :error="!subitemForm.title && subitemFormSubmitted"
+                error-message="Title is required"
+                :disable="!canAddSubitems"
+              />
+              <q-input
+                v-model="subitemForm.deadline"
+                label="Deadline"
+                dense
+                type="datetime-local"
+                :max="item.deadline || undefined"
+                :error="!subitemForm.deadline && subitemFormSubmitted"
+                error-message="Deadline is required"
+                :disable="!canAddSubitems"
+              />
+              <q-select
+                v-model="subitemForm.status"
+                :options="statusOptions"
+                label="Status"
+                dense
+                :error="!subitemForm.status && subitemFormSubmitted"
+                error-message="Status is required"
+                :disable="!canAddSubitems"
+              />
+              <q-select
+                v-model="subitemForm.priority"
+                :options="['Low', 'Medium', 'High']"
+                label="Priority"
+                dense
+                :error="!subitemForm.priority && subitemFormSubmitted"
+                error-message="Priority is required"
+                :disable="!canAddSubitems"
+              />
+              <div class="row q-mt-sm">
+                <q-btn
+                  type="submit"
+                  label="Save Subitem"
+                  color="secondary"
+                  class="full-width q-mr-sm"
+                  :disable="!canAddSubitems"
+                />
+                <q-btn
+                  flat
+                  label="Cancel"
+                  color="negative"
+                  class="full-width"
+                  @click="cancelSubitemForm"
+                />
+              </div>
+            </q-form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Share Dialog -->
+    <q-dialog v-model="showShareDialog" persistent>
+      <q-card style="width: 600px; max-width: 90vw">
+        <q-card-section>
+          <div class="text-h6">Share With</div>
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit.prevent="addSharedUser">
+            <div class="row items-center q-mb-md">
+              <q-input
+                v-model="searchUsername"
+                label="Username"
+                dense
+                class="col-7 q-mr-sm"
+                :error="usernameError"
+                error-message="Invalid or already shared username"
+                @input="searchUsers"
+                aria-label="Enter username to share with"
+                autocomplete="off"
+                debounce="300"
+                :disable="!canShare"
+              >
+                <template v-slot:append>
+                  <q-icon name="search" />
+                </template>
+              </q-input>
+              <q-select
+                v-model="selectedRole"
+                :options="['owner', 'admin', 'observer']"
+                label="Role"
+                dense
+                class="col-4"
+                :disable="!canShare"
+              />
+            </div>
+            <q-list
+              bordered
+              class="q-mb-md user-list"
+              v-if="searchUsername && filteredUsers.length"
+            >
+              <q-item
+                v-for="user in filteredUsers"
+                :key="user.username"
+                clickable
+                @click="selectUser(user)"
+                class="user-item"
+              >
+                <q-item-section>{{ user.username }}</q-item-section>
+              </q-item>
+            </q-list>
+            <q-item v-if="isLoadingUsers" class="text-grey">
+              <q-item-section>Loading users...</q-item-section>
+            </q-item>
+            <q-btn
+              label="Add User"
+              color="positive"
+              type="submit"
+              class="full-width q-mb-md"
+              :disable="!canShare || !searchUsername || usernameError || !isValidUsername"
+            />
+          </q-form>
+          <div v-if="newSharedUsers.length" class="q-mt-md">
+            <div class="text-subtitle2">Selected Users:</div>
+            <div
+              v-for="(share, index) in newSharedUsers"
+              :key="index"
+              class="row items-center q-mb-xs"
+            >
+              <q-item-section
+                >{{ share.username }}
+                <span class="text-weight-bold">({{ share.role }})</span></q-item-section
+              >
+              <q-btn
+                flat
+                round
+                icon="remove"
+                color="negative"
+                size="sm"
+                @click="
+                  newSharedUsers.splice(index, 1),
+                  searchUsers()
+                "
+                :disable="!canShare"
+              />
+            </div>
+          </div>
+          <div v-if="item?.shareWith?.length" class="q-mt-md">
+            <div class="text-subtitle2">Currently Shared With:</div>
+            <div
+              v-for="(share, index) in item.shareWith"
+              :key="index"
+              class="row items-center q-mb-xs"
+            >
+              <q-item-section
+                >{{ share.username }}
+                <span class="text-weight-bold"
+                  >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
+                ></q-item-section
+              >
+              <q-btn
+                v-if="canShare && share.role !== 'owner'"
+                flat
+                round
+                icon="remove"
+                color="negative"
+                size="sm"
+                @click="removeSharedUser(index)"
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup @click="closeShareDialog" />
+          <q-btn label="Save" color="positive" @click="saveSharedUsers" :disable="!canShare" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Assign Dialog -->
+    <q-dialog v-model="showAssignDialog" persistent>
+      <q-card style="width: 600px; max-width: 90vw">
+        <q-card-section>
+          <div class="text-h6">Assign Item</div>
+        </q-card-section>
+        <q-card-section>
+          <q-input
+            v-model="searchAssignUsername"
+            label="Search Username"
+            dense
+            @input="searchAssignUsers"
+            aria-label="Search for users to assign"
+            :disable="!canAssign"
+          />
+          <q-list v-if="filteredAssignUsers.length" bordered class="q-mt-md">
+            <q-item
+              v-for="user in filteredAssignUsers"
+              :key="user.username"
+              clickable
+              @click="selectAssignee(user)"
+            >
+              <q-item-section
+                >{{ user.username }}
+                <span class="text-weight-bold">({{ user.role }})</span></q-item-section
+              >
+            </q-item>
+          </q-list>
+          <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">
+            No eligible users found
+          </div>
+          <div v-if="item?.assignedTo" class="q-mt-md">
+            <div class="text-subtitle2">Currently Assigned To:</div>
+            <div class="row items-center q-mb-xs">
+              <q-item-section
+                >{{ item.assignedTo.username }}
+                <span class="text-weight-bold">({{ item.assignedTo.role }})</span></q-item-section
+              >
+              <q-btn
+                v-if="canAssign"
+                flat
+                round
+                icon="remove"
+                color="negative"
+                size="sm"
+                @click="removeAssignment"
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
+          <q-btn label="Save" color="positive" @click="saveAssignment" :disable="!canAssign" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </q-page>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+const item = ref(null)
+const directParent = ref(null)
+const sortByPriority = ref(false)
+const draggedItem = ref(null)
+const formSubmitted = ref(false)
+const subitemFormSubmitted = ref(false)
+const toggleSubitemForm = ref(false)
+const subitemForm = ref({
+  type: '',
+  title: '',
+  deadline: '',
+  status: '',
+  priority: '',
+})
+const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
+const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
+const errorMessage = ref('')
+const itemId = ref(0)
+const isEditingNote = ref(false)
+const originalNote = ref('')
+const isAddingReport = ref(false)
+const newReportDetails = ref('')
+const reportFormSubmitted = ref(false)
+const selectedReport = ref(null)
+const selectedReportIndex = ref(null)
+const isEditing = ref(false)
+const showShareDialog = ref(false)
+const searchUsername = ref('')
+const selectedRole = ref('observer')
+const usernameError = ref(false)
+const filteredUsers = ref([])
+const newSharedUsers = ref([])
+const showAssignDialog = ref(false)
+const searchAssignUsername = ref('')
+const filteredAssignUsers = ref([])
+const availableUsers = ref([])
+const isLoadingUsers = ref(false)
+const currentUser = ref(JSON.parse(localStorage.getItem('userProfile') || '{}')?.username || '')
+const parentChain = ref([])
+
+// Compute current user's role
+const currentUserRole = computed(() => {
+  if (!item.value) return 'N/A'
+  if (item.value.creator === currentUser.value) return 'owner'
+  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
+  return userShare ? userShare.role : 'observer'
+})
+
+const isValidUsername = computed(() => {
+  if (!searchUsername.value || !Array.isArray(availableUsers.value)) return false
+  return availableUsers.value.some(
+    (user) => user.username && user.username.toLowerCase() === searchUsername.value.toLowerCase(),
+  )
+})
+
+const canEdit = computed(() => {
+  if (!item.value) return false
+  return (
+    item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner')
+    )
+  )
+})
+
+const canAssign = computed(() => {
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
+})
+
+const canShare = computed(() => {
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
+})
+
+const canAddSubitems = computed(() => {
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
+})
+
+const sortedReports = computed(() => {
+  return item.value?.reports
+    ? [...item.value.reports].sort((a, b) => new Date(b.date) - new Date(a.date))
+    : []
+})
+
+const completionPercent = computed(() => {
+  if (!item.value?.subitems || item.value.subitems.length === 0) return 0
+  const doneItems = item.value.subitems.filter((sub) => sub.status?.toLowerCase() === 'done').length
+  return Math.round((doneItems / item.value.subitems.length) * 100)
+})
+
+watch(
+  () => localStorage.getItem('kanbanUsers'),
+  (newValue) => {
+    const users = JSON.parse(newValue || '[]')
+    availableUsers.value = Array.isArray(users) ? users : []
+  },
+)
+
+const setEditingState = (id, state) => {
+  localStorage.setItem(`isEditing_${id}`, JSON.stringify(state))
+}
+
+const findItemById = (items, id) => {
+  for (let item of items) {
+    if (item.id === id) return item
+    if (item.subitems) {
+      const found = findItemById(item.subitems, id)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const updateItemInUserStorage = (updatedItem, username) => {
+  const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
+  }
+  updateItem(userItems, updatedItem)
+  localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+}
+
+const updateSubitemsShareWith = (item, shareWith) => {
+  if (item.subitems) {
+    item.subitems.forEach((subitem) => {
+      subitem.shareWith = [...shareWith]
+      updateSubitemsShareWith(subitem, shareWith)
+    })
+  }
+}
+
+const buildParentChain = (items, id) => {
+  const chain = []
+  let currentItem = findItemById(items, id)
+  while (currentItem && currentItem.parentId) {
+    const parent = findItemById(items, currentItem.parentId)
+    if (parent) {
+      chain.unshift(parent)
+      currentItem = parent
+    } else {
+      break
+    }
+  }
+  return chain
+}
+
+onMounted(() => {
+  loadItems()
+  const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  availableUsers.value = Array.isArray(users) ? users : []
+})
+
+const loadItems = () => {
+  const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
+  itemId.value = Number(route.params.id)
+  item.value = findItemById(items, itemId.value)
+  if (!item.value) {
+    errorMessage.value = 'Item not found.'
+    setTimeout(() => {
+      router.push('/home')
+    }, 3000)
+    return
+  }
+  if (!item.value.shareWith) item.value.shareWith = [{ username: currentUser.value, role: 'owner' }]
+  if (!item.value.creator) item.value.creator = currentUser.value
+  if (!item.value.assignedTo) item.value.assignedTo = null
+  if (item.value.parentId) {
+    directParent.value = findItemById(items, item.value.parentId)
+  } else {
+    directParent.value = null
+  }
+  parentChain.value = buildParentChain(items, itemId.value)
+  isEditing.value = false
+  setEditingState(itemId.value, false)
+  toggleSubitemForm.value = false
+  isEditingNote.value = false
+  isAddingReport.value = false
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  resetSubitemForm()
+  if (!item.value.note) item.value.note = ''
+  if (!item.value.reports) item.value.reports = []
+}
+
+watch(
+  () => route.params.id,
+  () => {
+    loadItems()
+  },
+)
+
+const openSubitemForm = () => {
+  if (!canAddSubitems.value) return
+  toggleSubitemForm.value = true
+  errorMessage.value = ''
+}
+
+const startDrag = (item) => {
+  if (canEdit.value) {
+    draggedItem.value = item
+  }
+}
+
+const handleDrop = (newStatus) => {
+  if (!canEdit.value || !draggedItem.value) return
+  if (newStatus === 'done') {
+    const allSubitemsDone =
+      !draggedItem.value.subitems ||
+      draggedItem.value.subitems.every((sub) => sub.status === 'done')
+    if (!allSubitemsDone) {
+      errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
+      return
+    }
+    draggedItem.value.movedToDoneAt = Date.now()
+  }
+  draggedItem.value.status = newStatus
+  saveItem()
+  errorMessage.value = ''
+  draggedItem.value = null
+}
+
+const deleteItem = (id) => {
+  if (!canAddSubitems.value) return
+  const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
+  const targetItem = findItemById(items, id)
+  if (!targetItem) return
+
+  // Remove item from all shared users
+  const shareUsernames = targetItem.shareWith
+    .filter(share => share.username !== currentUser.value)
+    .map(share => share.username)
+  shareUsernames.forEach(username => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const deleteRecursive = (items, itemId) => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === itemId) {
+          items.splice(i, 1)
+          return true
+        }
+        if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+          return true
+        }
+      }
+      return false
+    }
+    if (!targetItem.parentId) {
+      // If it's a parent item, remove it entirely from user's storage
+      const newUserItems = userItems.filter(i => i.id !== id)
+      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
+    } else {
+      // If it's a subitem, remove it from the parent's subitems
+      for (let i = 0; i < userItems.length; i++) {
+        if (deleteRecursive(userItems[i].subitems || [], id)) {
+          localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+          break
+        }
+      }
+    }
+
+    // Remove pending invitations for the deleted item
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
+    const newInvitations = invitations.filter(inv => inv.itemId !== id)
+    localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
+  })
+
+  // Remove item from current user's items
+  const deleteRecursive = (items, itemId) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemId) {
+        items.splice(i, 1)
+        return true
+      }
+      if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+        return true
+      }
+    }
+    return false
+  }
+  if (deleteRecursive(items, id)) {
+    localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
+    if (item.value && item.value.id === id) {
+      router.push('/home')
+    } else {
+      item.value.subitems = item.value.subitems.filter((sub) => sub.id !== id)
+      saveItem()
+    }
+  }
+}
+
+const viewItem = (id) => {
+  if (id) {
+    router.push(`/itemDetail/${id}`)
+  }
+}
+
+const addSubitem = () => {
+  if (!canAddSubitems.value) return
+  subitemFormSubmitted.value = true
+  if (
+    !subitemForm.value.type ||
+    !subitemForm.value.title ||
+    !subitemForm.value.deadline ||
+    !subitemForm.value.status ||
+    !subitemForm.value.priority
+  ) {
+    errorMessage.value = 'Please fill all required fields'
+    return
+  }
+  if (item.value.deadline && subitemForm.value.deadline) {
+    if (new Date(subitemForm.value.deadline) > new Date(item.value.deadline)) {
+      errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
+      return
+    }
+  }
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'in progress',
+    Done: 'done',
+  }
+  if (item.value) {
+    const newSubitem = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      type: subitemForm.value.type,
+      title: subitemForm.value.title,
+      deadline: subitemForm.value.deadline,
+      status: statusMap[subitemForm.value.status] || 'backlog',
+      priority: subitemForm.value.priority,
+      parentId: item.value.id,
+      category: [],
+      subitems: [],
+      shareWith: item.value.shareWith.map((s) => ({ ...s })), // Deep copy to avoid reference issues
+      movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
+      note: '',
+      creator: currentUser.value,
+      assignedTo: null,
+      reports: [],
+    }
+    item.value.subitems = item.value.subitems || []
+    item.value.subitems.push(newSubitem)
+    saveItem()
+    resetSubitemForm()
+    toggleSubitemForm.value = false
+    errorMessage.value = ''
+  }
+}
+
+const saveItem = () => {
+  const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
+  }
+  if (item.value) {
+    updateItem(items, item.value)
+    localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
+    updateSharedItems(item.value, currentUser.value)
+    loadItems()
+  }
+}
+
+const updateSharedItems = (updatedItem, sourceUser) => {
+  const shareUsernames = updatedItem.shareWith
+    .filter(
+      (share) => share.username !== sourceUser && (!share.status || share.status !== 'pending'),
+    )
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
+    updateItemInUserStorage(updatedItem, username)
+  })
+}
+
+const saveDetails = () => {
+  if (!canEdit.value) return
+  formSubmitted.value = true
+  if (!item.value.title) {
+    errorMessage.value = 'Please fill all required fields'
+    return
+  }
+  if (directParent.value?.deadline && item.value.deadline) {
+    if (new Date(item.value.deadline) > new Date(directParent.value.deadline)) {
+      errorMessage.value = 'Item deadline cannot be after the direct parent item deadline.'
+      return
+    }
+  }
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'in progress',
+    Done: 'done',
+  }
+  const newStatus = statusMap[item.value.status] || item.value.status.toLowerCase()
+  if (newStatus === 'done') {
+    const allSubitemsDone =
+      !item.value.subitems || item.value.subitems.every((sub) => sub.status === 'done')
+    if (!allSubitemsDone) {
+      errorMessage.value = 'Cannot set to Done: All subitems must be in Done status.'
+      return
+    }
+    item.value.movedToDoneAt = Date.now()
+  }
+  item.value.status = newStatus
+  saveItem()
+  toggleEdit(false)
+  errorMessage.value = ''
+}
+
+const toggleEdit = (value) => {
+  if (!canEdit.value) return
+  isEditing.value = value
+  setEditingState(itemId.value, value)
+  if (!value) {
+    formSubmitted.value = true
+  }
+}
+
+const cancelSubitemForm = () => {
+  resetSubitemForm()
+  toggleSubitemForm.value = false
+  errorMessage.value = ''
+}
+
+const resetSubitemForm = () => {
+  subitemForm.value = {
+    type: '',
+    title: '',
+    deadline: '',
+    status: '',
+    priority: '',
+  }
+  subitemFormSubmitted.value = false
+}
+
+const toggleNoteEdit = (value) => {
+  if (!canEdit.value) return
+  if (value) {
+    originalNote.value = item.value.note
+  }
+  isEditingNote.value = value
+  if (!value && !item.value.note) {
+    item.value.note = ''
+  }
+}
+
+const cancelNoteEdit = () => {
+  item.value.note = originalNote.value
+  isEditingNote.value = false
+  errorMessage.value = ''
+}
+
+const saveNote = () => {
+  if (!canEdit.value) return
+  if (item.value.note && item.value.note.trim()) {
+    saveItem()
+    isEditingNote.value = false
+    errorMessage.value = ''
+  } else {
+    errorMessage.value = 'Note cannot be empty.'
+  }
+}
+
+const deleteNote = () => {
+  if (!canEdit.value) return
+  item.value.note = ''
+  saveItem()
+  errorMessage.value = ''
+}
+
+const toggleReportForm = (value) => {
+  if (!canEdit.value && value) return
+  if (value) {
+    newReportDetails.value = ''
+    reportFormSubmitted.value = false
+  }
+  isAddingReport.value = value
+  if (value) {
+    selectedReport.value = null
+    selectedReportIndex.value = null
+  }
+}
+
+const cancelReport = () => {
+  isAddingReport.value = false
+  errorMessage.value = ''
+}
+
+const saveReport = () => {
+  if (!canEdit.value) return
+  reportFormSubmitted.value = true
+  if (!newReportDetails.value || !newReportDetails.value.trim()) {
+    errorMessage.value = 'Report details cannot be empty.'
+    return
+  }
+  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
+  const newReport = {
+    date: currentDateTime,
+    details: newReportDetails.value,
+  }
+  item.value.reports = item.value.reports || []
+  item.value.reports.unshift(newReport)
+  saveItem()
+  isAddingReport.value = false
+  newReportDetails.value = ''
+  errorMessage.value = ''
+}
+
+const selectReport = (report, index) => {
+  selectedReport.value = { ...report }
+  selectedReportIndex.value = index
+  isAddingReport.value = false
+}
+
+const cancelEditReport = () => {
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  errorMessage.value = ''
+}
+
+const saveEditedReport = () => {
+  if (!canEdit.value) return
+  if (
+    !selectedReport.value ||
+    !selectedReport.value.details ||
+    !selectedReport.value.details.trim()
+  ) {
+    errorMessage.value = 'Report details cannot be empty.'
+    return
+  }
+  if (
+    selectedReportIndex.value !== null &&
+    item.value.reports &&
+    item.value.reports.length > selectedReportIndex.value
+  ) {
+    item.value.reports[selectedReportIndex.value] = {
+      ...selectedReport.value,
+      date: item.value.reports[selectedReportIndex.value].date,
+    }
+    saveItem()
+  }
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  errorMessage.value = ''
+}
+
+const deleteReportFromBox = (report, index) => {
+  if (!canEdit.value) return
+  if (item.value.reports && item.value.reports.length > index) {
+    item.value.reports.splice(index, 1)
+    saveItem()
+  }
+  errorMessage.value = ''
+}
+
+const truncateText = (text) => {
+  if (!text) return ''
+  return text.length > 30 ? text.substring(0, 30) + '...' : text
+}
+
+const openShareDialog = () => {
+  if (!canShare.value) return
+  showShareDialog.value = true
+  searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
+  filteredUsers.value = []
+  newSharedUsers.value = []
+  isLoadingUsers.value = true
+  const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  availableUsers.value = Array.isArray(users) ? users : []
+  isLoadingUsers.value = false
+}
+
+const closeShareDialog = () => {
+  showShareDialog.value = false
+  searchUsername.value = ''
+  selectedRole.value = 'observer'
+  usernameError.value = false
+  filteredUsers.value = []
+  newSharedUsers.value = []
+  isLoadingUsers.value = false
+}
+
+const searchUsers = () => {
+  if (!Array.isArray(availableUsers.value)) {
+    filteredUsers.value = []
+    usernameError.value = true
+    return
+  }
+  if (!searchUsername.value) {
+    filteredUsers.value = []
+    usernameError.value = false
+    return
+  }
+  filteredUsers.value = availableUsers.value.filter(
+    (user) =>
+      user.username &&
+      user.username.toLowerCase().includes(searchUsername.value.toLowerCase()) &&
+      user.username !== currentUser.value &&
+      !item.value.shareWith.some((share) => share.username === user.username) &&
+      !newSharedUsers.value.some((share) => share.username === user.username),
+  )
+  usernameError.value = !isValidUsername.value && !!searchUsername.value
+}
+
+const selectUser = (user) => {
+  newSharedUsers.value.push({ username: user.username, role: selectedRole.value })
+  searchUsername.value = ''
+  filteredUsers.value = []
+  usernameError.value = false
+}
+
+const addSharedUser = () => {
+  if (!canShare.value || !searchUsername.value || usernameError.value || !isValidUsername.value)
+    return
+  const userExists =
+    item.value.shareWith.some((share) => share.username === searchUsername.value) ||
+    newSharedUsers.value.some((share) => share.username === searchUsername.value)
+  if (userExists) {
+    errorMessage.value = 'This user is already shared with this item.'
+    return
+  }
+  newSharedUsers.value.push({ username: searchUsername.value, role: selectedRole.value })
+  searchUsername.value = ''
+  filteredUsers.value = []
+  usernameError.value = false
+}
+
+const removeSharedUser = (index) => {
+  if (!canShare.value) return
+  if (index < item.value.shareWith.length && item.value.shareWith[index].role !== 'owner') {
+    const removedUser = item.value.shareWith[index]
+    const isPending = removedUser.status === 'pending'
+    const removedUsername = removedUser.username
+    item.value.shareWith.splice(index, 1)
+    updateSubitemsShareWith(item.value, item.value.shareWith)
+    saveItem()
+
+    // Handle item and invitation removal based on whether it's a parent item
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${removedUsername}`) || '[]')
+    const isParentItem = !item.value.parentId
+    const deleteRecursive = (items, itemId) => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === itemId) {
+          items.splice(i, 1)
+          return true
+        }
+        if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+          return true
+        }
+      }
+      return false
+    }
+    if (isParentItem) {
+      // If it's a parent item, remove it entirely from user's storage
+      const newUserItems = userItems.filter(i => i.id !== item.value.id)
+      localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(newUserItems))
+      // Remove pending invitations for parent item
+      const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]')
+      const newInvitations = invitations.filter(inv => inv.itemId !== item.value.id)
+      localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
+    } else if (!isPending) {
+      // If it's a subitem and not pending, remove it from the parent's subitems
+      for (let i = 0; i < userItems.length; i++) {
+        if (deleteRecursive(userItems[i].subitems || [], item.value.id)) {
+          localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(userItems))
+          break
+        }
+      }
+    }
+    // If it's a subitem and pending, leave the invitation intact
+  } else if (index >= item.value.shareWith.length) {
+    newSharedUsers.value.splice(index - item.value.shareWith.length, 1)
+  }
+  searchUsers()
+}
+
+const saveSharedUsers = () => {
+  if (!canShare.value) return
+  newSharedUsers.value.forEach((share) => {
+    item.value.shareWith.push({ username: share.username, role: share.role, status: 'pending' })
+    const invitations = JSON.parse(
+      localStorage.getItem(`kanbanInvitations_${share.username}`) || '[]',
+    )
+    invitations.push({
+      itemId: item.value.id,
+      username: share.username,
+      role: share.role,
+      status: 'pending',
+      invitedAt: Date.now(),
+      invitedBy: currentUser.value,
+    })
+    localStorage.setItem(`kanbanInvitations_${share.username}`, JSON.stringify(invitations))
+  })
+  updateSubitemsShareWith(item.value, item.value.shareWith)
+  saveItem()
+  closeShareDialog()
+}
+
+const openAssignDialog = () => {
+  if (!canAssign.value) return
+  showAssignDialog.value = true
+  searchAssignUsername.value = ''
+  filteredAssignUsers.value = []
+}
+
+const closeAssignDialog = () => {
+  showAssignDialog.value = false
+  searchAssignUsername.value = ''
+  filteredAssignUsers.value = []
+}
+
+const searchAssignUsers = () => {
+  if (!Array.isArray(availableUsers.value)) {
+    filteredAssignUsers.value = []
+    return
+  }
+  if (!searchAssignUsername.value) {
+    filteredAssignUsers.value = item.value.shareWith
+      .filter(
+        (share) =>
+          share.username !== currentUser.value && (!share.status || share.status !== 'pending'),
+      )
+      .map((share) => ({ username: share.username, role: share.role }))
+    return
+  }
+  filteredAssignUsers.value = item.value.shareWith
+    .filter(
+      (share) =>
+        share.username !== currentUser.value &&
+        (!share.status || share.status !== 'pending') &&
+        share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
+    )
+    .map((share) => ({ username: share.username, role: share.role }))
+}
+
+const selectAssignee = (user) => {
+  if (!canAssign.value) return
+  item.value.assignedTo = { username: user.username, role: user.role }
+  saveItem()
+  closeAssignDialog()
+}
+
+const removeAssignment = () => {
+  if (!canAssign.value) return
+  item.value.assignedTo = null
+  saveItem()
+}
+
+const openProfile = () => {
+  router.push('/profile')
+}
+
+const logout = () => {
+  localStorage.removeItem('authToken')
+  localStorage.removeItem('userProfile')
+  router.push('/login')
+}
+
+const sortedSubitems = (status) => {
+  if (!item.value?.subitems) return []
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'in progress',
+    Done: 'done',
+  }
+  const normalizedStatus = statusMap[status] || status.toLowerCase()
+  const filtered = item.value.subitems.filter(
+    (sub) => sub.status?.toLowerCase() === normalizedStatus,
+  )
+  if (status === 'done') {
+    return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
+  }
+  if (sortByPriority.value) {
+    return filtered.sort((a, b) => {
+      const priorityMap = { High: 3, Medium: 2, Low: 1, '': 0 }
+      return (priorityMap[b.priority] || 0) - (priorityMap[a.priority] || 0)
+    })
+  }
+  return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+}
+
+const sortSubitems = () => {
+  if (!canEdit.value) return
+  item.value.subitems = [
+    ...sortedSubitems('backlog'),
+    ...sortedSubitems('in progress'),
+    ...sortedSubitems('done'),
+  ]
+  saveItem()
+}
+</script>
+
+<style scoped>
+.divider-col {
+  border-left: 1px solid #ccc;
+  padding-left: 8px;
+}
+.equal-height-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+.column-box {
+  height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+}
+.resizable-note {
+  width: 100%;
+  min-height: 100px;
+  max-height: 300px;
+  resize: vertical;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+.custom-textarea {
+  width: 100%;
+  min-height: 100px;
+  max-height: 300px;
+  resize: vertical;
+  border: 1px solid #ccc;
+  padding: 8px;
+  font-family: inherit;
+}
+.reports-box {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.single-line {
+  display: inline-block;
+  max-width: 80%;
+}
+.subitem-form {
+  padding: 10px;
+  border-radius: 4px;
+}
+.user-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.user-item:hover {
+  background-color: #f0f0f0;
+}
+</style>
+
+
+کد فعلی home:
 <template>
   <q-page class="q-pa-md">
     <!-- Top bar -->
@@ -38,6 +1699,38 @@ homepage:
       {{ errorMessage }}
     </q-banner>
 
+    <!-- Messages Banner -->
+    <q-banner
+      v-if="messages.length"
+      dense
+      class="bg-blue-9 text-white q-mb-md"
+      style="width: 50%;"
+      aria-live="polite"
+      role="alert"
+    >
+      <div>Messages ({{ messages.length }})</div>
+      <q-list dense>
+        <q-item
+          v-for="(message, index) in messages"
+          :key="index"
+          class="q-py-xs"
+        >
+          <q-item-section>{{ message.text }}</q-item-section>
+          <q-item-section side>
+            <q-btn
+              flat
+              round
+              icon="delete"
+              color="white"
+              size="sm"
+              @click="deleteMessage(index)"
+              aria-label="Delete message"
+            />
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-banner>
+
     <!-- Main layout -->
     <div class="row" style="height: calc(100vh - 120px)">
       <!-- Main content area -->
@@ -53,7 +1746,7 @@ homepage:
               v-for="item in sortedItems('backlog')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -68,7 +1761,7 @@ homepage:
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -80,7 +1773,7 @@ homepage:
               v-for="item in sortedItems('In Progress')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -95,7 +1788,7 @@ homepage:
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -107,7 +1800,7 @@ homepage:
               v-for="item in sortedItems('done')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -122,7 +1815,7 @@ homepage:
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -325,7 +2018,7 @@ homepage:
                 <q-input v-model="share.username" label="Username" dense class="col q-mr-sm" />
                 <q-select
                   v-model="share.role"
-                  :options="['admin', 'observer']"
+                  :options="['owner', 'admin', 'observer']"
                   label="Role"
                   dense
                   class="col"
@@ -345,31 +2038,6 @@ homepage:
                 size="sm"
                 color="secondary"
                 @click="itemForm.shareWith.push({ username: '', role: 'observer' })"
-              />
-            </div>
-            <div class="q-mt-sm">
-              <div class="text-subtitle2">Backlog</div>
-              <div
-                v-for="(b, index) in itemForm.backlog"
-                :key="index"
-                class="row items-center q-mb-xs"
-              >
-                <q-input v-model="itemForm.backlog[index]" dense class="col" />
-                <q-btn
-                  flat
-                  round
-                  icon="remove"
-                  color="negative"
-                  size="sm"
-                  @click="itemForm.backlog.splice(index, 1)"
-                />
-              </div>
-              <q-btn
-                flat
-                icon="add"
-                size="sm"
-                color="secondary"
-                @click="itemForm.backlog.push('')"
               />
             </div>
             <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
@@ -437,6 +2105,7 @@ const formSubmitted = ref(false)
 const errorMessage = ref('')
 const pendingInvitations = ref([])
 const showInvitationsDialog = ref(false)
+const messages = ref([])
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -448,7 +2117,6 @@ const itemForm = ref({
   category: [],
   subitems: [],
   shareWith: [],
-  backlog: [],
   priority: '',
   status: '',
 })
@@ -461,18 +2129,28 @@ onMounted(() => {
     console.log('User not authenticated, redirecting to login')
     router.push('/login')
   }
+  loadItems()
+  loadInvitations()
+  loadMessages()
+})
+
+const loadItems = () => {
   const savedItems = localStorage.getItem(`kanbanItems_${currentUser.value}`)
   if (savedItems) {
     items.value = JSON.parse(savedItems)
   }
-  loadInvitations()
-})
+}
 
 const loadInvitations = () => {
   const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
   pendingInvitations.value = invitations.filter(
     inv => inv.username === currentUser.value && inv.status === 'pending'
   )
+}
+
+const loadMessages = () => {
+  const savedMessages = JSON.parse(localStorage.getItem(`kanbanMessages_${currentUser.value}`) || '[]')
+  messages.value = savedMessages
 }
 
 const saveItems = () => {
@@ -483,8 +2161,17 @@ const saveInvitations = (invitations, username) => {
   localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(invitations))
 }
 
-const isCreator = (item) => {
-  return item.creator === currentUser.value
+const saveMessages = () => {
+  localStorage.setItem(`kanbanMessages_${currentUser.value}`, JSON.stringify(messages.value))
+}
+
+const canEdit = (item) => {
+  return (
+    item.creator === currentUser.value ||
+    item.shareWith?.some(
+      (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner')
+    )
+  )
 }
 
 const acceptInvitation = (invitation) => {
@@ -499,21 +2186,31 @@ const acceptInvitation = (invitation) => {
     const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
     const sharedItem = findItemById(creatorItems, invitation.itemId)
     if (sharedItem) {
+      // Update shareWith in creator's item to remove pending status
+      const creatorShareIndex = sharedItem.shareWith.findIndex(s => s.username === currentUser.value)
+      if (creatorShareIndex !== -1) {
+        sharedItem.shareWith[creatorShareIndex] = {
+          username: currentUser.value,
+          role: invitation.role
+        }
+        updateItemInUserStorage(sharedItem, invitation.invitedBy)
+        // Propagate to subitems
+        updateSubitemsShareWith(sharedItem, sharedItem.shareWith)
+      }
+
+      // Add item to user's items
       const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
       const itemCopy = JSON.parse(JSON.stringify(sharedItem))
-      itemCopy.shareWith = itemCopy.shareWith || []
-      if (!itemCopy.shareWith.some(u => u.username === currentUser.value)) {
-        itemCopy.shareWith.push({ username: currentUser.value, role: invitation.role })
-      }
-      // Copy shareWith to subitems
-      if (itemCopy.subitems) {
-        itemCopy.subitems.forEach(subitem => {
-          subitem.shareWith = [...itemCopy.shareWith]
-        })
-      }
+      itemCopy.shareWith = itemCopy.shareWith.map(s => ({
+        username: s.username,
+        role: s.role
+      }))
       userItems.push(itemCopy)
       localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
       items.value = userItems
+
+      // Update other shared users
+      updateSharedItems(sharedItem, invitation.invitedBy)
     }
     loadInvitations()
   }
@@ -525,10 +2222,34 @@ const rejectInvitation = (invitation) => {
     inv => inv.itemId === invitation.itemId && inv.username === invitation.username
   )
   if (index !== -1) {
-    invitations[index].status = 'rejected'
+    invitations.splice(index, 1)
     saveInvitations(invitations, currentUser.value)
+
+    // Remove from creator's shareWith
+    const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
+    const sharedItem = findItemById(creatorItems, invitation.itemId)
+    if (sharedItem) {
+      sharedItem.shareWith = sharedItem.shareWith.filter(s => s.username !== currentUser.value)
+      updateSubitemsShareWith(sharedItem, sharedItem.shareWith)
+      updateItemInUserStorage(sharedItem, invitation.invitedBy)
+      updateSharedItems(sharedItem, invitation.invitedBy)
+    }
+
+    // Add rejection message for the inviter
+    const inviterMessages = JSON.parse(localStorage.getItem(`kanbanMessages_${invitation.invitedBy}`) || '[]')
+    const itemName = sharedItem ? `${sharedItem.type}: ${sharedItem.title}` : 'Unknown Item'
+    inviterMessages.push({
+      text: `${currentUser.value} rejected invite for ${itemName}`,
+      timestamp: Date.now()
+    })
+    localStorage.setItem(`kanbanMessages_${invitation.invitedBy}`, JSON.stringify(inviterMessages))
     loadInvitations()
   }
+}
+
+const deleteMessage = (index) => {
+  messages.value.splice(index, 1)
+  saveMessages()
 }
 
 const findItemById = (items, id) => {
@@ -540,6 +2261,33 @@ const findItemById = (items, id) => {
     }
   }
   return null
+}
+
+const updateItemInUserStorage = (updatedItem, username) => {
+  const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
+  }
+  updateItem(userItems, updatedItem)
+  localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+}
+
+const updateSubitemsShareWith = (item, shareWith) => {
+  if (item.subitems) {
+    item.subitems.forEach(subitem => {
+      subitem.shareWith = [...shareWith]
+      updateSubitemsShareWith(subitem, shareWith)
+    })
+  }
 }
 
 const getItemTitle = (itemId) => {
@@ -601,17 +2349,19 @@ const addItem = () => {
       priority: subitem.priority || 'Low',
       parentId: parentId,
       category: [],
-      shareWith: [...itemForm.value.shareWith],
-      backlog: [],
+      shareWith: [{ username: currentUser.value, role: 'owner' }, ...itemForm.value.shareWith],
       movedToDoneAt: null,
       creator: currentUser.value,
       assignedTo: null,
+      note: '',
+      reports: []
     })),
     shareWith: [{ username: currentUser.value, role: 'owner' }, ...itemForm.value.shareWith],
-    backlog: itemForm.value.backlog,
     movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null,
     creator: currentUser.value,
     assignedTo: null,
+    note: '',
+    reports: []
   }
   items.value.push(newItem)
 
@@ -654,13 +2404,28 @@ function resetForm(form) {
 
 const deleteItem = (id) => {
   const item = findItemById(items.value, id)
-  if (!isCreator(item)) {
-    errorMessage.value = 'Only the owner can delete this item.'
+  if (!canEdit(item)) {
+    errorMessage.value = 'Only the owner or admin can delete this item.'
     return
   }
-  items.value = items.value.filter(
-    (item) => item.id !== id && (!item.subitems || item.subitems.every((s) => s.id !== id)),
-  )
+
+  // Remove item from all shared users
+  const shareUsernames = item.shareWith
+    .filter(share => share.username !== currentUser.value)
+    .map(share => share.username)
+  shareUsernames.forEach(username => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const newUserItems = userItems.filter(i => i.id !== id)
+    localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
+
+    // Remove invitations
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
+    const newInvitations = invitations.filter(inv => inv.itemId !== id)
+    localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
+  })
+
+  // Remove item from current user's items
+  items.value = items.value.filter(i => i.id !== id)
   saveItems()
 }
 
@@ -671,13 +2436,13 @@ function openProfile() {
 
 const draggedItem = ref(null)
 const startDrag = (item) => {
-  if (isCreator(item)) {
+  if (canEdit(item)) {
     draggedItem.value = item
   }
 }
 
 const handleDrop = (newStatus) => {
-  if (!draggedItem.value || !isCreator(draggedItem.value)) return
+  if (!draggedItem.value || !canEdit(draggedItem.value)) return
   if (newStatus === 'done') {
     const allSubitemsDone =
       !draggedItem.value.subitems ||
@@ -689,10 +2454,26 @@ const handleDrop = (newStatus) => {
     draggedItem.value.movedToDoneAt = Date.now()
   }
   draggedItem.value.status = newStatus
+  updateSharedItems(draggedItem.value, currentUser.value)
   items.value = [...items.value]
   saveItems()
   errorMessage.value = ''
   draggedItem.value = null
+}
+
+const updateSharedItems = (updatedItem, sourceUser) => {
+  const shareUsernames = updatedItem.shareWith
+    .filter(share => share.username !== sourceUser && (!share.status || share.status !== 'pending'))
+    .map(share => share.username)
+  shareUsernames.forEach(username => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const targetItem = findItemById(userItems, updatedItem.id)
+    if (targetItem) {
+      Object.assign(targetItem, JSON.parse(JSON.stringify(updatedItem)))
+      updateSubitemsShareWith(targetItem, updatedItem.shareWith)
+      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+    }
+  })
 }
 
 const completionPercent = computed(() => {
@@ -749,800 +2530,18 @@ watch(
     loadInvitations()
   },
 )
+
+watch(
+  () => localStorage.getItem(`kanbanMessages_${currentUser.value}`),
+  () => {
+    loadMessages()
+  },
+)
 </script>
 
 <style scoped>
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;
-}
-</style>
-
-
-profile:
-<template>
-  <q-page class="q-pa-md flex flex-center">
-    <q-card class="q-pa-lg shadow-2 constrained-card">
-      <!-- Fixed Profile Section -->
-      <q-card-section class="fixed-section">
-        <!-- API error banner -->
-        <q-banner
-          v-if="apiError"
-          dense
-          class="bg-negative text-white q-mb-md"
-          aria-live="polite"
-          role="alert"
-        >
-          {{ apiError }}
-        </q-banner>
-
-        <!-- Success banner -->
-        <q-banner
-          v-if="successMessage"
-          dense
-          class="bg-positive text-white q-mb-md"
-          aria-live="polite"
-          role="alert"
-        >
-          {{ successMessage }}
-        </q-banner>
-
-        <!-- Profile Picture -->
-        <div class="flex flex-center q-mb-md">
-          <q-avatar size="80px" aria-label="Profile picture">
-            <template v-if="profile.picture">
-              <img :src="profile.picture" alt="User profile picture" />
-            </template>
-            <template v-else>
-              <q-icon name="account_box" size="80px" color="primary" />
-            </template>
-          </q-avatar>
-        </div>
-
-        <!-- Picture Buttons (edit mode) -->
-        <div v-if="editMode" class="flex flex-center q-mb-md q-gutter-sm">
-          <q-btn
-            dense
-            flat
-            icon="photo_camera"
-            label="Change Picture"
-            @click="triggerFileInput"
-            aria-label="Change profile picture"
-          />
-          <q-btn
-            dense
-            flat
-            icon="delete"
-            label="Remove Picture"
-            @click="removePicture"
-            color="negative"
-            aria-label="Remove profile picture"
-          />
-          <input
-            ref="fileInput"
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="onFileChange"
-            aria-label="Upload profile picture"
-          />
-        </div>
-      </q-card-section>
-
-      <!-- Scrollable Input Section -->
-      <q-card-section class="scrollable-section">
-        <q-form @submit.prevent="saveProfile">
-          <!-- Username input -->
-          <q-input
-            filled
-            v-model="profile.username"
-            label="Username"
-            dense
-            class="uniform-input"
-            :readonly="!editMode"
-            :error="usernameError"
-            error-message="Username is required or already taken"
-            @input="clearUsernameError"
-            autofocus
-            aria-label="Enter your username"
-            no-error-icon
-          />
-
-          <!-- First Name input -->
-          <q-input
-            filled
-            v-model="profile.firstName"
-            label="First Name"
-            dense
-            class="uniform-input"
-            :readonly="!editMode"
-            :error="false"
-            aria-label="Enter your first name"
-            no-error-icon
-          />
-
-          <!-- Last Name input -->
-          <q-input
-            filled
-            v-model="profile.lastName"
-            label="Last Name"
-            dense
-            class="uniform-input"
-            :readonly="!editMode"
-            :error="false"
-            aria-label="Enter your last name"
-            no-error-icon
-          />
-
-          <!-- Date of Birth input -->
-          <q-input
-            filled
-            v-model="profile.dob"
-            label="Date of Birth"
-            dense
-            class="uniform-input"
-            mask="####-##-##"
-            :readonly="!editMode"
-            :error="!!dobError"
-            :error-message="dobError"
-            @input="validateDob"
-            aria-label="Enter your date of birth"
-            no-error-icon
-          >
-            <template v-slot:append>
-              <q-icon
-                name="event"
-                class="cursor-pointer"
-                v-if="editMode"
-                @click="showDatePicker = true"
-                aria-label="Open date picker"
-              />
-            </template>
-            <template v-slot:bottom v-if="editMode">
-              <div class="text-caption">Format: YYYY-MM-DD</div>
-            </template>
-            <q-popup-proxy
-              v-if="editMode"
-              v-model="showDatePicker"
-              transition-show="scale"
-              transition-hide="scale"
-              anchor="bottom middle"
-              self="top middle"
-            >
-              <q-date
-                v-model="profile.dob"
-                mask="YYYY-MM-DD"
-                @update:model-value="validateDob"
-              />
-            </q-popup-proxy>
-          </q-input>
-
-          <!-- Email input -->
-          <q-input
-            filled
-            v-model="profile.email"
-            label="Email"
-            type="email"
-            dense
-            class="uniform-input"
-            :readonly="!editMode"
-            :error="emailError"
-            :error-message="emailErrorMessage"
-            @input="clearEmailError"
-            aria-label="Enter your email"
-            no-error-icon
-          />
-
-          <!-- Job input -->
-          <q-input
-            filled
-            v-model="profile.job"
-            label="Job"
-            dense
-            class="uniform-input"
-            :readonly="!editMode"
-            :error="false"
-            aria-label="Enter your job title"
-            no-error-icon
-          />
-
-          <!-- Bio input -->
-          <q-input
-            filled
-            v-model="profile.bio"
-            label="Bio"
-            type="textarea"
-            dense
-            class="uniform-input"
-            autogrow
-            :readonly="!editMode"
-            :error="false"
-            aria-label="Enter your bio"
-            no-error-icon
-          />
-
-          <!-- Change Password Section (visible in edit mode) -->
-          <q-expansion-item
-            v-if="editMode"
-            label="Change Password"
-            icon="lock"
-            dense
-            class="q-mt-md"
-            expand-icon="chevron_right"
-            expanded-icon="chevron_down"
-          >
-            <q-card>
-              <q-card-section>
-                <q-input
-                  filled
-                  v-model="password.new"
-                  :type="showPassword ? 'text' : 'password'"
-                  label="New Password"
-                  dense
-                  class="uniform-input"
-                  :error="passwordError"
-                  :error-message="passwordErrorMessage"
-                  @input="clearPasswordError"
-                  aria-label="Enter new password"
-                  no-error-icon
-                >
-                  <template v-slot:append>
-                    <q-icon
-                      :name="showPassword ? 'visibility_off' : 'visibility'"
-                      class="cursor-pointer"
-                      @click="showPassword = !showPassword"
-                      aria-label="Toggle password visibility"
-                    />
-                  </template>
-                </q-input>
-                <q-input
-                  filled
-                  v-model="password.confirm"
-                  :type="showPassword ? 'text' : 'password'"
-                  label="Confirm New Password"
-                  dense
-                  class="uniform-input"
-                  :error="confirmPasswordError"
-                  error-message="Passwords do not match"
-                  @input="clearConfirmPasswordError"
-                  aria-label="Confirm new password"
-                  no-error-icon
-                >
-                  <template v-slot:append>
-                    <q-icon
-                      :name="showPassword ? 'visibility_off' : 'visibility'"
-                      class="cursor-pointer"
-                      @click="showPassword = !showPassword"
-                      aria-label="Toggle password visibility"
-                    />
-                  </template>
-                </q-input>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
-
-          <!-- Buttons -->
-          <q-btn
-            v-if="!editMode"
-            label="Edit Profile"
-            color="primary"
-            class="full-width q-mt-md"
-            @click="editMode = true"
-            aria-label="Edit profile"
-          />
-          <div v-else class="row q-col-gutter-sm q-mt-md">
-            <q-btn
-              label="Save"
-              color="primary"
-              class="col"
-              :loading="isLoading"
-              type="submit"
-              aria-label="Save profile changes"
-            />
-            <q-btn
-              label="Cancel"
-              flat
-              color="primary"
-              class="col"
-              @click="cancelEdit"
-              aria-label="Cancel profile changes"
-            />
-            <q-btn
-              label="Delete Account"
-              flat
-              color="negative"
-              class="col"
-              @click="showDeleteDialog = true"
-              aria-label="Delete your account"
-            />
-          </div>
-        </q-form>
-
-        <q-separator class="q-my-md" />
-
-        <router-link
-          to="/home"
-          class="text-primary text-caption full-width text-center"
-          style="text-decoration: none; display: block;"
-          tabindex="0"
-          @click="goToHome"
-          aria-label="Navigate back to home page"
-        >
-          Back to Home
-        </router-link>
-      </q-card-section>
-    </q-card>
-
-    <!-- Delete Confirmation Dialog -->
-    <q-dialog v-model="showDeleteDialog" persistent>
-      <q-card>
-        <q-card-section class="row items-center">
-          <q-icon name="warning" color="negative" size="lg" class="q-mr-sm" />
-          <span class="text-h6">Confirm Account Deletion</span>
-        </q-card-section>
-        <q-card-section>
-          Are you sure you want to delete your account? This action will permanently remove all your data, including your profile and kanban items, and cannot be undone.
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" />
-          <q-btn
-            flat
-            label="Confirm"
-            color="negative"
-            @click="deleteAccount"
-            aria-label="Confirm account deletion"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-  </q-page>
-</template>
-
-<script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-
-// Profile data
-const profile = ref({
-  username: '',
-  firstName: '',
-  lastName: '',
-  dob: '',
-  email: '',
-  job: '',
-  bio: '',
-  picture: ''
-})
-
-// Password change data
-const password = ref({
-  new: '',
-  confirm: ''
-})
-
-const router = useRouter()
-const editMode = ref(false)
-const isLoading = ref(false)
-const showPassword = ref(false)
-const backupProfile = ref(null)
-const showDatePicker = ref(false)
-const showDeleteDialog = ref(false)
-const usernameTouched = ref(false)
-const emailTouched = ref(false)
-const passwordTouched = ref(false)
-const confirmTouched = ref(false)
-const dobError = ref('')
-const usernameError = ref(false)
-const emailError = ref(false)
-const passwordError = ref(false)
-const confirmPasswordError = ref(false)
-const apiError = ref('')
-const successMessage = ref('')
-
-// Original username and email for comparison
-const originalUsername = ref('')
-const originalEmail = ref('')
-
-// Email format validator
-const isEmailValid = computed(() => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(profile.value.email)
-})
-
-const emailErrorMessage = computed(() => {
-  if (emailTouched.value && profile.value.email === '') return 'Email is required'
-  if (emailTouched.value && !isEmailValid.value) return 'Invalid email format'
-  return ''
-})
-
-// Password validator
-const isPasswordValid = computed(() => {
-  return password.value.new.length >= 8
-})
-
-const passwordErrorMessage = computed(() => {
-  if (passwordTouched.value && password.value.new === '') return 'Password is required'
-  if (passwordTouched.value && !isPasswordValid.value) return 'Password must be at least 8 characters'
-  return ''
-})
-
-// Validate DOB
-const validateDob = () => {
-  const regex = /^\d{4}-\d{2}-\d{2}$/
-  if (!profile.value.dob) {
-    dobError.value = ''
-    return
-  }
-  if (!regex.test(profile.value.dob)) {
-    dobError.value = 'Please enter the date in format YYYY-MM-DD'
-    return
-  }
-  const date = new Date(profile.value.dob)
-  const today = new Date()
-  const minDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate())
-  const maxDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate())
-  if (isNaN(date.getTime())) {
-    dobError.value = 'Invalid date'
-  } else if (date > today) {
-    dobError.value = 'Date of birth cannot be in the future'
-  } else if (date > minDate) {
-    dobError.value = 'You must be at least 13 years old'
-  } else if (date < maxDate) {
-    dobError.value = 'Date of birth is too far in the past'
-  } else {
-    dobError.value = ''
-  }
-}
-
-// Save profile
-const saveProfile = () => {
-  console.log('saveProfile called')
-  usernameTouched.value = true
-  emailTouched.value = true
-  passwordTouched.value = !!password.value.new
-  confirmTouched.value = !!password.value.confirm
-  apiError.value = ''
-  successMessage.value = ''
-  isLoading.value = true
-
-  // Validate fields
-  validateDob()
-  usernameError.value = !profile.value.username
-  emailError.value = !profile.value.email || !isEmailValid.value
-  passwordError.value = passwordTouched.value && (!password.value.new || !isPasswordValid.value)
-  confirmPasswordError.value = confirmTouched.value && password.value.new !== password.value.confirm
-
-  console.log('Validation errors:', {
-    usernameError: usernameError.value,
-    emailError: emailError.value,
-    dobError: dobError.value,
-    passwordError: passwordError.value,
-    confirmPasswordError: confirmPasswordError.value
-  })
-
-  if (usernameError.value || emailError.value || dobError.value || passwordError.value || confirmPasswordError.value) {
-    isLoading.value = false
-    console.log('Validation failed, stopping save')
-    return
-  }
-
-  // Check uniqueness of username and email
-  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
-  if (profile.value.username !== originalUsername.value && kanbanUsers.some(user => user.username === profile.value.username)) {
-    apiError.value = 'Username already taken'
-    usernameError.value = true
-    isLoading.value = false
-    return
-  }
-  if (profile.value.email !== originalEmail.value && kanbanUsers.some(user => user.email === profile.value.email)) {
-    apiError.value = 'Email already taken'
-    isLoading.value = false
-    return
-  }
-
-  // Simulate backend API call
-  setTimeout(() => {
-    console.log('Simulating API call')
-    try {
-      // Preserve existing password if not changed
-      const existingUser = kanbanUsers.find(user => user.username === originalUsername.value)
-      const existingPassword = existingUser?.password
-
-      // Update kanbanUsers: Remove old user and add new one with all profile data
-      const updatedUsers = kanbanUsers.filter(user =>
-        user.username !== originalUsername.value || user.email !== originalEmail.value
-      )
-      updatedUsers.push({
-        username: profile.value.username,
-        email: profile.value.email,
-        firstName: profile.value.firstName,
-        lastName: profile.value.lastName,
-        dob: profile.value.dob,
-        job: profile.value.job,
-        bio: profile.value.bio,
-        picture: profile.value.picture,
-        password: password.value.new || existingPassword || ''
-      })
-      localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
-
-      // If username changed, transfer kanbanItems and kanbanInvitations to new username
-      if (profile.value.username !== originalUsername.value) {
-        const oldItems = JSON.parse(localStorage.getItem(`kanbanItems_${originalUsername.value}`) || '[]')
-        const oldInvitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${originalUsername.value}`) || '[]')
-
-        // Transfer items
-        if (oldItems.length > 0) {
-          localStorage.setItem(`kanbanItems_${profile.value.username}`, JSON.stringify(oldItems))
-          localStorage.removeItem(`kanbanItems_${originalUsername.value}`)
-        }
-
-        // Transfer invitations
-        if (oldInvitations.length > 0) {
-          localStorage.setItem(`kanbanInvitations_${profile.value.username}`, JSON.stringify(oldInvitations))
-          localStorage.removeItem(`kanbanInvitations_${originalUsername.value}`)
-        }
-
-        // Update creator and shareWith fields in items
-        const items = JSON.parse(localStorage.getItem(`kanbanItems_${profile.value.username}`) || '[]')
-        items.forEach(item => {
-          if (item.creator === originalUsername.value) {
-            item.creator = profile.value.username
-          }
-          if (item.shareWith) {
-            item.shareWith = item.shareWith.map(share => {
-              if (share.username === originalUsername.value) {
-                return { ...share, username: profile.value.username }
-              }
-              return share
-            })
-          }
-          if (item.subitems) {
-            item.subitems.forEach(subitem => {
-              if (subitem.creator === originalUsername.value) {
-                subitem.creator = profile.value.username
-              }
-              if (subitem.shareWith) {
-                subitem.shareWith = subitem.shareWith.map(share => {
-                  if (share.username === originalUsername.value) {
-                    return { ...share, username: profile.value.username }
-                  }
-                  return share
-                })
-              }
-            })
-          }
-        })
-        localStorage.setItem(`kanbanItems_${profile.value.username}`, JSON.stringify(items))
-      }
-
-      // Save updated profile
-      localStorage.setItem('userProfile', JSON.stringify(profile.value))
-      console.log('Profile saved to localStorage:', profile.value)
-      backupProfile.value = null
-      editMode.value = false
-      if (password.value.new) {
-        console.log('Password changed to:', password.value.new)
-        password.value.new = ''
-        password.value.confirm = ''
-        passwordTouched.value = false
-        confirmTouched.value = false
-      }
-      successMessage.value = 'Profile saved successfully'
-      console.log('Profile save successful')
-      // Update original values
-      originalUsername.value = profile.value.username
-      originalEmail.value = profile.value.email
-      setTimeout(() => {
-        successMessage.value = ''
-      }, 3000) // Clear success message after 3 seconds
-    } catch (e) {
-      apiError.value = 'Failed to save profile due to storage error'
-      console.error('Error saving to localStorage:', e)
-    }
-    isLoading.value = false
-    console.log('API simulation complete, isLoading set to false')
-  }, 1000)
-}
-
-// Cancel edit
-const cancelEdit = () => {
-  if (backupProfile.value) {
-    profile.value = { ...backupProfile.value }
-  }
-  password.value.new = ''
-  password.value.confirm = ''
-  usernameError.value = false
-  emailError.value = false
-  dobError.value = ''
-  passwordError.value = false
-  confirmPasswordError.value = false
-  usernameTouched.value = false
-  emailTouched.value = false
-  passwordTouched.value = false
-  confirmTouched.value = false
-  editMode.value = false
-  apiError.value = ''
-  successMessage.value = ''
-  console.log('Edit cancelled, state reset')
-}
-
-// Backup profile when entering edit mode
-watch(editMode, (newVal) => {
-  if (newVal) {
-    backupProfile.value = { ...profile.value }
-    console.log('Edit mode enabled, profile backed up')
-  }
-})
-
-// Picture upload logic
-const fileInput = ref(null)
-
-const triggerFileInput = () => {
-  if (editMode.value) {
-    fileInput.value.click()
-    console.log('File input triggered')
-  }
-}
-
-const onFileChange = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    if (!file.type.startsWith('image/')) {
-      apiError.value = 'Please upload an image file'
-      console.log('Invalid file type, cleared input')
-      fileInput.value.value = ''
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      apiError.value = 'Image size must be less than 5MB'
-      console.log('File too large, cleared input')
-      fileInput.value.value = ''
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      profile.value.picture = e.target.result
-      console.log('Image loaded successfully')
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const removePicture = () => {
-  if (editMode.value) {
-    profile.value.picture = ''
-    console.log('Profile picture removed')
-  }
-}
-
-// Clear error states
-const clearUsernameError = () => {
-  if (profile.value.username) usernameError.value = false
-}
-
-const clearEmailError = () => {
-  if (profile.value.email && isEmailValid.value) emailError.value = false
-}
-
-const clearPasswordError = () => {
-  if (password.value.new && isPasswordValid.value) passwordError.value = false
-}
-
-const clearConfirmPasswordError = () => {
-  if (password.value.new === password.value.confirm) confirmPasswordError.value = false
-}
-
-// Check authentication and load profile
-onMounted(() => {
-  const token = localStorage.getItem('authToken')
-  if (!token) {
-    apiError.value = 'User not authenticated, redirecting to login'
-    console.log('No auth token, redirecting to login')
-    setTimeout(() => {
-      router.push('/login')
-    }, 3000)
-  }
-  const savedProfile = localStorage.getItem('userProfile')
-  if (savedProfile) {
-    try {
-      profile.value = JSON.parse(savedProfile)
-      originalUsername.value = profile.value.username
-      originalEmail.value = profile.value.email
-      console.log('Profile loaded from localStorage:', profile.value)
-    } catch (e) {
-      apiError.value = 'Failed to load profile data'
-      console.error('Error loading profile from localStorage:', e)
-    }
-  }
-})
-
-// Delete account
-const deleteAccount = () => {
-  showDeleteDialog.value = false
-  try {
-    // Remove user from kanbanUsers
-    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
-    const updatedUsers = kanbanUsers.filter(user =>
-      user.username !== profile.value.username || user.email !== profile.value.email
-    )
-    localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
-
-    // Remove user-specific data
-    localStorage.removeItem(`kanbanItems_${profile.value.username}`)
-    localStorage.removeItem(`kanbanInvitations_${profile.value.username}`)
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userProfile')
-    successMessage.value = 'Account deleted successfully'
-    console.log('Account deleted successfully')
-    setTimeout(() => {
-      router.push('/login')
-    }, 3000)
-  } catch (e) {
-    apiError.value = 'Failed to delete account'
-    console.error('Error deleting account:', e)
-  }
-}
-
-// Navigate to home
-const goToHome = () => {
-  router.push('/home')
-  console.log('Navigating to home')
-}
-</script>
-
-<style scoped>
-.hidden {
-  display: none;
-}
-.constrained-card {
-  width: 400px;
-  max-width: 90vw;
-  max-height: calc(100vh - 32px);
-  display: flex;
-  flex-direction: column;
-}
-.fixed-section {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: white;
-  padding-bottom: 0;
-}
-.scrollable-section {
-  overflow-y: auto;
-  max-height: calc(100vh - 180px);
-  padding-right: 8px;
-}
-.uniform-input {
-  margin-bottom: 0px !important;
-}
-.uniform-input .q-field__control {
-  padding-bottom: 0 !important;
-  height: 40px !important;
-}
-.uniform-input .q-field__bottom {
-  padding-top: 4px !important;
-  min-height: 0 !important;
-  height: auto !important;
-}
-.uniform-input.q-field--readonly .q-field__control {
-  padding-bottom: 0 !important;
-  background: var(--q-filled-bg) !important;
-  opacity: 1 !important;
-  cursor: default !important;
-}
-.uniform-input:not(.q-field--error) .q-field__bottom {
-  display: none !important;
-}
-.uniform-input.q-field--error .q-field__bottom {
-  padding-top: 4px !important;
-}
-@media (max-height: 600px) {
-  .fixed-section {
-    padding: 8px;
-  }
-  .fixed-section .q-avatar {
-    size: 60px;
-  }
 }
 </style>

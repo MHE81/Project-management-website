@@ -705,6 +705,34 @@ const deleteAccount = () => {
     )
     localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
 
+    // Remove user from shared items and invitations
+    kanbanUsers.forEach(user => {
+      if (user.username !== profile.value.username) {
+        // Update shared items
+        const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${user.username}`) || '[]')
+        userItems.forEach(item => {
+          // Remove user from shareWith in parent items
+          if (item.shareWith) {
+            item.shareWith = item.shareWith.filter(share => share.username !== profile.value.username)
+          }
+          // Remove user from shareWith in subitems
+          if (item.subitems) {
+            item.subitems.forEach(subitem => {
+              if (subitem.shareWith) {
+                subitem.shareWith = subitem.shareWith.filter(share => share.username !== profile.value.username)
+              }
+            })
+          }
+        })
+        localStorage.setItem(`kanbanItems_${user.username}`, JSON.stringify(userItems))
+
+        // Remove invitations
+        const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${user.username}`) || '[]')
+        const updatedInvitations = invitations.filter(inv => inv.invitedBy !== profile.value.username)
+        localStorage.setItem(`kanbanInvitations_${user.username}`, JSON.stringify(updatedInvitations))
+      }
+    })
+
     // Remove user-specific data
     localStorage.removeItem(`kanbanItems_${profile.value.username}`)
     localStorage.removeItem(`kanbanInvitations_${profile.value.username}`)

@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto;">
+  <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
     <div v-if="!item && !errorMessage" class="text-center q-mt-lg">
       <q-spinner color="primary" size="3em" />
@@ -12,13 +12,21 @@
     <div v-if="item" class="text-subtitle1 q-mb-md text-center">
       Your Role: {{ currentUserRole }}
     </div>
-    <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">{{ errorMessage }} (ID: {{ route.params.id }})</div>
+    <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">
+      {{ errorMessage }} (ID: {{ route.params.id }})
+    </div>
 
     <!-- Top bar -->
     <div class="row justify-between items-center q-mb-md">
       <div class="text-h6">Date: {{ currentDate }}</div>
       <div class="q-gutter-sm">
-        <q-btn round color="primary" icon="account_circle" @click="openProfile" aria-label="Go to profile" />
+        <q-btn
+          round
+          color="primary"
+          icon="account_circle"
+          @click="openProfile"
+          aria-label="Go to profile"
+        />
         <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
       </div>
     </div>
@@ -47,7 +55,13 @@
         :disable="!canEdit"
       />
       <div class="row">
-        <q-btn label="Save Report" color="positive" @click="saveReport" class="q-mr-sm" :disable="!canEdit" />
+        <q-btn
+          label="Save Report"
+          color="positive"
+          @click="saveReport"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
         <q-btn label="Cancel" color="negative" flat @click="cancelReport" />
       </div>
     </div>
@@ -62,7 +76,13 @@
         :disabled="!canEdit"
       />
       <div class="row q-mt-sm">
-        <q-btn label="Save Report" color="positive" @click="saveEditedReport" class="q-mr-sm" :disable="!canEdit" />
+        <q-btn
+          label="Save Report"
+          color="positive"
+          @click="saveEditedReport"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
         <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" />
       </div>
     </div>
@@ -70,10 +90,19 @@
     <!-- Note Display -->
     <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
       <div class="text-subtitle1">Note:</div>
-      <div class="q-pa-sm bg-grey-2 rounded-borders resizable-note" v-html="item.note.replace(/\n/g, '<br>')"></div>
+      <div
+        class="q-pa-sm bg-grey-2 rounded-borders resizable-note"
+        v-html="item.note.replace(/\n/g, '<br>')"
+      ></div>
       <div class="row q-mt-sm">
-        <q-btn label="Edit Note" color="primary" @click="toggleNoteEdit(true)" class="q-mr-sm" :disable="!isOwner" />
-        <q-btn label="Delete Note" color="negative" flat @click="deleteNote" :disable="!isOwner" />
+        <q-btn
+          label="Edit Note"
+          color="primary"
+          @click="toggleNoteEdit(true)"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
+        <q-btn label="Delete Note" color="negative" flat @click="deleteNote" :disable="!canEdit" />
       </div>
     </div>
 
@@ -84,14 +113,27 @@
         v-model="item.note"
         placeholder="Enter your note here..."
         class="resizable-note custom-textarea"
-        :disabled="!isOwner"
+        :disabled="!canEdit"
       />
       <div class="row q-mt-sm">
-        <q-btn label="Save Note" color="positive" @click="saveNote" class="q-mr-sm" :disable="!isOwner" />
+        <q-btn
+          label="Save Note"
+          color="positive"
+          @click="saveNote"
+          class="q-mr-sm"
+          :disable="!canEdit"
+        />
         <q-btn label="Cancel" color="negative" flat @click="cancelNoteEdit" />
       </div>
     </div>
-    <q-btn v-if="item && !item.note && !isEditingNote" label="Add Note" color="secondary" @click="toggleNoteEdit(true)" class="q-mb-md" :disable="!isOwner" />
+    <q-btn
+      v-if="item && !item.note && !isEditingNote"
+      label="Add Note"
+      color="secondary"
+      @click="toggleNoteEdit(true)"
+      class="q-mb-md"
+      :disable="!canEdit"
+    />
 
     <!-- Parent Chain Info -->
     <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
@@ -106,22 +148,76 @@
     <!-- Main layout -->
     <div v-if="item" class="row equal-height-row">
       <!-- Left Side Box (Item Details) -->
-      <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-right: 10px;">
-        <div class="bg-white" style="padding: 15px;">
+      <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-right: 10px">
+        <div class="bg-white" style="padding: 15px">
           <div class="text-subtitle2 q-mb-xs">Details</div>
           <div>Type: {{ item.type || 'N/A' }}</div>
-          <q-input v-model="item.title" label="Title" dense :error="!item.title && formSubmitted" :disable="!isEditing || !isOwner" error-message="Title is required" class="q-mt-md" />
-          <q-input v-model="item.deadline" label="Deadline" dense type="datetime-local" :disable="!isEditing || !isOwner" :max="directParent?.deadline || undefined" class="q-mt-md" />
-          <q-select v-model="item.status" :options="statusOptions" label="Status" dense :disable="!isEditing || !isOwner" class="q-mt-md" />
-          <q-select v-model="item.priority" :options="['Low', 'Medium', 'High']" label="Priority" dense :disable="!isEditing || !isOwner" class="q-mt-md" />
-          <q-select v-model="item.category" :options="categoryOptions" use-input use-chips label="Category" multiple dense :disable="!isEditing || !isOwner" class="q-mt-md" />
-          <q-btn v-if="!isEditing" label="Edit" color="primary" class="full-width q-mt-md" @click="toggleEdit(true)" :disable="!isOwner" />
-          <q-btn v-else label="Save" color="positive" class="full-width q-mt-md" @click="saveDetails" :disable="!isOwner" />
+          <q-input
+            v-model="item.title"
+            label="Title"
+            dense
+            :error="!item.title && formSubmitted"
+            :disable="!isEditing || !canEdit"
+            error-message="Title is required"
+            class="q-mt-md"
+          />
+          <q-input
+            v-model="item.deadline"
+            label="Deadline"
+            dense
+            type="datetime-local"
+            :disable="!isEditing || !canEdit"
+            :max="directParent?.deadline || undefined"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.status"
+            :options="statusOptions"
+            label="Status"
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.priority"
+            :options="['Low', 'Medium', 'High']"
+            label="Priority"
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-select
+            v-model="item.category"
+            :options="categoryOptions"
+            use-input
+            use-chips
+            label="Category"
+            multiple
+            dense
+            :disable="!isEditing || !canEdit"
+            class="q-mt-md"
+          />
+          <q-btn
+            v-if="!isEditing"
+            label="Edit"
+            color="primary"
+            class="full-width q-mt-md"
+            @click="toggleEdit(true)"
+            :disable="!canEdit"
+          />
+          <q-btn
+            v-else
+            label="Save"
+            color="positive"
+            class="full-width q-mt-md"
+            @click="saveDetails"
+            :disable="!canEdit"
+          />
         </div>
       </div>
 
       <!-- Main Content Area (Subitems Kanban) -->
-      <div class="col-7 bg-grey-2 rounded-borders q-pa-md column-box" style="overflow-y: auto;">
+      <div class="col-7 bg-grey-2 rounded-borders q-pa-md column-box" style="overflow-y: auto">
         <q-toggle
           v-model="sortByPriority"
           label="Sort by"
@@ -132,7 +228,7 @@
           class="q-mb-md"
           @update:model-value="sortSubitems"
         />
-        <div class="row" style="flex-wrap: nowrap; height: 100%;">
+        <div class="row" style="flex-wrap: nowrap; height: 100%">
           <!-- Backlog Column -->
           <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
             <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
@@ -145,15 +241,32 @@
               @click="viewItem(subitem.id)"
             >
               <div>
-                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
                 <div v-if="subitem.assignedTo" class="text-caption">
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
                 </div>
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
             </div>
           </div>
 
@@ -169,15 +282,32 @@
               @click="viewItem(subitem.id)"
             >
               <div>
-                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
                 <div v-if="subitem.assignedTo" class="text-caption">
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
                 </div>
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
             </div>
           </div>
 
@@ -193,31 +323,61 @@
               @click="viewItem(subitem.id)"
             >
               <div>
-                <strong>{{ subitem.type }}</strong>: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
+                <strong>{{ subitem.type }}</strong
+                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
                 <div v-if="subitem.assignedTo" class="text-caption">
                   Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared: {{ subitem.shareWith.map(s => `${s.username} (${s.role})`).join(', ') }}
+                  Shared:
+                  {{
+                    subitem.shareWith
+                      .map(
+                        (s) =>
+                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                      )
+                      .join(', ')
+                  }}
                 </div>
               </div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteItem(subitem.id)" :disable="!canEdit" />
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteItem(subitem.id)"
+                :disable="!canAddSubitems"
+              />
             </div>
           </div>
         </div>
       </div>
 
       <!-- Right Side Box -->
-      <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto;">
+      <div
+        class="col-2 bg-grey-2 rounded-borders q-pa-md column-box"
+        style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto"
+      >
         <!-- Shared With Section -->
         <div v-if="item" class="q-mb-md">
           <div class="text-subtitle1">Shared With:</div>
           <div class="q-pa-sm bg-grey-2 rounded-borders">
-            <div v-if="item.shareWith && item.shareWith.length" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
-              <div v-for="(share, index) in item.shareWith" :key="index" class="row items-center q-mb-xs">
-                {{ share.username }} <span class="text-weight-bold">({{ share.role }})</span>
+            <div
+              v-if="item.shareWith && item.shareWith.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+            >
+              <div
+                v-for="(share, index) in item.shareWith"
+                :key="index"
+                class="row items-center q-mb-xs"
+              >
+                {{ share.username }}
+                <span class="text-weight-bold"
+                  >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
+                >
                 <q-btn
-                  v-if="isOwner && share.role !== 'owner'"
+                  v-if="canShare && share.role !== 'owner'"
                   flat
                   round
                   icon="remove"
@@ -227,12 +387,15 @@
                 />
               </div>
             </div>
-            <!-- <div v-else class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative">
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
               Not shared with anyone
-            </div> -->
+            </div>
           </div>
           <q-btn
-            v-if="isOwner"
+            v-if="canShare"
             label="Share With"
             color="secondary"
             class="full-width"
@@ -245,7 +408,8 @@
           <div class="text-subtitle1">Assigned To:</div>
           <div class="q-pa-sm bg-grey-2 rounded-borders">
             <div v-if="item.assignedTo" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
-              {{ item.assignedTo.username }} <span class="text-weight-bold">({{ item.assignedTo.role }})</span>
+              {{ item.assignedTo.username }}
+              <span class="text-weight-bold">({{ item.assignedTo.role }})</span>
               <q-btn
                 v-if="canAssign"
                 flat
@@ -256,7 +420,10 @@
                 @click="removeAssignment"
               />
             </div>
-            <div v-else class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative">
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
               Not assigned
             </div>
           </div>
@@ -291,32 +458,49 @@
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
               @click="selectReport(report, index)"
             >
-              <div class="text-ellipsis single-line">{{ report.date }} - {{ truncateText(report.details) }}</div>
-              <q-btn flat round icon="delete" color="negative" size="sm" @click.stop="deleteReportFromBox(report, index)" :disable="!canEdit" />
+              <div class="text-ellipsis single-line">
+                {{ report.date }} - {{ truncateText(report.details) }}
+              </div>
+              <q-btn
+                flat
+                round
+                icon="delete"
+                color="negative"
+                size="sm"
+                @click.stop="deleteReportFromBox(report, index)"
+                :disable="!canEdit"
+              />
             </div>
           </div>
         </div>
-        <div v-else-if="item && item.reports && !item.reports.length" class="q-mb-md text-center text-negative">
+        <div
+          v-else-if="item && item.reports && !item.reports.length"
+          class="q-mb-md text-center text-negative"
+        >
           No reports available.
         </div>
 
         <!-- Subitem Form and Buttons -->
-        <div class="bg-white" style="padding: 15px;">
+        <div class="bg-white" style="padding: 15px">
           <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
-            <q-circular-progress show-value :value="completionPercent" size="80px" color="green" track-color="grey-3">
+            <q-circular-progress
+              show-value
+              :value="completionPercent"
+              size="80px"
+              color="green"
+              track-color="grey-3"
+            >
               {{ completionPercent }}%
             </q-circular-progress>
           </div>
           <div v-if="!toggleSubitemForm">
-            <!-- <q-btn label="Save Changes" color="secondary" class="full-width q-mb-xs" @click="saveItem" :disable="!canEdit && !isOwner" /> -->
-            <q-btn label="New Subitem" color="secondary" class="full-width q-mb-xs" @click="openSubitemForm" :disable="!canEdit" />
-            <!-- <q-btn
-              label="Share With"
+            <q-btn
+              label="New Subitem"
               color="secondary"
               class="full-width q-mb-xs"
-              @click="openShareDialog"
-              :disable="!isOwner"
-            /> -->
+              @click="openSubitemForm"
+              :disable="!canAddSubitems"
+            />
             <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
           </div>
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
@@ -330,7 +514,7 @@
                 input-debounce="0"
                 :error="!subitemForm.type && subitemFormSubmitted"
                 error-message="Subitem Type is required"
-                :disable="!canEdit"
+                :disable="!canAddSubitems"
               />
               <q-input
                 v-model="subitemForm.title"
@@ -338,7 +522,7 @@
                 dense
                 :error="!subitemForm.title && subitemFormSubmitted"
                 error-message="Title is required"
-                :disable="!canEdit"
+                :disable="!canAddSubitems"
               />
               <q-input
                 v-model="subitemForm.deadline"
@@ -348,7 +532,7 @@
                 :max="item.deadline || undefined"
                 :error="!subitemForm.deadline && subitemFormSubmitted"
                 error-message="Deadline is required"
-                :disable="!canEdit"
+                :disable="!canAddSubitems"
               />
               <q-select
                 v-model="subitemForm.status"
@@ -357,7 +541,7 @@
                 dense
                 :error="!subitemForm.status && subitemFormSubmitted"
                 error-message="Status is required"
-                :disable="!canEdit"
+                :disable="!canAddSubitems"
               />
               <q-select
                 v-model="subitemForm.priority"
@@ -366,11 +550,23 @@
                 dense
                 :error="!subitemForm.priority && subitemFormSubmitted"
                 error-message="Priority is required"
-                :disable="!canEdit"
+                :disable="!canAddSubitems"
               />
               <div class="row q-mt-sm">
-                <q-btn type="submit" label="Save Subitem" color="secondary" class="full-width q-mr-sm" :disable="!canEdit" />
-                <q-btn flat label="Cancel" color="negative" class="full-width" @click="cancelSubitemForm" />
+                <q-btn
+                  type="submit"
+                  label="Save Subitem"
+                  color="secondary"
+                  class="full-width q-mr-sm"
+                  :disable="!canAddSubitems"
+                />
+                <q-btn
+                  flat
+                  label="Cancel"
+                  color="negative"
+                  class="full-width"
+                  @click="cancelSubitemForm"
+                />
               </div>
             </q-form>
           </div>
@@ -380,7 +576,7 @@
 
     <!-- Share Dialog -->
     <q-dialog v-model="showShareDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw;">
+      <q-card style="width: 600px; max-width: 90vw">
         <q-card-section>
           <div class="text-h6">Share With</div>
         </q-card-section>
@@ -398,6 +594,7 @@
                 aria-label="Enter username to share with"
                 autocomplete="off"
                 debounce="300"
+                :disable="!canShare"
               >
                 <template v-slot:append>
                   <q-icon name="search" />
@@ -405,13 +602,18 @@
               </q-input>
               <q-select
                 v-model="selectedRole"
-                :options="['admin', 'observer']"
+                :options="['owner', 'admin', 'observer']"
                 label="Role"
                 dense
                 class="col-4"
+                :disable="!canShare"
               />
             </div>
-            <q-list bordered class="q-mb-md user-list" v-if="searchUsername && filteredUsers.length">
+            <q-list
+              bordered
+              class="q-mb-md user-list"
+              v-if="searchUsername && filteredUsers.length"
+            >
               <q-item
                 v-for="user in filteredUsers"
                 :key="user.username"
@@ -422,9 +624,6 @@
                 <q-item-section>{{ user.username }}</q-item-section>
               </q-item>
             </q-list>
-            <!-- <q-item v-if="searchUsername && !filteredUsers.length && !isLoadingUsers" class="text-negative">
-              <q-item-section>No users found</q-item-section>
-            </q-item> -->
             <q-item v-if="isLoadingUsers" class="text-grey">
               <q-item-section>Loading users...</q-item-section>
             </q-item>
@@ -433,29 +632,49 @@
               color="positive"
               type="submit"
               class="full-width q-mb-md"
-              :disable="!searchUsername || usernameError || !isValidUsername"
+              :disable="!canShare || !searchUsername || usernameError || !isValidUsername"
             />
           </q-form>
           <div v-if="newSharedUsers.length" class="q-mt-md">
             <div class="text-subtitle2">Selected Users:</div>
-            <div v-for="(share, index) in newSharedUsers" :key="index" class="row items-center q-mb-xs">
-              <q-item-section>{{ share.username }} <span class="text-weight-bold">({{ share.role }})</span></q-item-section>
+            <div
+              v-for="(share, index) in newSharedUsers"
+              :key="index"
+              class="row items-center q-mb-xs"
+            >
+              <q-item-section
+                >{{ share.username }}
+                <span class="text-weight-bold">({{ share.role }})</span></q-item-section
+              >
               <q-btn
                 flat
                 round
                 icon="remove"
                 color="negative"
                 size="sm"
-                @click="newSharedUsers.splice(index, 1); searchUsers()"
+                @click="
+                  newSharedUsers.splice(index, 1),
+                  searchUsers()
+                "
+                :disable="!canShare"
               />
             </div>
           </div>
           <div v-if="item?.shareWith?.length" class="q-mt-md">
             <div class="text-subtitle2">Currently Shared With:</div>
-            <div v-for="(share, index) in item.shareWith" :key="index" class="row items-center q-mb-xs">
-              <q-item-section>{{ share.username }} <span class="text-weight-bold">({{ share.role }})</span></q-item-section>
+            <div
+              v-for="(share, index) in item.shareWith"
+              :key="index"
+              class="row items-center q-mb-xs"
+            >
+              <q-item-section
+                >{{ share.username }}
+                <span class="text-weight-bold"
+                  >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
+                ></q-item-section
+              >
               <q-btn
-                v-if="share.role !== 'owner'"
+                v-if="canShare && share.role !== 'owner'"
                 flat
                 round
                 icon="remove"
@@ -468,14 +687,14 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup @click="closeShareDialog" />
-          <q-btn label="Save" color="positive" @click="saveSharedUsers" />
+          <q-btn label="Save" color="positive" @click="saveSharedUsers" :disable="!canShare" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Assign Dialog -->
     <q-dialog v-model="showAssignDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw;">
+      <q-card style="width: 600px; max-width: 90vw">
         <q-card-section>
           <div class="text-h6">Assign Item</div>
         </q-card-section>
@@ -486,6 +705,7 @@
             dense
             @input="searchAssignUsers"
             aria-label="Search for users to assign"
+            :disable="!canAssign"
           />
           <q-list v-if="filteredAssignUsers.length" bordered class="q-mt-md">
             <q-item
@@ -494,15 +714,24 @@
               clickable
               @click="selectAssignee(user)"
             >
-              <q-item-section>{{ user.username }} <span class="text-weight-bold">({{ user.role }})</span></q-item-section>
+              <q-item-section
+                >{{ user.username }}
+                <span class="text-weight-bold">({{ user.role }})</span></q-item-section
+              >
             </q-item>
           </q-list>
-          <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">No eligible users found</div>
+          <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">
+            No eligible users found
+          </div>
           <div v-if="item?.assignedTo" class="q-mt-md">
             <div class="text-subtitle2">Currently Assigned To:</div>
             <div class="row items-center q-mb-xs">
-              <q-item-section>{{ item.assignedTo.username }} <span class="text-weight-bold">({{ item.assignedTo.role }})</span></q-item-section>
+              <q-item-section
+                >{{ item.assignedTo.username }}
+                <span class="text-weight-bold">({{ item.assignedTo.role }})</span></q-item-section
+              >
               <q-btn
+                v-if="canAssign"
                 flat
                 round
                 icon="remove"
@@ -515,7 +744,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
-          <q-btn label="Save" color="positive" @click="saveAssignment" />
+          <q-btn label="Save" color="positive" @click="saveAssignment" :disable="!canAssign" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -541,7 +770,7 @@ const subitemForm = ref({
   title: '',
   deadline: '',
   status: '',
-  priority: ''
+  priority: '',
 })
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
@@ -567,46 +796,76 @@ const filteredAssignUsers = ref([])
 const availableUsers = ref([])
 const isLoadingUsers = ref(false)
 const currentUser = ref(JSON.parse(localStorage.getItem('userProfile') || '{}')?.username || '')
+const parentChain = ref([])
 
 // Compute current user's role
 const currentUserRole = computed(() => {
   if (!item.value) return 'N/A'
   if (item.value.creator === currentUser.value) return 'owner'
-  const userShare = item.value.shareWith?.find(share => share.username === currentUser.value)
+  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
   return userShare ? userShare.role : 'observer'
 })
 
-const isOwner = computed(() => {
-  return item.value?.creator === currentUser.value
-})
-
 const isValidUsername = computed(() => {
-  if (!searchUsername.value || !Array.isArray(availableUsers.value)) {
-    console.log('isValidUsername: Invalid input or availableUsers is not an array')
-    return false
-  }
-  const isValid = availableUsers.value.some(user =>
-    user.username && user.username.toLowerCase() === searchUsername.value.toLowerCase()
+  if (!searchUsername.value || !Array.isArray(availableUsers.value)) return false
+  return availableUsers.value.some(
+    (user) => user.username && user.username.toLowerCase() === searchUsername.value.toLowerCase(),
   )
-  console.log('isValidUsername:', isValid, 'for username:', searchUsername.value)
-  return isValid
 })
 
 const canEdit = computed(() => {
-  if (isOwner.value) return true
-  const userShare = item.value?.shareWith?.find(share => share.username === currentUser.value)
-  return userShare?.role === 'admin'
+  if (!item.value) return false
+  return (
+    item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner')
+    )
+  )
 })
 
 const canAssign = computed(() => {
-  return isOwner.value || item.value?.shareWith?.find(share => share.username === currentUser.value)?.role === 'admin'
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
 })
 
-watch(() => localStorage.getItem('kanbanUsers'), (newValue) => {
-  const users = JSON.parse(newValue || '[]')
-  availableUsers.value = Array.isArray(users) ? users : []
-  console.log('kanbanUsers updated:', availableUsers.value)
+const canShare = computed(() => {
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
 })
+
+const canAddSubitems = computed(() => {
+  if (!item.value) return false
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
+})
+
+const sortedReports = computed(() => {
+  return item.value?.reports
+    ? [...item.value.reports].sort((a, b) => new Date(b.date) - new Date(a.date))
+    : []
+})
+
+const completionPercent = computed(() => {
+  if (!item.value?.subitems || item.value.subitems.length === 0) return 0
+  const doneItems = item.value.subitems.filter((sub) => sub.status?.toLowerCase() === 'done').length
+  return Math.round((doneItems / item.value.subitems.length) * 100)
+})
+
+watch(
+  () => localStorage.getItem('kanbanUsers'),
+  (newValue) => {
+    const users = JSON.parse(newValue || '[]')
+    availableUsers.value = Array.isArray(users) ? users : []
+  },
+)
 
 const setEditingState = (id, state) => {
   localStorage.setItem(`isEditing_${id}`, JSON.stringify(state))
@@ -623,11 +882,52 @@ const findItemById = (items, id) => {
   return null
 }
 
+const updateItemInUserStorage = (updatedItem, username) => {
+  const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
+  }
+  updateItem(userItems, updatedItem)
+  localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+}
+
+const updateSubitemsShareWith = (item, shareWith) => {
+  if (item.subitems) {
+    item.subitems.forEach((subitem) => {
+      subitem.shareWith = [...shareWith]
+      updateSubitemsShareWith(subitem, shareWith)
+    })
+  }
+}
+
+const buildParentChain = (items, id) => {
+  const chain = []
+  let currentItem = findItemById(items, id)
+  while (currentItem && currentItem.parentId) {
+    const parent = findItemById(items, currentItem.parentId)
+    if (parent) {
+      chain.unshift(parent)
+      currentItem = parent
+    } else {
+      break
+    }
+  }
+  return chain
+}
+
 onMounted(() => {
   loadItems()
-  console.log('Initial kanbanUsers:', localStorage.getItem('kanbanUsers'))
-  console.log('Initial userProfile:', localStorage.getItem('userProfile'))
-  console.log('availableUsers on mount:', availableUsers.value)
+  const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  availableUsers.value = Array.isArray(users) ? users : []
 })
 
 const loadItems = () => {
@@ -649,6 +949,7 @@ const loadItems = () => {
   } else {
     directParent.value = null
   }
+  parentChain.value = buildParentChain(items, itemId.value)
   isEditing.value = false
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
@@ -661,12 +962,15 @@ const loadItems = () => {
   if (!item.value.reports) item.value.reports = []
 }
 
-watch(() => route.params.id, () => {
-  loadItems()
-})
+watch(
+  () => route.params.id,
+  () => {
+    loadItems()
+  },
+)
 
 const openSubitemForm = () => {
-  if (!canEdit.value) return
+  if (!canAddSubitems.value) return
   toggleSubitemForm.value = true
   errorMessage.value = ''
 }
@@ -678,33 +982,71 @@ const startDrag = (item) => {
 }
 
 const handleDrop = (newStatus) => {
-  if (!canEdit.value) return
-  if (draggedItem.value) {
-    if (newStatus === 'done') {
-      const allSubitemsDone = !draggedItem.value.subitems || draggedItem.value.subitems.every(sub => sub.status === 'done')
-      if (!allSubitemsDone) {
-        errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
-        return
-      }
-      draggedItem.value.movedToDoneAt = Date.now()
+  if (!canEdit.value || !draggedItem.value) return
+  if (newStatus === 'done') {
+    const allSubitemsDone =
+      !draggedItem.value.subitems ||
+      draggedItem.value.subitems.every((sub) => sub.status === 'done')
+    if (!allSubitemsDone) {
+      errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
+      return
     }
-    draggedItem.value.status = newStatus
-    saveItem()
-    errorMessage.value = ''
-    draggedItem.value = null
+    draggedItem.value.movedToDoneAt = Date.now()
   }
+  draggedItem.value.status = newStatus
+  saveItem()
+  errorMessage.value = ''
+  draggedItem.value = null
 }
 
 const deleteItem = (id) => {
-  if (!canEdit.value) return
+  if (!canAddSubitems.value) return
   const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
+  const targetItem = findItemById(items, id)
+  if (!targetItem) return
+
+  // Remove item from all shared users
+  const shareUsernames = targetItem.shareWith
+    .filter(share => share.username !== currentUser.value)
+    .map(share => share.username)
+  shareUsernames.forEach(username => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const deleteRecursive = (items, itemId) => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === itemId) {
+          items.splice(i, 1)
+          return true
+        }
+        if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+          return true
+        }
+      }
+      return false
+    }
+    if (!targetItem.parentId) {
+      // If it's a parent item, remove it entirely from user's storage
+      const newUserItems = userItems.filter(i => i.id !== id)
+      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
+    } else {
+      // If it's a subitem, remove it from the parent's subitems
+      for (let i = 0; i < userItems.length; i++) {
+        if (deleteRecursive(userItems[i].subitems || [], id)) {
+          localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+          break
+        }
+      }
+    }
+
+    // Remove pending invitations for the deleted item
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
+    const newInvitations = invitations.filter(inv => inv.itemId !== id)
+    localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
+  })
+
+  // Remove item from current user's items
   const deleteRecursive = (items, itemId) => {
     for (let i = 0; i < items.length; i++) {
       if (items[i].id === itemId) {
-        if (!isOwner.value && items[i].creator === currentUser.value) {
-          errorMessage.value = 'Only the owner can delete this item.'
-          return false
-        }
         items.splice(i, 1)
         return true
       }
@@ -716,9 +1058,11 @@ const deleteItem = (id) => {
   }
   if (deleteRecursive(items, id)) {
     localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
-    loadItems()
     if (item.value && item.value.id === id) {
       router.push('/home')
+    } else {
+      item.value.subitems = item.value.subitems.filter((sub) => sub.id !== id)
+      saveItem()
     }
   }
 }
@@ -730,7 +1074,7 @@ const viewItem = (id) => {
 }
 
 const addSubitem = () => {
-  if (!canEdit.value) return
+  if (!canAddSubitems.value) return
   subitemFormSubmitted.value = true
   if (
     !subitemForm.value.type ||
@@ -751,7 +1095,7 @@ const addSubitem = () => {
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',
-    Done: 'done'
+    Done: 'done',
   }
   if (item.value) {
     const newSubitem = {
@@ -764,12 +1108,12 @@ const addSubitem = () => {
       parentId: item.value.id,
       category: [],
       subitems: [],
-      shareWith: [...item.value.shareWith],
-      backlog: [],
+      shareWith: item.value.shareWith.map((s) => ({ ...s })), // Deep copy to avoid reference issues
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
       note: '',
       creator: currentUser.value,
       assignedTo: null,
+      reports: [],
     }
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
@@ -797,12 +1141,24 @@ const saveItem = () => {
   if (item.value) {
     updateItem(items, item.value)
     localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
+    updateSharedItems(item.value, currentUser.value)
     loadItems()
   }
 }
 
+const updateSharedItems = (updatedItem, sourceUser) => {
+  const shareUsernames = updatedItem.shareWith
+    .filter(
+      (share) => share.username !== sourceUser && (!share.status || share.status !== 'pending'),
+    )
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
+    updateItemInUserStorage(updatedItem, username)
+  })
+}
+
 const saveDetails = () => {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   formSubmitted.value = true
   if (!item.value.title) {
     errorMessage.value = 'Please fill all required fields'
@@ -817,11 +1173,12 @@ const saveDetails = () => {
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',
-    Done: 'done'
+    Done: 'done',
   }
   const newStatus = statusMap[item.value.status] || item.value.status.toLowerCase()
   if (newStatus === 'done') {
-    const allSubitemsDone = !item.value.subitems || item.value.subitems.every(sub => sub.status === 'done')
+    const allSubitemsDone =
+      !item.value.subitems || item.value.subitems.every((sub) => sub.status === 'done')
     if (!allSubitemsDone) {
       errorMessage.value = 'Cannot set to Done: All subitems must be in Done status.'
       return
@@ -835,7 +1192,7 @@ const saveDetails = () => {
 }
 
 const toggleEdit = (value) => {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   isEditing.value = value
   setEditingState(itemId.value, value)
   if (!value) {
@@ -849,8 +1206,19 @@ const cancelSubitemForm = () => {
   errorMessage.value = ''
 }
 
+const resetSubitemForm = () => {
+  subitemForm.value = {
+    type: '',
+    title: '',
+    deadline: '',
+    status: '',
+    priority: '',
+  }
+  subitemFormSubmitted.value = false
+}
+
 const toggleNoteEdit = (value) => {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   if (value) {
     originalNote.value = item.value.note
   }
@@ -867,7 +1235,7 @@ const cancelNoteEdit = () => {
 }
 
 const saveNote = () => {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   if (item.value.note && item.value.note.trim()) {
     saveItem()
     isEditingNote.value = false
@@ -878,7 +1246,7 @@ const saveNote = () => {
 }
 
 const deleteNote = () => {
-  if (!isOwner.value) return
+  if (!canEdit.value) return
   item.value.note = ''
   saveItem()
   errorMessage.value = ''
@@ -912,7 +1280,7 @@ const saveReport = () => {
   const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
   const newReport = {
     date: currentDateTime,
-    details: newReportDetails.value
+    details: newReportDetails.value,
   }
   item.value.reports = item.value.reports || []
   item.value.reports.unshift(newReport)
@@ -936,12 +1304,23 @@ const cancelEditReport = () => {
 
 const saveEditedReport = () => {
   if (!canEdit.value) return
-  if (!selectedReport.value || !selectedReport.value.details || !selectedReport.value.details.trim()) {
+  if (
+    !selectedReport.value ||
+    !selectedReport.value.details ||
+    !selectedReport.value.details.trim()
+  ) {
     errorMessage.value = 'Report details cannot be empty.'
     return
   }
-  if (selectedReportIndex.value !== null && item.value.reports && item.value.reports.length > selectedReportIndex.value) {
-    item.value.reports[selectedReportIndex.value] = { ...selectedReport.value, date: item.value.reports[selectedReportIndex.value].date }
+  if (
+    selectedReportIndex.value !== null &&
+    item.value.reports &&
+    item.value.reports.length > selectedReportIndex.value
+  ) {
+    item.value.reports[selectedReportIndex.value] = {
+      ...selectedReport.value,
+      date: item.value.reports[selectedReportIndex.value].date,
+    }
     saveItem()
   }
   selectedReport.value = null
@@ -958,8 +1337,13 @@ const deleteReportFromBox = (report, index) => {
   errorMessage.value = ''
 }
 
+const truncateText = (text) => {
+  if (!text) return ''
+  return text.length > 30 ? text.substring(0, 30) + '...' : text
+}
+
 const openShareDialog = () => {
-  if (!isOwner.value) return
+  if (!canShare.value) return
   showShareDialog.value = true
   searchUsername.value = ''
   selectedRole.value = 'observer'
@@ -970,7 +1354,6 @@ const openShareDialog = () => {
   const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   availableUsers.value = Array.isArray(users) ? users : []
   isLoadingUsers.value = false
-  console.log('Opening Share Dialog, availableUsers:', availableUsers.value)
 }
 
 const closeShareDialog = () => {
@@ -984,124 +1367,119 @@ const closeShareDialog = () => {
 }
 
 const searchUsers = () => {
-  console.log('searchUsers called, searchUsername:', searchUsername.value)
-  console.log('availableUsers:', availableUsers.value)
-  console.log('currentUser:', currentUser.value)
-  console.log('item.shareWith:', item.value?.shareWith)
-  console.log('newSharedUsers:', newSharedUsers.value)
-
   if (!Array.isArray(availableUsers.value)) {
-    console.log('Error: availableUsers is not an array:', availableUsers.value)
     filteredUsers.value = []
     usernameError.value = true
-    console.log('filteredUsers set to:', filteredUsers.value)
     return
   }
-
   if (!searchUsername.value) {
     filteredUsers.value = []
     usernameError.value = false
-    console.log('No search term, clearing filteredUsers:', filteredUsers.value)
     return
   }
-
-  filteredUsers.value = availableUsers.value.filter(user => {
-    if (!user.username) {
-      console.log('Invalid user object:', user)
-      return false
-    }
-    return user.username.toLowerCase().includes(searchUsername.value.toLowerCase())
-  })
-  usernameError.value = searchUsername.value && filteredUsers.value.length === 0
-  console.log('filteredUsers set to:', filteredUsers.value)
-  console.log('usernameError:', usernameError.value)
+  filteredUsers.value = availableUsers.value.filter(
+    (user) =>
+      user.username &&
+      user.username.toLowerCase().includes(searchUsername.value.toLowerCase()) &&
+      user.username !== currentUser.value &&
+      !item.value.shareWith.some((share) => share.username === user.username) &&
+      !newSharedUsers.value.some((share) => share.username === user.username),
+  )
+  usernameError.value = !isValidUsername.value && !!searchUsername.value
 }
 
 const selectUser = (user) => {
-  console.log('Selected user:', user)
-  searchUsername.value = user.username
+  newSharedUsers.value.push({ username: user.username, role: selectedRole.value })
+  searchUsername.value = ''
+  filteredUsers.value = []
   usernameError.value = false
-  filteredUsers.value = availableUsers.value.filter(u =>
-    u.username.toLowerCase().includes(searchUsername.value.toLowerCase())
-  )
-  console.log('After selectUser, searchUsername:', searchUsername.value)
-  console.log('After selectUser, filteredUsers:', filteredUsers.value)
 }
 
 const addSharedUser = () => {
-  console.log('Adding user:', searchUsername.value, 'Role:', selectedRole.value)
-  if (!searchUsername.value) {
-    errorMessage.value = 'Please enter a username'
-    usernameError.value = true
-    console.log('No username entered')
+  if (!canShare.value || !searchUsername.value || usernameError.value || !isValidUsername.value)
     return
-  }
-  if (!isValidUsername.value) {
-    errorMessage.value = 'Please select a valid username'
-    usernameError.value = true
-    console.log('Invalid username:', searchUsername.value)
-    return
-  }
-  if (item.value.shareWith?.some(s => s.username === searchUsername.value) ||
-      newSharedUsers.value.some(s => s.username === searchUsername.value)) {
-    errorMessage.value = 'This user is already shared'
-    usernameError.value = true
-    console.log('User already shared:', searchUsername.value)
+  const userExists =
+    item.value.shareWith.some((share) => share.username === searchUsername.value) ||
+    newSharedUsers.value.some((share) => share.username === searchUsername.value)
+  if (userExists) {
+    errorMessage.value = 'This user is already shared with this item.'
     return
   }
   newSharedUsers.value.push({ username: searchUsername.value, role: selectedRole.value })
   searchUsername.value = ''
-  selectedRole.value = 'observer'
-  usernameError.value = false
   filteredUsers.value = []
-  console.log('newSharedUsers:', newSharedUsers.value)
-  console.log('After addSharedUser, filteredUsers:', filteredUsers.value)
+  usernameError.value = false
 }
 
 const removeSharedUser = (index) => {
-  if (!isOwner.value) return
-  item.value.shareWith.splice(index, 1)
-  if (item.value.subitems) {
-    item.value.subitems.forEach(subitem => {
-      subitem.shareWith = [...item.value.shareWith]
-    })
+  if (!canShare.value) return
+  if (index < item.value.shareWith.length && item.value.shareWith[index].role !== 'owner') {
+    const removedUser = item.value.shareWith[index]
+    const isPending = removedUser.status === 'pending'
+    const removedUsername = removedUser.username
+    item.value.shareWith.splice(index, 1)
+    updateSubitemsShareWith(item.value, item.value.shareWith)
+    saveItem()
+
+    // Handle item and invitation removal based on whether it's a parent item
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${removedUsername}`) || '[]')
+    const isParentItem = !item.value.parentId
+    const deleteRecursive = (items, itemId) => {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === itemId) {
+          items.splice(i, 1)
+          return true
+        }
+        if (items[i].subitems && deleteRecursive(items[i].subitems, itemId)) {
+          return true
+        }
+      }
+      return false
+    }
+    if (isParentItem) {
+      // If it's a parent item, remove it entirely from user's storage
+      const newUserItems = userItems.filter(i => i.id !== item.value.id)
+      localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(newUserItems))
+      // Remove pending invitations for parent item
+      const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]')
+      const newInvitations = invitations.filter(inv => inv.itemId !== item.value.id)
+      localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
+    } else if (!isPending) {
+      // If it's a subitem and not pending, remove it from the parent's subitems
+      for (let i = 0; i < userItems.length; i++) {
+        if (deleteRecursive(userItems[i].subitems || [], item.value.id)) {
+          localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(userItems))
+          break
+        }
+      }
+    }
+    // If it's a subitem and pending, leave the invitation intact
+  } else if (index >= item.value.shareWith.length) {
+    newSharedUsers.value.splice(index - item.value.shareWith.length, 1)
   }
-  saveItem()
+  searchUsers()
 }
 
 const saveSharedUsers = () => {
-  if (!isOwner.value) return
-  const shareUsernames = newSharedUsers.value
-    .filter(share => share.username && share.username !== currentUser.value)
-    .map(share => share.username)
-  shareUsernames.forEach(username => {
-    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
-    const share = newSharedUsers.value.find(s => s.username === username)
-    if (share) {
-      invitations.push({
-        itemId: item.value.id,
-        username: username,
-        role: share.role,
-        status: 'pending',
-        invitedAt: Date.now(),
-        invitedBy: currentUser.value,
-      })
-      saveInvitations(invitations, username)
-    }
-  })
-  item.value.shareWith = [...item.value.shareWith, ...newSharedUsers.value]
-  if (item.value.subitems) {
-    item.value.subitems.forEach(subitem => {
-      subitem.shareWith = [...item.value.shareWith]
+  if (!canShare.value) return
+  newSharedUsers.value.forEach((share) => {
+    item.value.shareWith.push({ username: share.username, role: share.role, status: 'pending' })
+    const invitations = JSON.parse(
+      localStorage.getItem(`kanbanInvitations_${share.username}`) || '[]',
+    )
+    invitations.push({
+      itemId: item.value.id,
+      username: share.username,
+      role: share.role,
+      status: 'pending',
+      invitedAt: Date.now(),
+      invitedBy: currentUser.value,
     })
-  }
+    localStorage.setItem(`kanbanInvitations_${share.username}`, JSON.stringify(invitations))
+  })
+  updateSubitemsShareWith(item.value, item.value.shareWith)
   saveItem()
-  showShareDialog.value = false
-  searchUsername.value = ''
-  selectedRole.value = 'observer'
-  usernameError.value = false
-  filteredUsers.value = []
-  newSharedUsers.value = []
+  closeShareDialog()
 }
 
 const openAssignDialog = () => {
@@ -1118,107 +1496,45 @@ const closeAssignDialog = () => {
 }
 
 const searchAssignUsers = () => {
-  if (!searchAssignUsername.value) {
+  if (!Array.isArray(availableUsers.value)) {
     filteredAssignUsers.value = []
     return
   }
-  filteredAssignUsers.value = item.value.shareWith.filter(share =>
-    share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()) &&
-    (share.role === 'owner' || share.role === 'admin') &&
-    (!item.value.assignedTo || item.value.assignedTo.username !== share.username)
-  )
+  if (!searchAssignUsername.value) {
+    filteredAssignUsers.value = item.value.shareWith
+      .filter(
+        (share) =>
+          share.username !== currentUser.value && (!share.status || share.status !== 'pending'),
+      )
+      .map((share) => ({ username: share.username, role: share.role }))
+    return
+  }
+  filteredAssignUsers.value = item.value.shareWith
+    .filter(
+      (share) =>
+        share.username !== currentUser.value &&
+        (!share.status || share.status !== 'pending') &&
+        share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
+    )
+    .map((share) => ({ username: share.username, role: share.role }))
 }
 
 const selectAssignee = (user) => {
-  item.value.assignedTo = { username: user.username, role: user.role }
-  searchAssignUsername.value = ''
-  filteredAssignUsers.value = []
-}
-
-const saveAssignment = () => {
   if (!canAssign.value) return
-  if (item.value.subitems) {
-    item.value.subitems.forEach(subitem => {
-      if (subitem.assignedTo && subitem.assignedTo.username === item.value.assignedTo?.username) {
-        subitem.assignedTo = item.value.assignedTo
-      }
-    })
-  }
+  item.value.assignedTo = { username: user.username, role: user.role }
   saveItem()
-  showAssignDialog.value = false
-  searchAssignUsername.value = ''
-  filteredAssignUsers.value = []
+  closeAssignDialog()
 }
 
 const removeAssignment = () => {
   if (!canAssign.value) return
   item.value.assignedTo = null
-  if (item.value.subitems) {
-    item.value.subitems.forEach(subitem => {
-      if (subitem.assignedTo && subitem.assignedTo.username === item.value.assignedTo?.username) {
-        subitem.assignedTo = null
-      }
-    })
-  }
   saveItem()
 }
 
-function saveInvitations(invitations, username) {
-  localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(invitations))
+const openProfile = () => {
+  router.push('/profile')
 }
-
-function resetSubitemForm() {
-  subitemForm.value = {
-    type: '',
-    title: '',
-    deadline: '',
-    status: '',
-    priority: ''
-  }
-  subitemFormSubmitted.value = false
-}
-
-const completionPercent = computed(() => {
-  if (!item.value?.subitems?.length) return 0
-  const doneSubitems = item.value.subitems.filter((s) => s.status === 'done').length
-  return Math.round((doneSubitems / item.value.subitems.length) * 100)
-})
-
-const sortSubitems = () => {
-}
-
-const sortedSubitems = (status) => {
-  let subitems = item.value?.subitems?.filter((s) => s.status.toLowerCase() === status.toLowerCase()) || []
-  if (sortByPriority.value) {
-    subitems.sort((a, b) => {
-      const priorityOrder = { High: 0, Medium: 1, Low: 2 }
-      return priorityOrder[a.priority] - priorityOrder[b.priority]
-    })
-  } else {
-    subitems.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
-  }
-  return subitems
-}
-
-const parentChain = computed(() => {
-  const chain = []
-  let currentParentId = item.value?.parentId
-  const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
-  while (currentParentId) {
-    const parent = findItemById(items, currentParentId)
-    if (parent) {
-      chain.unshift(parent)
-      currentParentId = parent.parentId
-    } else {
-      break
-    }
-  }
-  return chain
-})
-
-const sortedReports = computed(() => {
-  return [...(item.value?.reports || [])].sort((a, b) => new Date(b.date) - new Date(a.date))
-})
 
 const logout = () => {
   localStorage.removeItem('authToken')
@@ -1226,117 +1542,95 @@ const logout = () => {
   router.push('/login')
 }
 
-const openProfile = () => {
-  router.push('/profile')
+const sortedSubitems = (status) => {
+  if (!item.value?.subitems) return []
+  const statusMap = {
+    Backlog: 'backlog',
+    'In Progress': 'in progress',
+    Done: 'done',
+  }
+  const normalizedStatus = statusMap[status] || status.toLowerCase()
+  const filtered = item.value.subitems.filter(
+    (sub) => sub.status?.toLowerCase() === normalizedStatus,
+  )
+  if (status === 'done') {
+    return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
+  }
+  if (sortByPriority.value) {
+    return filtered.sort((a, b) => {
+      const priorityMap = { High: 3, Medium: 2, Low: 1, '': 0 }
+      return (priorityMap[b.priority] || 0) - (priorityMap[a.priority] || 0)
+    })
+  }
+  return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
 
-watch(() => localStorage.getItem(`kanbanItems_${currentUser.value}`), (newValue) => {
-  if (newValue) {
-    loadItems()
-  }
-})
-
-const truncateText = (text) => {
-  const maxLength = 30
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+const sortSubitems = () => {
+  if (!canEdit.value) return
+  item.value.subitems = [
+    ...sortedSubitems('backlog'),
+    ...sortedSubitems('in progress'),
+    ...sortedSubitems('done'),
+  ]
+  saveItem()
 }
 </script>
 
 <style scoped>
-.resizable-note {
-  resize: both;
-  overflow: auto;
-  min-height: 50px;
-  max-height: 200px;
-  min-width: 200px;
-  max-width: 100%;
-  width: 50%;
-  word-wrap: break-word;
-  padding: 8px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
-
-.custom-textarea {
-  resize: both;
-  overflow: auto;
-  min-height: 50px;
-  max-height: 200px;
-  min-width: 200px;
-  max-width: 100%;
-  width: 50%;
-  word-wrap: break-word;
-  padding: 8px;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;
-  height: 100%;
 }
-
-.reports-box {
-  max-height: 100px;
-  overflow-y: auto;
-  width: 100%;
-}
-
-.text-ellipsis {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.single-line {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 200px;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.subitem-form {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
 .equal-height-row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: stretch;
-  min-height: calc(100vh - 200px);
 }
-
 .column-box {
+  height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+}
+.resizable-note {
+  width: 100%;
+  min-height: 100px;
+  max-height: 300px;
+  resize: vertical;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+.custom-textarea {
+  width: 100%;
+  min-height: 100px;
+  max-height: 300px;
+  resize: vertical;
+  border: 1px solid #ccc;
+  padding: 8px;
+  font-family: inherit;
+}
+.reports-box {
+  max-height: 200px;
   overflow-y: auto;
 }
-
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.single-line {
+  display: inline-block;
+  max-width: 80%;
+}
+.subitem-form {
+  padding: 10px;
+  border-radius: 4px;
+}
 .user-list {
   max-height: 200px;
   overflow-y: auto;
-  z-index: 2000;
-  background-color: white;
-  border: 1px solid #ccc;
-  position: relative;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
-
-.user-item {
-  padding: 8px;
-  cursor: pointer;
-}
-
 .user-item:hover {
-  background-color: #f5f5f5;
+  background-color: #f0f0f0;
 }
 </style>

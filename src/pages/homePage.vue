@@ -34,6 +34,34 @@
       {{ errorMessage }}
     </q-banner>
 
+    <!-- Messages Banner -->
+    <q-banner
+      v-if="messages.length"
+      dense
+      class="bg-blue-9 text-white q-mb-md"
+      style="width: 50%"
+      aria-live="polite"
+      role="alert"
+    >
+      <div>Messages ({{ messages.length }})</div>
+      <q-list dense>
+        <q-item v-for="(message, index) in messages" :key="index" class="q-py-xs">
+          <q-item-section>{{ message.text }}</q-item-section>
+          <q-item-section side>
+            <q-btn
+              flat
+              round
+              icon="delete"
+              color="white"
+              size="sm"
+              @click="deleteMessage(index)"
+              aria-label="Delete message"
+            />
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-banner>
+
     <!-- Main layout -->
     <div class="row" style="height: calc(100vh - 120px)">
       <!-- Main content area -->
@@ -49,7 +77,7 @@
               v-for="item in sortedItems('backlog')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -64,7 +92,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -76,7 +104,7 @@
               v-for="item in sortedItems('In Progress')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -91,7 +119,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -103,7 +131,7 @@
               v-for="item in sortedItems('done')"
               :key="item.id"
               class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              draggable="true"
+              :draggable="canEdit(item)"
               @dragstart="startDrag(item)"
               @click="viewItem(item.id)"
             >
@@ -118,7 +146,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteItem(item.id)"
-                :disable="!isCreator(item)"
+                :disable="!canEdit(item)"
               />
             </div>
           </div>
@@ -146,12 +174,7 @@
         />
 
         <!-- Invitations Banner -->
-        <q-banner
-          dense
-          class="bg-yellow-9 text-white q-mb-md"
-          aria-live="polite"
-          role="alert"
-        >
+        <q-banner dense class="bg-yellow-9 text-white q-mb-md" aria-live="polite" role="alert">
           <template v-if="pendingInvitations.length">
             Invitations ({{ pendingInvitations.length }})
             <q-btn
@@ -162,9 +185,7 @@
               aria-label="View pending invitations"
             />
           </template>
-          <template v-else>
-            Invitations
-          </template>
+          <template v-else> Invitations </template>
         </q-banner>
 
         <!-- Progress Chart -->
@@ -321,7 +342,7 @@
                 <q-input v-model="share.username" label="Username" dense class="col q-mr-sm" />
                 <q-select
                   v-model="share.role"
-                  :options="['admin', 'observer']"
+                  :options="['owner', 'admin', 'observer']"
                   label="Role"
                   dense
                   class="col"
@@ -343,31 +364,6 @@
                 @click="itemForm.shareWith.push({ username: '', role: 'observer' })"
               />
             </div>
-            <div class="q-mt-sm">
-              <div class="text-subtitle2">Backlog</div>
-              <div
-                v-for="(b, index) in itemForm.backlog"
-                :key="index"
-                class="row items-center q-mb-xs"
-              >
-                <q-input v-model="itemForm.backlog[index]" dense class="col" />
-                <q-btn
-                  flat
-                  round
-                  icon="remove"
-                  color="negative"
-                  size="sm"
-                  @click="itemForm.backlog.splice(index, 1)"
-                />
-              </div>
-              <q-btn
-                flat
-                icon="add"
-                size="sm"
-                color="secondary"
-                @click="itemForm.backlog.push('')"
-              />
-            </div>
             <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
           </q-form>
         </div>
@@ -376,7 +372,7 @@
 
     <!-- Invitations Dialog -->
     <q-dialog v-model="showInvitationsDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw;">
+      <q-card style="width: 600px; max-width: 90vw">
         <q-card-section>
           <div class="text-h6">Pending Invitations</div>
         </q-card-section>
@@ -391,22 +387,17 @@
                   Invited to: {{ getItemTitle(invitation.itemId) }} (Role: {{ invitation.role }})
                 </q-item-label>
                 <q-item-label caption>
-                  Invited at: {{ new Date(invitation.invitedAt).toLocaleString('en-US', { timeZone: 'Asia/Dubai' }) }}
+                  Invited at:
+                  {{
+                    new Date(invitation.invitedAt).toLocaleString('en-US', {
+                      timeZone: 'Asia/Dubai',
+                    })
+                  }}
                 </q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-btn
-                  flat
-                  color="positive"
-                  label="Accept"
-                  @click="acceptInvitation(invitation)"
-                />
-                <q-btn
-                  flat
-                  color="negative"
-                  label="Reject"
-                  @click="rejectInvitation(invitation)"
-                />
+                <q-btn flat color="positive" label="Accept" @click="acceptInvitation(invitation)" />
+                <q-btn flat color="negative" label="Reject" @click="rejectInvitation(invitation)" />
               </q-item-section>
             </q-item>
           </q-list>
@@ -433,6 +424,7 @@ const formSubmitted = ref(false)
 const errorMessage = ref('')
 const pendingInvitations = ref([])
 const showInvitationsDialog = ref(false)
+const messages = ref([])
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
@@ -444,7 +436,6 @@ const itemForm = ref({
   category: [],
   subitems: [],
   shareWith: [],
-  backlog: [],
   priority: '',
   status: '',
 })
@@ -457,18 +448,32 @@ onMounted(() => {
     console.log('User not authenticated, redirecting to login')
     router.push('/login')
   }
+  loadItems()
+  loadInvitations()
+  loadMessages()
+})
+
+const loadItems = () => {
   const savedItems = localStorage.getItem(`kanbanItems_${currentUser.value}`)
   if (savedItems) {
     items.value = JSON.parse(savedItems)
   }
-  loadInvitations()
-})
+}
 
 const loadInvitations = () => {
-  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
-  pendingInvitations.value = invitations.filter(
-    inv => inv.username === currentUser.value && inv.status === 'pending'
+  const invitations = JSON.parse(
+    localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]',
   )
+  pendingInvitations.value = invitations.filter(
+    (inv) => inv.username === currentUser.value && inv.status === 'pending',
+  )
+}
+
+const loadMessages = () => {
+  const savedMessages = JSON.parse(
+    localStorage.getItem(`kanbanMessages_${currentUser.value}`) || '[]',
+  )
+  messages.value = savedMessages
 }
 
 const saveItems = () => {
@@ -479,52 +484,139 @@ const saveInvitations = (invitations, username) => {
   localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(invitations))
 }
 
-const isCreator = (item) => {
-  return item.creator === currentUser.value
+const saveMessages = () => {
+  localStorage.setItem(`kanbanMessages_${currentUser.value}`, JSON.stringify(messages.value))
+}
+
+const canEdit = (item) => {
+  return (
+    item.creator === currentUser.value ||
+    item.shareWith?.some(
+      (share) =>
+        share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner'),
+    )
+  )
 }
 
 const acceptInvitation = (invitation) => {
-  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
+  const invitations = JSON.parse(
+    localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]',
+  )
   const index = invitations.findIndex(
-    inv => inv.itemId === invitation.itemId && inv.username === invitation.username
+    (inv) => inv.itemId === invitation.itemId && inv.username === invitation.username,
   )
   if (index !== -1) {
     invitations[index].status = 'accepted'
     saveInvitations(invitations, currentUser.value)
 
-    const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
+    const creatorItems = JSON.parse(
+      localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]',
+    )
     const sharedItem = findItemById(creatorItems, invitation.itemId)
     if (sharedItem) {
-      const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
-      const itemCopy = JSON.parse(JSON.stringify(sharedItem))
-      itemCopy.shareWith = itemCopy.shareWith || []
-      if (!itemCopy.shareWith.some(u => u.username === currentUser.value)) {
-        itemCopy.shareWith.push({ username: currentUser.value, role: invitation.role })
+      // Update shareWith in creator's item to remove pending status for all items and subitems
+      const creatorShareIndex = sharedItem.shareWith.findIndex(
+        (s) => s.username === currentUser.value,
+      )
+      if (creatorShareIndex !== -1) {
+        sharedItem.shareWith[creatorShareIndex] = {
+          username: currentUser.value,
+          role: invitation.role,
+        }
+        // Explicitly update subitems to remove pending status
+        const updateSubitemsPendingStatus = (item) => {
+          if (item.subitems) {
+            item.subitems.forEach((subitem) => {
+              const subitemShareIndex = subitem.shareWith.findIndex(
+                (s) => s.username === currentUser.value,
+              )
+              if (subitemShareIndex !== -1) {
+                subitem.shareWith[subitemShareIndex] = {
+                  username: currentUser.value,
+                  role: invitation.role,
+                }
+              }
+              updateSubitemsPendingStatus(subitem)
+            })
+          }
+        }
+        updateSubitemsPendingStatus(sharedItem)
+        updateItemInUserStorage(sharedItem, invitation.invitedBy)
+
+        // Add item to user's items
+        const userItems = JSON.parse(
+          localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]',
+        )
+        const itemCopy = JSON.parse(JSON.stringify(sharedItem))
+        itemCopy.shareWith = itemCopy.shareWith.map((s) => ({
+          username: s.username,
+          role: s.role,
+        }))
+        // Ensure subitems also have pending status removed
+        const cleanSubitemsPendingStatus = (item) => {
+          if (item.subitems) {
+            item.subitems.forEach((subitem) => {
+              subitem.shareWith = subitem.shareWith.map((s) => ({
+                username: s.username,
+                role: s.role,
+              }))
+              cleanSubitemsPendingStatus(subitem)
+            })
+          }
+        }
+        cleanSubitemsPendingStatus(itemCopy)
+        userItems.push(itemCopy)
+        localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
+        items.value = userItems
+
+        // Update other shared users
+        updateSharedItems(sharedItem, invitation.invitedBy)
       }
-      // Copy shareWith to subitems
-      if (itemCopy.subitems) {
-        itemCopy.subitems.forEach(subitem => {
-          subitem.shareWith = [...itemCopy.shareWith]
-        })
-      }
-      userItems.push(itemCopy)
-      localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
-      items.value = userItems
     }
     loadInvitations()
   }
 }
 
 const rejectInvitation = (invitation) => {
-  const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
+  const invitations = JSON.parse(
+    localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]',
+  )
   const index = invitations.findIndex(
-    inv => inv.itemId === invitation.itemId && inv.username === invitation.username
+    (inv) => inv.itemId === invitation.itemId && inv.username === invitation.username,
   )
   if (index !== -1) {
-    invitations[index].status = 'rejected'
+    invitations.splice(index, 1)
     saveInvitations(invitations, currentUser.value)
+
+    // Remove from creator's shareWith
+    const creatorItems = JSON.parse(
+      localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]',
+    )
+    const sharedItem = findItemById(creatorItems, invitation.itemId)
+    if (sharedItem) {
+      sharedItem.shareWith = sharedItem.shareWith.filter((s) => s.username !== currentUser.value)
+      updateSubitemsShareWith(sharedItem, sharedItem.shareWith)
+      updateItemInUserStorage(sharedItem, invitation.invitedBy)
+      updateSharedItems(sharedItem, invitation.invitedBy)
+    }
+
+    // Add rejection message for the inviter
+    const inviterMessages = JSON.parse(
+      localStorage.getItem(`kanbanMessages_${invitation.invitedBy}`) || '[]',
+    )
+    const itemName = sharedItem ? `${sharedItem.type}: ${sharedItem.title}` : 'Unknown Item'
+    inviterMessages.push({
+      text: `${currentUser.value} rejected invite for ${itemName}`,
+      timestamp: Date.now(),
+    })
+    localStorage.setItem(`kanbanMessages_${invitation.invitedBy}`, JSON.stringify(inviterMessages))
     loadInvitations()
   }
+}
+
+const deleteMessage = (index) => {
+  messages.value.splice(index, 1)
+  saveMessages()
 }
 
 const findItemById = (items, id) => {
@@ -536,6 +628,33 @@ const findItemById = (items, id) => {
     }
   }
   return null
+}
+
+const updateItemInUserStorage = (updatedItem, username) => {
+  const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+  const updateItem = (items, itemToUpdate) => {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].id === itemToUpdate.id) {
+        items[i] = { ...itemToUpdate }
+        return true
+      }
+      if (items[i].subitems && updateItem(items[i].subitems, itemToUpdate)) {
+        return true
+      }
+    }
+    return false
+  }
+  updateItem(userItems, updatedItem)
+  localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+}
+
+const updateSubitemsShareWith = (item, shareWith) => {
+  if (item.subitems) {
+    item.subitems.forEach((subitem) => {
+      subitem.shareWith = shareWith.map((s) => ({ ...s }))
+      updateSubitemsShareWith(subitem, shareWith)
+    })
+  }
 }
 
 const getItemTitle = (itemId) => {
@@ -563,7 +682,7 @@ const addItem = () => {
     return
   }
 
-  const hasInvalidSubitemDeadline = itemForm.value.subitems.some(subitem => {
+  const hasInvalidSubitemDeadline = itemForm.value.subitems.some((subitem) => {
     if (subitem.deadline && itemForm.value.deadline) {
       return new Date(subitem.deadline) > new Date(itemForm.value.deadline)
     }
@@ -597,26 +716,28 @@ const addItem = () => {
       priority: subitem.priority || 'Low',
       parentId: parentId,
       category: [],
-      shareWith: [...itemForm.value.shareWith],
-      backlog: [],
+      shareWith: [{ username: currentUser.value, role: 'owner' }, ...itemForm.value.shareWith],
       movedToDoneAt: null,
       creator: currentUser.value,
       assignedTo: null,
+      note: '',
+      reports: [],
     })),
     shareWith: [{ username: currentUser.value, role: 'owner' }, ...itemForm.value.shareWith],
-    backlog: itemForm.value.backlog,
     movedToDoneAt: itemForm.value.status === 'Done' ? Date.now() : null,
     creator: currentUser.value,
     assignedTo: null,
+    note: '',
+    reports: [],
   }
   items.value.push(newItem)
 
   const shareUsernames = itemForm.value.shareWith
-    .filter(share => share.username && share.username !== currentUser.value)
-    .map(share => share.username)
-  shareUsernames.forEach(username => {
+    .filter((share) => share.username && share.username !== currentUser.value)
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
     const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
-    const share = itemForm.value.shareWith.find(s => s.username === username)
+    const share = itemForm.value.shareWith.find((s) => s.username === username)
     if (share) {
       invitations.push({
         itemId: parentId,
@@ -650,13 +771,28 @@ function resetForm(form) {
 
 const deleteItem = (id) => {
   const item = findItemById(items.value, id)
-  if (!isCreator(item)) {
-    errorMessage.value = 'Only the owner can delete this item.'
+  if (!canEdit(item)) {
+    errorMessage.value = 'Only the owner or admin can delete this item.'
     return
   }
-  items.value = items.value.filter(
-    (item) => item.id !== id && (!item.subitems || item.subitems.every((s) => s.id !== id)),
-  )
+
+  // Remove item from all shared users
+  const shareUsernames = item.shareWith
+    .filter((share) => share.username !== currentUser.value)
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const newUserItems = userItems.filter((i) => i.id !== id)
+    localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
+
+    // Remove invitations
+    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
+    const newInvitations = invitations.filter((inv) => inv.itemId !== id)
+    localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
+  })
+
+  // Remove item from current user's items
+  items.value = items.value.filter((i) => i.id !== id)
   saveItems()
 }
 
@@ -667,13 +803,13 @@ function openProfile() {
 
 const draggedItem = ref(null)
 const startDrag = (item) => {
-  if (isCreator(item)) {
+  if (canEdit(item)) {
     draggedItem.value = item
   }
 }
 
 const handleDrop = (newStatus) => {
-  if (!draggedItem.value || !isCreator(draggedItem.value)) return
+  if (!draggedItem.value || !canEdit(draggedItem.value)) return
   if (newStatus === 'done') {
     const allSubitemsDone =
       !draggedItem.value.subitems ||
@@ -685,10 +821,28 @@ const handleDrop = (newStatus) => {
     draggedItem.value.movedToDoneAt = Date.now()
   }
   draggedItem.value.status = newStatus
+  updateSharedItems(draggedItem.value, currentUser.value)
   items.value = [...items.value]
   saveItems()
   errorMessage.value = ''
   draggedItem.value = null
+}
+
+const updateSharedItems = (updatedItem, sourceUser) => {
+  const shareUsernames = updatedItem.shareWith
+    .filter(
+      (share) => share.username !== sourceUser && (!share.status || share.status !== 'pending'),
+    )
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
+    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
+    const targetItem = findItemById(userItems, updatedItem.id)
+    if (targetItem) {
+      Object.assign(targetItem, JSON.parse(JSON.stringify(updatedItem)))
+      updateSubitemsShareWith(targetItem, updatedItem.shareWith)
+      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+    }
+  })
 }
 
 const completionPercent = computed(() => {
@@ -743,6 +897,13 @@ watch(
   () => localStorage.getItem(`kanbanInvitations_${currentUser.value}`),
   () => {
     loadInvitations()
+  },
+)
+
+watch(
+  () => localStorage.getItem(`kanbanMessages_${currentUser.value}`),
+  () => {
+    loadMessages()
   },
 )
 </script>
