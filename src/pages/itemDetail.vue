@@ -429,7 +429,8 @@
               <div
                 v-for="(assignee, index) in sortedAssignees"
                 :key="index"
-                class="row items-center q-mb-xs text-ellipsis single-line"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                @click="selectAssignee(assignee, index)"
               >
                 <div class="text-ellipsis single-line">
                   {{ assignee.assignedAt }} - {{ truncateText(assignee.note || 'No note') }}
@@ -438,10 +439,10 @@
                   v-if="canAssign"
                   flat
                   round
-                  icon="remove"
+                  icon="delete"
                   color="negative"
                   size="sm"
-                  @click="removeAssignment(index)"
+                  @click.stop="removeAssignment(index)"
                 />
               </div>
             </div>
