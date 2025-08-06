@@ -12,6 +12,7 @@ can admin add note?
 admin deleting the item for themselves?
 
 if an subitem is shared instead of an item the invite will be sent but it cant be ??
+order of sharing!???
 
 comment box?
 
@@ -23,7 +24,16 @@ share with in new item form (handle or delete?)
 the sub category should be the same as its parent!!!
 
 assigning:
-assigning an item to a user with a note (what to do) from the shared users (admins)
+just the owner should be able to assign an item to one or more shared users with a note.
+for assigning, user should choose one or more users, an item, and for each user writ a note(that tells what should the use do)
+for choosing user, owner chooses a user from the shared users with role admin or owner. for choosing the item, owner chooses an item from the item in the layer of items that the assigning is happening. and for each assigning owner can write a note that tells what should the user do.
+in each assigning, one item should be chosen, for that item, one or more user can be chosen.
+note that when an item is assigned its subitems will the assigned the same as the item until the last layer
+
+اوکیه
+ولی شکل مواردی که توی باکس گزارش و اختصاص هست یکی نیست
+نه ایکون حذفشون یکیه نه اندازشون یکیه!
+میخاوم جفتشون شبیه اونی باشن که توی باکس گزارش هست
 
 reports:
 a link of git can be shared!(optional)

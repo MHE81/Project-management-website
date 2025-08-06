@@ -243,8 +243,13 @@
               <div>
                 <strong>{{ subitem.type }}</strong
                 >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo" class="text-caption">
-                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
+                  Assigned:
+                  {{
+                    subitem.assignedTo
+                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
+                      .join(', ')
+                  }}
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                   Shared:
@@ -284,8 +289,13 @@
               <div>
                 <strong>{{ subitem.type }}</strong
                 >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo" class="text-caption">
-                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
+                  Assigned:
+                  {{
+                    subitem.assignedTo
+                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
+                      .join(', ')
+                  }}
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                   Shared:
@@ -325,8 +335,13 @@
               <div>
                 <strong>{{ subitem.type }}</strong
                 >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo" class="text-caption">
-                  Assigned: {{ subitem.assignedTo.username }} ({{ subitem.assignedTo.role }})
+                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
+                  Assigned:
+                  {{
+                    subitem.assignedTo
+                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
+                      .join(', ')
+                  }}
                 </div>
                 <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                   Shared:
@@ -406,19 +421,29 @@
         <!-- Assignment Section -->
         <div v-if="item" class="q-mb-md">
           <div class="text-subtitle1">Assigned To:</div>
-          <div class="q-pa-sm bg-grey-2 rounded-borders">
-            <div v-if="item.assignedTo" class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs">
-              {{ item.assignedTo.username }}
-              <span class="text-weight-bold">({{ item.assignedTo.role }})</span>
-              <q-btn
-                v-if="canAssign"
-                flat
-                round
-                icon="remove"
-                color="negative"
-                size="sm"
-                @click="removeAssignment"
-              />
+          <div class="q-pa-sm bg-grey-2 rounded-borders assignments-box">
+            <div
+              v-if="item.assignedTo && item.assignedTo.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+            >
+              <div
+                v-for="(assignee, index) in sortedAssignees"
+                :key="index"
+                class="row items-center q-mb-xs text-ellipsis single-line"
+              >
+                <div class="text-ellipsis single-line">
+                  {{ assignee.assignedAt }} - {{ truncateText(assignee.note || 'No note') }}
+                </div>
+                <q-btn
+                  v-if="canAssign"
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="removeAssignment(index)"
+                />
+              </div>
             </div>
             <div
               v-else
@@ -699,36 +724,87 @@
           <div class="text-h6">Assign Item</div>
         </q-card-section>
         <q-card-section>
-          <q-input
-            v-model="searchAssignUsername"
-            label="Search Username"
-            dense
-            @input="searchAssignUsers"
-            aria-label="Search for users to assign"
-            :disable="!canAssign"
-          />
-          <q-list v-if="filteredAssignUsers.length" bordered class="q-mt-md">
-            <q-item
-              v-for="user in filteredAssignUsers"
-              :key="user.username"
-              clickable
-              @click="selectAssignee(user)"
+          <q-form @submit.prevent="addAssignee">
+            <q-select
+              v-model="selectedItem"
+              :options="itemOptions"
+              label="Select Item"
+              option-label="label"
+              option-value="value"
+              dense
+              :error="!selectedItem && assignFormSubmitted"
+              error-message="Item is required"
+              class="q-mb-md"
+              :disable="!canAssign"
+            />
+            <q-input
+              v-model="searchAssignUsername"
+              label="Search Username"
+              dense
+              @input="searchAssignUsers"
+              aria-label="Search for users to assign"
+              :disable="!canAssign"
+            />
+            <q-list v-if="filteredAssignUsers.length" bordered class="q-mt-md user-list">
+              <q-item
+                v-for="user in filteredAssignUsers"
+                :key="user.username"
+                clickable
+                @click="selectAssignee(user)"
+              >
+                <q-item-section
+                  >{{ user.username }}
+                  <span class="text-weight-bold">({{ user.role }})</span></q-item-section
+                >
+              </q-item>
+            </q-list>
+            <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">
+              No eligible users found
+            </div>
+            <div v-if="newAssignees.length" class="q-mt-md">
+              <div class="text-subtitle2">Selected Users:</div>
+              <div v-for="(assignee, index) in newAssignees" :key="index" class="row items-center q-mb-xs">
+                <q-item-section
+                  >{{ assignee.username }}
+                  <span class="text-weight-bold">({{ assignee.role }})</span></q-item-section
+                >
+                <q-input
+                  v-model="assignee.note"
+                  label="Note"
+                  dense
+                  placeholder="What should this user do?"
+                  class="col q-mr-sm"
+                  :disable="!canAssign"
+                />
+                <q-btn
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="newAssignees.splice(index, 1)"
+                  :disable="!canAssign"
+                />
+              </div>
+            </div>
+            <q-btn
+              label="Add User"
+              color="positive"
+              type="submit"
+              class="full-width q-mt-md"
+              :disable="!canAssign || !searchAssignUsername || !isValidAssignUsername"
+            />
+          </q-form>
+          <div v-if="selectedItem?.assignedTo?.length" class="q-mt-md">
+            <div class="text-subtitle2">Currently Assigned To:</div>
+            <div
+              v-for="(assignee, index) in selectedItem.assignedTo"
+              :key="index"
+              class="row items-center q-mb-xs"
             >
               <q-item-section
-                >{{ user.username }}
-                <span class="text-weight-bold">({{ user.role }})</span></q-item-section
-              >
-            </q-item>
-          </q-list>
-          <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">
-            No eligible users found
-          </div>
-          <div v-if="item?.assignedTo" class="q-mt-md">
-            <div class="text-subtitle2">Currently Assigned To:</div>
-            <div class="row items-center q-mb-xs">
-              <q-item-section
-                >{{ item.assignedTo.username }}
-                <span class="text-weight-bold">({{ item.assignedTo.role }})</span></q-item-section
+                >{{ assignee.username }}
+                <span class="text-weight-bold">({{ assignee.role }}): {{ assignee.note || 'No note' }}</span></q-item-section
               >
               <q-btn
                 v-if="canAssign"
@@ -737,14 +813,14 @@
                 icon="remove"
                 color="negative"
                 size="sm"
-                @click="removeAssignment"
+                @click="removeAssignment(index)"
               />
             </div>
           </div>
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
-          <q-btn label="Save" color="positive" @click="saveAssignment" :disable="!canAssign" />
+          <q-btn label="Save" color="positive" @click="saveAssignment" :disable="!canAssign || !selectedItem" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -797,6 +873,36 @@ const availableUsers = ref([])
 const isLoadingUsers = ref(false)
 const currentUser = ref(JSON.parse(localStorage.getItem('userProfile') || '{}')?.username || '')
 const parentChain = ref([])
+const selectedItem = ref(null)
+const newAssignees = ref([])
+const assignFormSubmitted = ref(false)
+const isValidAssignUsername = computed(() => {
+  if (!searchAssignUsername.value || !Array.isArray(item.value?.shareWith)) return false
+  return item.value.shareWith.some(
+    (share) =>
+      share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
+      (share.role === 'admin' || share.role === 'owner') &&
+      !share.status,
+  )
+})
+const itemOptions = computed(() => {
+  if (!item.value) return []
+  const options = [
+    { label: `${item.value.type}: ${item.value.title}`, value: item.value }
+  ]
+  if (item.value.subitems) {
+    item.value.subitems.forEach((subitem) => {
+      options.push({ label: `${subitem.type}: ${subitem.title}`, value: subitem })
+    })
+  }
+  return options
+})
+
+const sortedAssignees = computed(() => {
+  return item.value?.assignedTo
+    ? [...item.value.assignedTo].sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt))
+    : []
+})
 
 // Compute current user's role
 const currentUserRole = computed(() => {
@@ -909,6 +1015,21 @@ const updateSubitemsShareWith = (item, shareWith) => {
   }
 }
 
+const updateSubitemsAssignedTo = (item, assignedTo) => {
+  if (item.subitems) {
+    item.subitems.forEach((subitem) => {
+      // Preserve existing assignments and only add new ones
+      subitem.assignedTo = subitem.assignedTo || []
+      assignedTo.forEach((newAssignee) => {
+        if (!subitem.assignedTo.some((a) => a.username === newAssignee.username)) {
+          subitem.assignedTo.unshift({ ...newAssignee })
+        }
+      })
+      updateSubitemsAssignedTo(subitem, assignedTo)
+    })
+  }
+}
+
 const buildParentChain = (items, id) => {
   const chain = []
   let currentItem = findItemById(items, id)
@@ -943,7 +1064,7 @@ const loadItems = () => {
   }
   if (!item.value.shareWith) item.value.shareWith = [{ username: currentUser.value, role: 'owner' }]
   if (!item.value.creator) item.value.creator = currentUser.value
-  if (!item.value.assignedTo) item.value.assignedTo = null
+  if (!item.value.assignedTo) item.value.assignedTo = []
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
   } else {
@@ -1112,7 +1233,7 @@ const addSubitem = () => {
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
       note: '',
       creator: currentUser.value,
-      assignedTo: null,
+      assignedTo: [],
       reports: [],
     }
     item.value.subitems = item.value.subitems || []
@@ -1440,7 +1561,7 @@ const removeSharedUser = (index) => {
       // If it's a parent item, remove it entirely from user's storage
       const newUserItems = userItems.filter(i => i.id !== item.value.id)
       localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(newUserItems))
-      // Remove pending invitations for parent item
+      // Remove pending invocations for parent item
       const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]')
       const newInvitations = invitations.filter(inv => inv.itemId !== item.value.id)
       localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
@@ -1487,16 +1608,22 @@ const openAssignDialog = () => {
   showAssignDialog.value = true
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
+  newAssignees.value = []
+  selectedItem.value = { label: `${item.value.type}: ${item.value.title}`, value: item.value } // Default to main item
+  assignFormSubmitted.value = false
 }
 
 const closeAssignDialog = () => {
   showAssignDialog.value = false
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
+  newAssignees.value = []
+  selectedItem.value = null
+  assignFormSubmitted.value = false
 }
 
 const searchAssignUsers = () => {
-  if (!Array.isArray(availableUsers.value)) {
+  if (!Array.isArray(item.value?.shareWith)) {
     filteredAssignUsers.value = []
     return
   }
@@ -1504,7 +1631,9 @@ const searchAssignUsers = () => {
     filteredAssignUsers.value = item.value.shareWith
       .filter(
         (share) =>
-          share.username !== currentUser.value && (!share.status || share.status !== 'pending'),
+          share.username !== currentUser.value &&
+          (!share.status || share.status !== 'pending') &&
+          (share.role === 'admin' || share.role === 'owner'),
       )
       .map((share) => ({ username: share.username, role: share.role }))
     return
@@ -1514,6 +1643,7 @@ const searchAssignUsers = () => {
       (share) =>
         share.username !== currentUser.value &&
         (!share.status || share.status !== 'pending') &&
+        (share.role === 'admin' || share.role === 'owner') &&
         share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
     )
     .map((share) => ({ username: share.username, role: share.role }))
@@ -1521,15 +1651,77 @@ const searchAssignUsers = () => {
 
 const selectAssignee = (user) => {
   if (!canAssign.value) return
-  item.value.assignedTo = { username: user.username, role: user.role }
-  saveItem()
-  closeAssignDialog()
+  if (!newAssignees.value.some((a) => a.username === user.username)) {
+    newAssignees.value.push({ username: user.username, role: user.role, note: '' })
+  }
+  searchAssignUsername.value = ''
+  filteredAssignUsers.value = []
 }
 
-const removeAssignment = () => {
-  if (!canAssign.value) return
-  item.value.assignedTo = null
+const addAssignee = () => {
+  if (!canAssign.value || !searchAssignUsername.value || !isValidAssignUsername.value) return
+  if (newAssignees.value.some((a) => a.username === searchAssignUsername.value)) {
+    errorMessage.value = 'This user is already selected for assignment.'
+    return
+  }
+  const user = item.value.shareWith.find(
+    (share) =>
+      share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
+      (share.role === 'admin' || share.role === 'owner') &&
+      !share.status,
+  )
+  if (user) {
+    newAssignees.value.push({ username: user.username, role: user.role, note: '' })
+    searchAssignUsername.value = ''
+    filteredAssignUsers.value = []
+  } else {
+    errorMessage.value = 'Invalid or ineligible user.'
+  }
+}
+
+const removeAssignment = (index) => {
+  if (!canAssign.value || !item.value) return
+  item.value.assignedTo.splice(index, 1)
+  updateSubitemsAssignedTo(item.value, item.value.assignedTo)
   saveItem()
+}
+
+const saveAssignment = () => {
+  if (!canAssign.value || !selectedItem.value) {
+    errorMessage.value = 'Please select an item.'
+    return
+  }
+  assignFormSubmitted.value = true
+  if (!newAssignees.value.length) {
+    errorMessage.value = 'Please select at least one user to assign.'
+    return
+  }
+  // Ensure assignedTo array exists
+  selectedItem.value.value.assignedTo = selectedItem.value.value.assignedTo || []
+  // Add new assignees with date and avoid duplicates
+  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
+  newAssignees.value.forEach((assignee) => {
+    if (!selectedItem.value.value.assignedTo.some((a) => a.username === assignee.username)) {
+      selectedItem.value.value.assignedTo.unshift({ ...assignee, assignedAt: currentDateTime })
+    }
+  })
+  // Update subitems recursively
+  updateSubitemsAssignedTo(selectedItem.value.value, selectedItem.value.value.assignedTo)
+  // Save changes to all relevant users
+  saveItem()
+  // Deep copy to force re-render
+  item.value = JSON.parse(JSON.stringify(item.value))
+  // Update the item in the storage of all shared users
+  const shareUsernames = item.value.shareWith
+    .filter(
+      (share) => share.username !== currentUser.value && (!share.status || share.status !== 'pending'),
+    )
+    .map((share) => share.username)
+  shareUsernames.forEach((username) => {
+    updateItemInUserStorage(item.value, username)
+  })
+  closeAssignDialog()
+  errorMessage.value = ''
 }
 
 const openProfile = () => {
@@ -1610,6 +1802,10 @@ const sortSubitems = () => {
   font-family: inherit;
 }
 .reports-box {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.assignments-box {
   max-height: 200px;
   overflow-y: auto;
 }
