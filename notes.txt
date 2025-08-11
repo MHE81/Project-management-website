@@ -1,27 +1,7 @@
+becuase the code is lone give me the code on 2 parts in two messages. give me the code until before <script> after this message. the i will ask you to give me the rest of the code
+
 i want you to just change the things that i said and dont touch anything else. because every thing is perfect
 explain in farsi
-
-
-invitation:
-
-the pending is sub is for the last shared user
-when an user deletes his account he should be deleted from shared items
-**********
-deleting item by owner?
-can admin add note?
-admin deleting the item for themselves?
-
-if an subitem is shared instead of an item the invite will be sent but it cant be ??
-order of sharing!???
-
-comment box?
-
-invitations display(name, inviter, date and time)
-
-share with in new item form (handle or delete?)
-
-
-the sub category should be the same as its parent!!!
 
 assigning:
 just the owner should be able to assign an item to one or more shared users with a note.
@@ -30,34 +10,54 @@ for choosing user, owner chooses a user from the shared users with role admin or
 in each assigning, one item should be chosen, for that item, one or more user can be chosen.
 note that when an item is assigned its subitems will the assigned the same as the item until the last layer
 
-اوکیه
-ولی شکل مواردی که توی باکس گزارش و اختصاص هست یکی نیست
-نه ایکون حذفشون یکیه نه اندازشون یکیه!
-میخاوم جفتشون شبیه اونی باشن که توی باکس گزارش هست
+invitation:
 
-reports:
-a link of git can be shared!(optional)
-who wrote the report?:
-each user has a picture and a username. on left of each report in the box, it should be a thing that says who has written this report. if user had picture, his picture should be there, of not, his username should be there
-why is the author of reports are unknown?
-the report author should be the one who has added that report. as you know each user has a homepage and some items for his own.
-
-
+the pending is sub is for the last shared user
+when an user deletes his account he should be deleted from shared items
+deleting item by owner?
 
 call:
 call should be about to happen with shared users via google meet
-it can be arranged
 the target users should be notified (send the link or time and usernames in the call)
+it can be arranged(optional)
 
 
-check if email exits 
+there is a "call" button in the itemdetail page that is for making a call via google meet between users that are shared for an item.
+so when user clicks on call, user should enter the reason of making the call. the list of shared users in the present item should be shown and user should be able to choose as many as he wants from them. the user who maked the call is the creator of the call. then, the call should be done via google meet with the chosen users.
+note that calls should be shown in a box. each call has a status that can be "on call" or "finished". each call should be present in the from the creation for one one hour after finishing it. each call should have its details in a diolog (users in call, the time of call (if call has been finished the duration will be filles and if the status is on call it should be "-"), the reason of call, a discription of the call that only the call creator can fill it)
+i want you to code only the front-end part. the back-end parts will be handled later.
+
+**********
+can admin add note?
+admin deleting the item for themselves?
+
+sort status in each page should be unique
+
+if an subitem is shared instead of an item the invite will be sent so the shared user will have its invitation, if he rejects it a message should be sent for the inviter and when he accepts it the invitation should be deleted these happens now based on my current codes and dont need to change
+the thing that need to be changed is that the subitem that has been shared should be appeared in the homepage as an item (not its parents) and it has to contain its subitems until the last layer like other sharing senarios 
+but now the invitation comes and when user accepts it, the invitation is gone but the item doesnt appear in his homepage!
+i want you to just change the things that i said and dont touch anything else. because every thing is perfect
+explain in farsi
+current home code:
+
+forget pass!
+
+
+comment box?
+
+invitations display(name, inviter, date and time)
+
+check if email exits
+
 the picture should be shown in the page:
 if user has chosen a profile image the picture should be shown in the pages (circle) instead of the profile icon and if there is no profile image, the current icon should be there.
 if both senarios the imapge or icon should be the button that goes to the user profile
+explain in farsi.
 
-forget pass!
+
 type cant be typed!
-
+category cant be typed
+-----------------
 
 
 priority colors and adding one
@@ -68,14 +68,6 @@ priority colors and adding one
 دلیل توقف یا تأخیر در پروژه‌ها
 آیا کسی باید کاری رو تموم کنه تا این مورد جلو بره؟
 items display
-
-
-AI widget
-پیشنهاد برای حل مشکلات
-پیش‌بینی زمان‌بندی پروژه‌های آینده
-check GPTs
-
-
 
 
 

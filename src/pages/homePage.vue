@@ -472,7 +472,7 @@ const canEdit = (item) => {
   return (
     item.creator === currentUser.value ||
     item.shareWith?.some(
-      (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner')
+      (share) => share.username === currentUser.value && share.role === 'owner'
     )
   )
 }
@@ -678,7 +678,7 @@ const addItem = () => {
       status: subitem.status || 'backlog',
       priority: subitem.priority || 'Low',
       parentId: parentId,
-      category: [],
+      category: itemForm.value.category, // Set subitem category to parent category
       shareWith: [{ username: currentUser.value, role: 'owner' }],
       movedToDoneAt: null,
       creator: currentUser.value,
