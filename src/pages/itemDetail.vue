@@ -1,3 +1,4 @@
+```vue
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
@@ -73,7 +74,7 @@
         v-model="selectedReport.details"
         placeholder="Edit your report here..."
         class="resizable-note custom-textarea"
-        :disabled="!canEdit"
+        :disabled="!isReportOwner"
       />
       <div class="row q-mt-sm">
         <q-btn
@@ -81,7 +82,7 @@
           color="positive"
           @click="saveEditedReport"
           class="q-mr-sm"
-          :disable="!canEdit"
+          :disable="!isReportOwner"
         />
         <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" />
       </div>
@@ -515,7 +516,7 @@
 
         <!-- Add New Report Button (Plus Icon) -->
         <q-btn
-          v-if="item && !isAddingReport && !selectedReport"
+          v-if="item && !isAddingReport && !showReportDialog"
           round
           color="secondary"
           icon="add"
@@ -533,10 +534,10 @@
               v-for="(report, index) in sortedReports"
               :key="index"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
-              @click="selectReport(report, index)"
+              @click="openReportDialog(report, index)"
             >
               <div class="text-ellipsis single-line">
-                {{ report.date }} - {{ truncateText(report.details) }}
+                <span class="text-weight-bold">{{ report.creator }}</span>: {{ report.date }} - {{ truncateText(report.details) }}
               </div>
               <q-btn
                 flat
@@ -545,7 +546,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteReportFromBox(report, index)"
-                :disable="!canEdit"
+                :disable="report.creator !== currentUser"
               />
             </div>
           </div>
@@ -556,6 +557,35 @@
         >
           No reports available.
         </div>
+
+        <!-- Report Dialog -->
+        <q-dialog v-model="showReportDialog" persistent>
+          <q-card style="width: 400px; max-width: 90vw">
+            <q-card-section>
+              <div class="text-h6">Report Details</div>
+            </q-card-section>
+            <q-card-section>
+              <div class="text-subtitle2 q-mb-md">Written by: {{ selectedReport?.creator || 'Unknown' }}</div>
+              <div class="text-subtitle2 q-mb-md">Date: {{ selectedReport?.date || 'N/A' }}</div>
+              <textarea
+                v-model="selectedReport.details"
+                placeholder="Report details..."
+                class="resizable-note custom-textarea"
+                :disabled="!isReportOwner"
+              />
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeReportDialog" />
+              <q-btn
+                v-if="isReportOwner"
+                label="Save"
+                color="positive"
+                @click="saveEditedReport"
+                :disable="!isReportOwner"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
 
         <!-- Subitem Form and Buttons -->
         <div class="bg-white" style="padding: 15px">
@@ -931,6 +961,7 @@ const assignFormSubmitted = ref(false)
 const showAssigneeDialog = ref(false)
 const selectedAssignee = ref(null)
 const selectedAssigneeIndex = ref(null)
+const showReportDialog = ref(false)
 
 const isValidAssignUsername = computed(() => {
   if (!searchAssignUsername.value || !Array.isArray(item.value?.shareWith)) return false
@@ -1006,7 +1037,7 @@ const canChangeSubitemStatus = (subitem) => {
     ) || false
   }
   return false
-}
+})
 
 const canAssign = computed(() => {
   if (!item.value) return false
@@ -1051,6 +1082,10 @@ const sortedReports = computed(() => {
   return item.value?.reports
     ? [...item.value.reports].sort((a, b) => new Date(b.date) - new Date(a.date))
     : []
+})
+
+const isReportOwner = computed(() => {
+  return selectedReport.value?.creator === currentUser.value
 })
 
 const completionPercent = computed(() => {
@@ -1180,6 +1215,7 @@ const loadItems = () => {
   isAddingReport.value = false
   selectedReport.value = null
   selectedReportIndex.value = null
+  showReportDialog.value = false
   resetSubitemForm()
   if (!item.value.note) item.value.note = ''
   if (!item.value.reports) item.value.reports = []
@@ -1324,7 +1360,7 @@ const addSubitem = () => {
       status: statusMap[subitemForm.value.status] || 'backlog',
       priority: subitemForm.value.priority,
       parentId: item.value.id,
-      category: [],
+      category: item.value.category, // Set subitem category to parent category
       subitems: [],
       shareWith: item.value.shareWith.map((s) => ({ ...s })),
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
@@ -1480,6 +1516,7 @@ const toggleReportForm = (value) => {
   if (value) {
     selectedReport.value = null
     selectedReportIndex.value = null
+    showReportDialog.value = false
   }
 }
 
@@ -1499,6 +1536,7 @@ const saveReport = () => {
   const newReport = {
     date: currentDateTime,
     details: newReportDetails.value,
+    creator: currentUser.value
   }
   item.value.reports = item.value.reports || []
   item.value.reports.unshift(newReport)
@@ -1508,20 +1546,29 @@ const saveReport = () => {
   errorMessage.value = ''
 }
 
-const selectReport = (report, index) => {
+const openReportDialog = (report, index) => {
   selectedReport.value = { ...report }
   selectedReportIndex.value = index
+  showReportDialog.value = true
   isAddingReport.value = false
 }
 
-const cancelEditReport = () => {
+const closeReportDialog = () => {
+  showReportDialog.value = false
   selectedReport.value = null
   selectedReportIndex.value = null
   errorMessage.value = ''
 }
 
+const cancelEditReport = () => {
+  selectedReport.value = null
+  selectedReportIndex.value = null
+  showReportDialog.value = false
+  errorMessage.value = ''
+}
+
 const saveEditedReport = () => {
-  if (!canEdit.value) return
+  if (!isReportOwner.value) return
   if (
     !selectedReport.value ||
     !selectedReport.value.details ||
@@ -1538,16 +1585,18 @@ const saveEditedReport = () => {
     item.value.reports[selectedReportIndex.value] = {
       ...selectedReport.value,
       date: item.value.reports[selectedReportIndex.value].date,
+      creator: item.value.reports[selectedReportIndex.value].creator
     }
     saveItem()
   }
   selectedReport.value = null
   selectedReportIndex.value = null
+  showReportDialog.value = false
   errorMessage.value = ''
 }
 
 const deleteReportFromBox = (report, index) => {
-  if (!canEdit.value) return
+  if (report.creator !== currentUser.value) return
   if (item.value.reports && item.value.reports.length > index) {
     item.value.reports.splice(index, 1)
     saveItem()
@@ -1941,3 +1990,4 @@ const sortSubitems = () => {
   background-color: #f0f0f0;
 }
 </style>
+```
