@@ -1,4 +1,3 @@
-```vue
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
@@ -514,6 +513,142 @@
           </q-card>
         </q-dialog>
 
+        <!-- Calls Box -->
+        <div v-if="item" class="q-mb-md">
+          <div class="text-subtitle1">Calls:</div>
+          <div class="bg-grey-2 rounded-borders q-pa-sm calls-box">
+            <div
+              v-if="item.calls && item.calls.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+            >
+              <div
+                v-for="(call, index) in sortedCalls"
+                :key="index"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                @click="openCallDetailsDialog(call, index)"
+              >
+                <div class="text-ellipsis single-line">
+                  <span class="text-weight-bold">{{ call.creator }}</span>: {{ call.status }} - {{ truncateText(call.reason) }}
+                </div>
+                <q-btn
+                  v-if="currentUserRole === 'owner'"
+                  flat
+                  round
+                  icon="delete"
+                  color="negative"
+                  size="sm"
+                  @click.stop="deleteCall(call.id)"
+                />
+              </div>
+            </div>
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
+              No calls available.
+            </div>
+          </div>
+          <q-btn
+            label="Call"
+            color="secondary"
+            class="full-width q-mb-xs"
+            @click="openCallDialog"
+            :disable="currentUserRole === 'observer'"
+          />
+        </div>
+
+        <!-- Call Dialog -->
+        <q-dialog v-model="showCallDialog" persistent>
+          <q-card style="width: 600px; max-width: 90vw">
+            <q-card-section>
+              <div class="text-h6">Start a Call</div>
+            </q-card-section>
+            <q-card-section>
+              <q-form @submit.prevent="startCall">
+                <q-input
+                  v-model="callReason"
+                  label="Reason for Call"
+                  dense
+                  :error="!callReason && callFormSubmitted"
+                  error-message="Reason is required"
+                  class="q-mb-md"
+                />
+                <div class="text-subtitle2 q-mb-md">Select Users:</div>
+                <q-list bordered class="q-mb-md user-list">
+                  <q-item
+                    v-for="user in item.shareWith.filter(u => u.username !== currentUser)"
+                    :key="user.username"
+                    clickable
+                    @click="toggleCallUser(user)"
+                    :active="selectedCallUsers.includes(user.username)"
+                    active-class="bg-grey-3"
+                  >
+                    <q-item-section>
+                      {{ user.username }}
+                      <span class="text-weight-bold">({{ user.role }}{{ user.status === 'pending' ? ', Pending' : '' }})</span>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-checkbox
+                        v-model="selectedCallUsers"
+                        :val="user.username"
+                        :disable="user.status === 'pending'"
+                      />
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+                <q-btn
+                  label="Start Call"
+                  color="positive"
+                  type="submit"
+                  class="full-width q-mb-md"
+                  :disable="!selectedCallUsers.length || !callReason"
+                />
+              </q-form>
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCallDialog" />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+
+        <!-- Call Details Dialog -->
+        <q-dialog v-model="showCallDetailsDialog" persistent>
+          <q-card style="width: 400px; max-width: 90vw">
+            <q-card-section>
+              <div class="text-h6">Call Details</div>
+            </q-card-section>
+            <q-card-section>
+              <div class="text-subtitle2 q-mb-md">Creator: {{ selectedCall?.creator || 'Unknown' }}</div>
+              <div class="text-subtitle2 q-mb-md">Status: {{ selectedCall?.status || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Time: {{ selectedCall?.startTime || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Duration: {{ selectedCall?.duration || '-' }}</div>
+              <div class="text-subtitle2 q-mb-md">Reason: {{ selectedCall?.reason || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Users in Call:</div>
+              <div class="q-mb-md">
+                <span v-for="(user, index) in selectedCall?.users" :key="index">
+                  {{ user }}{{ index < selectedCall.users.length - 1 ? ', ' : '' }}
+                </span>
+              </div>
+              <textarea
+                v-model="selectedCall.description"
+                placeholder="Call description..."
+                class="resizable-note custom-textarea"
+                :disabled="!isCallParticipant"
+              />
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCallDetailsDialog" />
+              <q-btn
+                v-if="isCallParticipant"
+                label="Save"
+                color="positive"
+                @click="saveCallDescription"
+                :disable="!isCallParticipant"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+
         <!-- Add New Report Button (Plus Icon) -->
         <q-btn
           v-if="item && !isAddingReport && !showReportDialog"
@@ -587,7 +722,7 @@
           </q-card>
         </q-dialog>
 
-        <!-- Subitem Form and Buttons -->
+        <!-- Subitem Form -->
         <div class="bg-white" style="padding: 15px">
           <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
             <q-circular-progress
@@ -608,7 +743,6 @@
               @click="openSubitemForm"
               :disable="!canAddSubitems"
             />
-            <q-btn label="Call" color="secondary" class="full-width q-mb-xs" />
           </div>
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
             <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
@@ -915,7 +1049,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+const currentDate = new Date().toLocaleDateString('en-US')
 const item = ref(null)
 const directParent = ref(null)
 const sortByPriority = ref(false)
@@ -962,6 +1096,13 @@ const showAssigneeDialog = ref(false)
 const selectedAssignee = ref(null)
 const selectedAssigneeIndex = ref(null)
 const showReportDialog = ref(false)
+const showCallDialog = ref(false)
+const callReason = ref('')
+const callFormSubmitted = ref(false)
+const selectedCallUsers = ref([])
+const showCallDetailsDialog = ref(false)
+const selectedCall = ref(null)
+const selectedCallIndex = ref(null)
 
 const isValidAssignUsername = computed(() => {
   if (!searchAssignUsername.value || !Array.isArray(item.value?.shareWith)) return false
@@ -990,6 +1131,22 @@ const sortedAssignees = computed(() => {
   return item.value?.assignedTo
     ? [...item.value.assignedTo].sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt))
     : []
+})
+
+const sortedCalls = computed(() => {
+  if (!item.value?.calls) return []
+  const now = new Date()
+  return item.value.calls
+    .filter((call) => {
+      if (call.status === 'On Call') return true
+      if (call.status === 'Finished' && call.endTime) {
+        const endTime = new Date(call.endTime)
+        const oneHourAfterEnd = new Date(endTime.getTime() + 60 * 60 * 1000)
+        return now <= oneHourAfterEnd
+      }
+      return false
+    })
+    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime)) // Sort descending for newest on top
 })
 
 const currentUserRole = computed(() => {
@@ -1037,7 +1194,7 @@ const canChangeSubitemStatus = (subitem) => {
     ) || false
   }
   return false
-})
+}
 
 const canAssign = computed(() => {
   if (!item.value) return false
@@ -1086,6 +1243,10 @@ const sortedReports = computed(() => {
 
 const isReportOwner = computed(() => {
   return selectedReport.value?.creator === currentUser.value
+})
+
+const isCallParticipant = computed(() => {
+  return selectedCall.value?.users.includes(currentUser.value)
 })
 
 const completionPercent = computed(() => {
@@ -1202,6 +1363,7 @@ const loadItems = () => {
   if (!item.value.shareWith) item.value.shareWith = [{ username: currentUser.value, role: 'owner' }]
   if (!item.value.creator) item.value.creator = currentUser.value
   if (!item.value.assignedTo) item.value.assignedTo = []
+  if (!item.value.calls) item.value.calls = []
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
   } else {
@@ -1216,6 +1378,13 @@ const loadItems = () => {
   selectedReport.value = null
   selectedReportIndex.value = null
   showReportDialog.value = false
+  showCallDialog.value = false
+  callReason.value = ''
+  callFormSubmitted.value = false
+  selectedCallUsers.value = []
+  showCallDetailsDialog.value = false
+  selectedCall.value = null
+  selectedCallIndex.value = null
   resetSubitemForm()
   if (!item.value.note) item.value.note = ''
   if (!item.value.reports) item.value.reports = []
@@ -1368,6 +1537,7 @@ const addSubitem = () => {
       creator: currentUser.value,
       assignedTo: item.value.assignedTo ? item.value.assignedTo.map((a) => ({ ...a })) : [],
       reports: [],
+      calls: [],
     }
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
@@ -1532,7 +1702,7 @@ const saveReport = () => {
     errorMessage.value = 'Report details cannot be empty.'
     return
   }
-  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
+  const currentDateTime = new Date().toLocaleString('en-US')
   const newReport = {
     date: currentDateTime,
     details: newReportDetails.value,
@@ -1599,6 +1769,96 @@ const deleteReportFromBox = (report, index) => {
   if (report.creator !== currentUser.value) return
   if (item.value.reports && item.value.reports.length > index) {
     item.value.reports.splice(index, 1)
+    saveItem()
+  }
+  errorMessage.value = ''
+}
+
+const openCallDialog = () => {
+  if (!canEdit.value) return
+  showCallDialog.value = true
+  callReason.value = ''
+  callFormSubmitted.value = false
+  selectedCallUsers.value = []
+}
+
+const closeCallDialog = () => {
+  showCallDialog.value = false
+  callReason.value = ''
+  callFormSubmitted.value = false
+  selectedCallUsers.value = []
+  errorMessage.value = ''
+}
+
+const toggleCallUser = (user) => {
+  if (user.status === 'pending') return
+  if (selectedCallUsers.value.includes(user.username)) {
+    selectedCallUsers.value = selectedCallUsers.value.filter((u) => u !== user.username)
+  } else {
+    selectedCallUsers.value.push(user.username)
+  }
+}
+
+const startCall = () => {
+  callFormSubmitted.value = true
+  if (!callReason.value || !callReason.value.trim()) {
+    errorMessage.value = 'Reason for call is required.'
+    return
+  }
+  if (!selectedCallUsers.value.length) {
+    errorMessage.value = 'At least one user must be selected for the call.'
+    return
+  }
+  const currentDateTime = new Date().toLocaleString()
+  const newCall = {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    creator: currentUser.value,
+    status: 'On Call',
+    startTime: currentDateTime,
+    reason: callReason.value,
+    users: [currentUser.value, ...selectedCallUsers.value],
+    description: '',
+  }
+  item.value.calls = item.value.calls || []
+  item.value.calls.unshift(newCall)
+  saveItem()
+  // فرض می‌شود لینک Google Meet توسط بک‌اند تولید می‌شود
+  // window.open('https://meet.google.com/xxx-yyyy-zzz', '_blank')
+  closeCallDialog()
+  errorMessage.value = ''
+}
+
+const openCallDetailsDialog = (call, index) => {
+  selectedCall.value = { ...call }
+  selectedCallIndex.value = index
+  showCallDetailsDialog.value = true
+}
+
+const closeCallDetailsDialog = () => {
+  showCallDetailsDialog.value = false
+  selectedCall.value = null
+  selectedCallIndex.value = null
+  errorMessage.value = ''
+}
+
+const saveCallDescription = () => {
+  if (!isCallParticipant.value) return
+  if (!selectedCall.value || selectedCallIndex.value === null) return
+  if (item.value.calls && item.value.calls.length > selectedCallIndex.value) {
+    item.value.calls[selectedCallIndex.value] = {
+      ...selectedCall.value,
+      description: selectedCall.value.description || ''
+    }
+    saveItem()
+  }
+  closeCallDetailsDialog()
+  errorMessage.value = ''
+}
+
+const deleteCall = (callId) => {
+  if (currentUserRole.value !== 'owner') return
+  if (item.value.calls) {
+    item.value.calls = item.value.calls.filter(call => call.id !== callId)
     saveItem()
   }
   errorMessage.value = ''
@@ -1838,7 +2098,7 @@ const saveAssignment = () => {
     return
   }
   selectedItem.value.value.assignedTo = selectedItem.value.value.assignedTo || []
-  const currentDateTime = new Date().toLocaleString('en-US', { timeZone: 'Asia/Dubai' })
+  const currentDateTime = new Date().toLocaleString('en-US')
   newAssignees.value.forEach((assignee) => {
     if (!selectedItem.value.value.assignedTo.some((a) => a.username === assignee.username)) {
       selectedItem.value.value.assignedTo.unshift({ ...assignee, assignedAt: currentDateTime })
@@ -1965,6 +2225,10 @@ const sortSubitems = () => {
   max-height: 200px;
   overflow-y: auto;
 }
+.calls-box {
+  max-height: 200px;
+  overflow-y: auto;
+}
 .assignments-box {
   max-height: 200px;
   overflow-y: auto;
@@ -1990,4 +2254,3 @@ const sortSubitems = () => {
   background-color: #f0f0f0;
 }
 </style>
-```
