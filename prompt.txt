@@ -3,15 +3,10 @@
 اگر هم کاربر 1 دعوتنامه 1.1.1 رو پذیرفته بود و  بعدش دعوت پدرش اتفاق افتاد، دعوتنامه جدید براش میاد ولی نقشش اپدیت میشه در ایتم هایی که نقششون توش تغییر کرده
 نقش های یک کاربر باید در  همه زیرایتم های یک ایتم یکی باشه
 
-وقتی یه کاربر از اشتراک های ایتمی حذف میشود، اختصاصات او نیز باید حذف شوند.
+
+وقتی کاربر اکانت خود را حذف میکند باید از اشتراک های ایتم هایی در انها اشتراک داشته حذف شود
+وقتی یه کاربر از اشتراک های ایتمی حذف میشود، اختصاصات و اسمش به عنوان یوزر در اشتراک نیز باید حذف شوند.
 
 
-ok. good. lets go for sth else. i want to change 2 little things.
-1. just change this permission: user with admin role doesnt have to be able to change the item details (just the "Details" box on left side of the page). no other changes
 
-2. until now no one except the owner could add a new item but from now on when an item is assigned to a user, the user can add new subitem only to the item that is assigned to him, too.
-note that when such thing happens, the user role will still be admin in the new subitem. so his permissions is exactly like other items but because he created the new subitem the only thing that he can do more than other items is that he just can edit the new item detail
 
-becuase the code is lone give me the code on 2 parts in two messages. give me the code until before <script> after this message. the i will ask you to give me the rest of the code
-i want you to just change the things in current code that i said and dont touch anything else. because every thing is perfect without any problem
-explain in farsi

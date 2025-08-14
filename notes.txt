@@ -34,35 +34,36 @@ note that when such thing happens, the user role will still be admin in the new 
 becuase the code is lone give me the code on 2 parts in two messages. give me the code until before <script> after this message. the i will ask you to give me the rest of the code
 i want you to just change the things in current code that i said and dont touch anything else. because every thing is perfect without any problem
 explain in farsi
-**********
-can admin add note?
-admin deleting the item for themselves?
-
-sort status in each page should be unique
 
 if an subitem is shared instead of an item the invite will be sent so the shared user will have its invitation, if he rejects it a message should be sent for the inviter and when he accepts it the invitation should be deleted these happens now based on my current codes and dont need to change
 the thing that need to be changed is that the subitem that has been shared should be appeared in the homepage as an item (not its parents) and it has to contain its subitems until the last layer like other sharing senarios 
 but now the invitation comes and when user accepts it, the invitation is gone but the item doesnt appear in his homepage!
 
-forget pass!
+**********
 
+forget pass!
 
 comment box?
 
+all users should be able to left the item that is shared with them
+
+sort status in each page should be unique
+
 invitations display(name, inviter, date and time)
+
+type cant be typed!
+category cant be typed
+--------
+
 
 check if email exits
 
 the picture should be shown in the page:
 if user has chosen a profile image the picture should be shown in the pages (circle) instead of the profile icon and if there is no profile image, the current icon should be there.
-if both senarios the imapge or icon should be the button that goes to the user profile
+if both senarios the image or icon should be the button that goes to the user profile
 explain in farsi.
 
-
-type cant be typed!
-category cant be typed
 -----------------
-
 
 priority colors and adding one
 نمایش جزئیات آیتم‌ها تو یه دیالوگ وقتی روشون کلیک می‌کنی

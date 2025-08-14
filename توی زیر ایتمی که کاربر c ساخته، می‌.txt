@@ -1,3 +1,8 @@
+توی زیر ایتمی که کاربر c ساخته، می‌تواند گزارش‌های دیگران یا تماس هارو را حذف کند و امکان اساین (اختصاص) رو هم داره ینی عملا امکانات owner رو گرفته که نباید اینجوری باشه. فقط باید همون اجازه هایی که گفتم رو داشته باشه!
+بالای صفحه، نقشش owner میخوره بجای ادمین!
+ولی توی باکس اشتراکات همچنان admin ئه!
+از توی باکس اشتراکات امکان حذف (remove) خودش رو هم داره که نباید داشته باشه!
+ itemdetail code now:
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
@@ -392,7 +397,7 @@
                   >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
                 >
                 <q-btn
-                  v-if="canShare && share.role !== 'owner' && share.username !== currentUser"
+                  v-if="canShare && share.role !== 'owner'"
                   flat
                   round
                   icon="remove"
@@ -531,7 +536,7 @@
                   <span class="text-weight-bold">{{ call.creator }}</span>: {{ call.status }} - {{ truncateText(call.reason) }}
                 </div>
                 <q-btn
-                  v-if="currentUserRole === 'owner' || call.creator === currentUser"
+                  v-if="currentUserRole === 'owner'"
                   flat
                   round
                   icon="delete"
@@ -915,7 +920,7 @@
                 ></q-item-section
               >
               <q-btn
-                v-if="canShare && share.role !== 'owner' && share.username !== currentUser"
+                v-if="canShare && share.role !== 'owner'"
                 flat
                 round
                 icon="remove"
@@ -1044,7 +1049,6 @@
 </template>
 
 
-
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1114,7 +1118,7 @@ const isValidAssignUsername = computed(() => {
   return item.value.shareWith.some(
     (share) =>
       share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
-      (share.role === 'admin' || share.role === 'observer') &&
+      (share.role === 'admin' || share.role === 'owner') &&
       !share.status,
   )
 })
@@ -1156,15 +1160,14 @@ const sortedCalls = computed(() => {
 
 const currentUserRole = computed(() => {
   if (!item.value) return 'N/A'
-  // ابتدا بررسی shareWith برای یافتن نقش کاربر
+  if (item.value.creator === currentUser.value) return 'owner'
   const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
-  if (userShare) return userShare.role
-  // اگر در shareWith نیست و سازنده آیتم است، نقش owner
-  return item.value.creator === currentUser.value ? 'owner' : 'observer'
+  return userShare ? userShare.role : 'observer'
 })
 
 const canEdit = computed(() => {
   if (!item.value) return false
+  // لاگ برای بررسی مقدار canEdit و creator
   console.log('canEdit Check:', {
     creator: item.value.creator,
     currentUser: currentUser.value,
@@ -1173,7 +1176,7 @@ const canEdit = computed(() => {
       (share) => share.username === currentUser.value && share.role === 'owner' && !share.status
     )
   })
-  // اجازه ویرایش به سازنده آیتم یا کاربران با نقش owner در shareWith
+  // Allow editing details and notes if user is the creator or has owner role in shareWith
   return (
     item.value.creator === currentUser.value ||
     item.value.shareWith?.some(
@@ -1226,10 +1229,10 @@ const canChangeSubitemStatus = (subitem) => {
 
 const canAssign = computed(() => {
   if (!item.value) return false
-  const userShare = item.value.shareWith?.find(
-    (share) => share.username === currentUser.value
-  )
-  return userShare?.role === 'owner' && !userShare?.status
+  return item.value.creator === currentUser.value ||
+    item.value.shareWith?.some(
+      (share) => share.username === currentUser.value && share.role === 'owner'
+    )
 })
 
 const canShare = computed(() => {
@@ -1895,9 +1898,7 @@ const saveEditedReport = () => {
 }
 
 const deleteReportFromBox = (report, index) => {
-  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
-  const hasOwnerRole = userShare?.role === 'owner' && !userShare?.status
-  if (!(hasOwnerRole || report.creator === currentUser.value)) {
+  if (!(report.creator === currentUser.value || currentUserRole.value === 'owner')) {
     console.log('Cannot delete report: Insufficient permissions')
     return
   }
@@ -1910,8 +1911,8 @@ const deleteReportFromBox = (report, index) => {
 }
 
 const openCallDialog = () => {
-  if (currentUserRole.value === 'observer') {
-    console.log('Cannot open call dialog: User is observer')
+  if (!canEdit.value) {
+    console.log('Cannot open call dialog: Insufficient permissions')
     return
   }
   showCallDialog.value = true
@@ -2009,11 +2010,8 @@ const saveCallDescription = () => {
 }
 
 const deleteCall = (callId) => {
-  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
-  const hasOwnerRole = userShare?.role === 'owner' && !userShare?.status
-  const call = item.value.calls.find(call => call.id === callId)
-  if (!(hasOwnerRole || call?.creator === currentUser.value)) {
-    console.log('Cannot delete call: Not an owner or call creator')
+  if (currentUserRole.value !== 'owner') {
+    console.log('Cannot delete call: Not an owner')
     return
   }
   if (item.value.calls) {
@@ -2118,11 +2116,6 @@ const removeSharedUser = (index) => {
   }
   if (index < item.value.shareWith.length && item.value.shareWith[index].role !== 'owner') {
     const removedUser = item.value.shareWith[index]
-    if (removedUser.username === currentUser.value && currentUserRole.value !== 'owner') {
-      console.log('Cannot remove self: User is not owner')
-      errorMessage.value = 'You cannot remove yourself from the shared list.'
-      return
-    }
     const isPending = removedUser.status === 'pending'
     const removedUsername = removedUser.username
     item.value.shareWith.splice(index, 1)
@@ -2229,7 +2222,7 @@ const searchAssignUsers = () => {
         (share) =>
           share.username !== currentUser.value &&
           (!share.status || share.status !== 'pending') &&
-          (share.role === 'admin' || share.role === 'observer'),
+          (share.role === 'admin' || share.role === 'owner'),
       )
       .map((share) => ({ username: share.username, role: share.role }))
     console.log('Searched assign users (empty query):', filteredAssignUsers.value)
@@ -2240,7 +2233,7 @@ const searchAssignUsers = () => {
       (share) =>
         share.username !== currentUser.value &&
         (!share.status || share.status !== 'pending') &&
-        (share.role === 'admin' || share.role === 'observer') &&
+        (share.role === 'admin' || share.role === 'owner') &&
         share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
     )
     .map((share) => ({ username: share.username, role: share.role }))
@@ -2273,7 +2266,7 @@ const addAssignee = () => {
   const user = item.value.shareWith.find(
     (share) =>
       share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
-      (share.role === 'admin' || share.role === 'observer') &&
+      (share.role === 'admin' || share.role === 'owner') &&
       !share.status,
   )
   if (user) {
@@ -2483,3 +2476,8 @@ const sortSubitems = () => {
 }
 </style>
 
+
+becuase the code is lone give me the code on 2 parts in two messages (both in file). give me the code until before <script> after this message. the i will ask you to give me the rest of the code
+
+i want you to just change the things that i said and dont touch anything else. because every thing is perfect
+explain in farsi

@@ -788,7 +788,9 @@ const updateSharedItems = (updatedItem, sourceUser) => {
 }
 
 const completionPercent = computed(() => {
-  const rootItems = items.value.filter((item) => !item.parentId)
+  const rootItems = items.value.filter((item) => !item.parentId || item.shareWith?.some(
+    (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner') && !share.status
+  ))
   if (rootItems.length === 0) return 0
   const doneItems = rootItems.filter((item) => item.status?.toLowerCase() === 'done').length
   return Math.round((doneItems / rootItems.length) * 100)
@@ -810,7 +812,11 @@ const sortedItems = (status) => {
   const normalizedStatus = statusMap[status] || status.toLowerCase()
   const filtered = items.value.filter((item) => {
     const itemStatus = item.status?.toLowerCase() || ''
-    return !item.parentId && itemStatus === normalizedStatus
+    return (
+      (!item.parentId || item.shareWith?.some(
+        (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner') && !share.status
+      )) && itemStatus === normalizedStatus
+    )
   })
   if (status === 'done') {
     return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
