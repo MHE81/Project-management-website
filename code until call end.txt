@@ -52,7 +52,7 @@
         :error="!newReportDetails && reportFormSubmitted"
         error-message="Details are required"
         class="q-mb-md"
-        :disable="!canManageOwnReports"
+        :disable="!canEdit"
       />
       <div class="row">
         <q-btn
@@ -60,7 +60,7 @@
           color="positive"
           @click="saveReport"
           class="q-mr-sm"
-          :disable="!canManageOwnReports"
+          :disable="!canEdit"
         />
         <q-btn label="Cancel" color="negative" flat @click="cancelReport" />
       </div>
@@ -658,7 +658,7 @@
           @click="toggleReportForm(true)"
           class="q-mb-md"
           size="sm"
-          :disable="!canManageOwnReports"
+          :disable="!canEdit"
         />
 
         <!-- Reports Box -->
@@ -681,7 +681,7 @@
                 color="negative"
                 size="sm"
                 @click.stop="deleteReportFromBox(report, index)"
-                :disable="!(report.creator === currentUser || currentUserRole === 'owner')"
+                :disable="report.creator !== currentUser"
               />
             </div>
           </div>
@@ -1042,6 +1042,7 @@
     </q-dialog>
   </q-page>
 </template>
+
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1103,9 +1104,6 @@ const showCallDetailsDialog = ref(false)
 const selectedCall = ref(null)
 const selectedCallIndex = ref(null)
 
-// لاگ برای بررسی مقدار currentUser بعد از لاگین
-console.log('Current User:', currentUser.value)
-
 const isValidAssignUsername = computed(() => {
   if (!searchAssignUsername.value || !Array.isArray(item.value?.shareWith)) return false
   return item.value.shareWith.some(
@@ -1148,7 +1146,7 @@ const sortedCalls = computed(() => {
       }
       return false
     })
-    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime)) // Sort descending for newest on top
 })
 
 const currentUserRole = computed(() => {
@@ -1160,33 +1158,11 @@ const currentUserRole = computed(() => {
 
 const canEdit = computed(() => {
   if (!item.value) return false
-  // لاگ برای بررسی مقدار canEdit و creator
-  console.log('canEdit Check:', {
-    creator: item.value.creator,
-    currentUser: currentUser.value,
-    isCreator: item.value.creator === currentUser.value,
-    hasOwnerRole: item.value.shareWith?.some(
-      (share) => share.username === currentUser.value && share.role === 'owner' && !share.status
-    )
-  })
-  // Allow editing details and notes if user is the creator or has owner role in shareWith
   return (
     item.value.creator === currentUser.value ||
     item.value.shareWith?.some(
-      (share) => share.username === currentUser.value && share.role === 'owner' && !share.status
+      (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner')
     )
-  )
-})
-
-const canManageOwnReports = computed(() => {
-  if (!item.value) return false
-  return (
-    item.value.shareWith?.some(
-      (share) =>
-        share.username === currentUser.value &&
-        (share.role === 'admin' || share.role === 'owner') &&
-        !share.status
-    ) || item.value.creator === currentUser.value
   )
 })
 
@@ -1218,7 +1194,7 @@ const canChangeSubitemStatus = (subitem) => {
     ) || false
   }
   return false
-}
+})
 
 const canAssign = computed(() => {
   if (!item.value) return false
@@ -1238,15 +1214,10 @@ const canShare = computed(() => {
 
 const canAddSubitems = computed(() => {
   if (!item.value) return false
-  return (
-    item.value.creator === currentUser.value ||
+  return item.value.creator === currentUser.value ||
     item.value.shareWith?.some(
       (share) => share.username === currentUser.value && share.role === 'owner'
-    ) ||
-    item.value.assignedTo?.some(
-      (assignee) => assignee.username === currentUser.value
     )
-  )
 })
 
 const canEditAssignee = computed(() => {
@@ -1289,7 +1260,6 @@ watch(
   (newValue) => {
     const users = JSON.parse(newValue || '[]')
     availableUsers.value = Array.isArray(users) ? users : []
-    console.log('Kanban Users Updated:', availableUsers.value)
   },
 )
 
@@ -1324,7 +1294,6 @@ const updateItemInUserStorage = (updatedItem, username) => {
   }
   updateItem(userItems, updatedItem)
   localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
-  console.log(`Updated items for user ${username}:`, userItems)
 }
 
 const updateSubitemsShareWith = (item, shareWith) => {
@@ -1375,41 +1344,32 @@ const buildParentChain = (items, id) => {
 }
 
 onMounted(() => {
-  console.log('Component Mounted, Loading Items...')
   loadItems()
   const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   availableUsers.value = Array.isArray(users) ? users : []
-  console.log('Initial Kanban Users:', availableUsers.value)
 })
 
 const loadItems = () => {
-  console.log('Loading items for user:', currentUser.value)
   const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
   itemId.value = Number(route.params.id)
-  console.log('Item ID:', itemId.value)
   item.value = findItemById(items, itemId.value)
   if (!item.value) {
     errorMessage.value = 'Item not found.'
-    console.error('Error: Item not found for ID:', itemId.value)
     setTimeout(() => {
       router.push('/home')
     }, 3000)
     return
   }
-  console.log('Loaded Item:', item.value)
   if (!item.value.shareWith) item.value.shareWith = [{ username: currentUser.value, role: 'owner' }]
   if (!item.value.creator) item.value.creator = currentUser.value
-  console.log('Item Creator:', item.value.creator)
   if (!item.value.assignedTo) item.value.assignedTo = []
   if (!item.value.calls) item.value.calls = []
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
-    console.log('Direct Parent:', directParent.value)
   } else {
     directParent.value = null
   }
   parentChain.value = buildParentChain(items, itemId.value)
-  console.log('Parent Chain:', parentChain.value)
   isEditing.value = false
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
@@ -1433,62 +1393,45 @@ const loadItems = () => {
 watch(
   () => route.params.id,
   () => {
-    console.log('Route ID changed, reloading items...')
     loadItems()
   },
 )
 
 const openSubitemForm = () => {
-  if (!canAddSubitems.value) {
-    console.log('Cannot open subitem form: Insufficient permissions')
-    return
-  }
+  if (!canAddSubitems.value) return
   toggleSubitemForm.value = true
   errorMessage.value = ''
-  console.log('Opened subitem form')
 }
 
 const startDrag = (item) => {
   if (canChangeSubitemStatus(item)) {
     draggedItem.value = item
-    console.log('Started dragging item:', item)
   }
 }
 
 const handleDrop = (newStatus) => {
-  if (!canChangeSubitemStatus(draggedItem.value) || !draggedItem.value) {
-    console.log('Cannot drop: Invalid item or permissions')
-    return
-  }
+  if (!canChangeSubitemStatus(draggedItem.value) || !draggedItem.value) return
   if (newStatus === 'done') {
     const allSubitemsDone =
       !draggedItem.value.subitems ||
       draggedItem.value.subitems.every((sub) => sub.status === 'done')
     if (!allSubitemsDone) {
       errorMessage.value = 'Cannot move to Done: All subitems must be in Done status.'
-      console.error('Drop failed: All subitems must be done')
       return
     }
     draggedItem.value.movedToDoneAt = Date.now()
   }
   draggedItem.value.status = newStatus
-  console.log(`Dropped item to status: ${newStatus}`)
   saveItem()
   errorMessage.value = ''
   draggedItem.value = null
 }
 
 const deleteItem = (id) => {
-  if (!canAddSubitems.value) {
-    console.log('Cannot delete item: Insufficient permissions')
-    return
-  }
+  if (!canAddSubitems.value) return
   const items = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
   const targetItem = findItemById(items, id)
-  if (!targetItem) {
-    console.log('Item not found for deletion:', id)
-    return
-  }
+  if (!targetItem) return
 
   // Remove item from all shared users
   const shareUsernames = targetItem.shareWith
@@ -1511,12 +1454,10 @@ const deleteItem = (id) => {
     if (!targetItem.parentId) {
       const newUserItems = userItems.filter(i => i.id !== id)
       localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
-      console.log(`Deleted item ${id} from user ${username}`)
     } else {
       for (let i = 0; i < userItems.length; i++) {
         if (deleteRecursive(userItems[i].subitems || [], id)) {
           localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
-          console.log(`Deleted subitem ${id} from user ${username}`)
           break
         }
       }
@@ -1524,7 +1465,6 @@ const deleteItem = (id) => {
     const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
     const newInvitations = invitations.filter(inv => inv.itemId !== id)
     localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
-    console.log(`Removed invitations for item ${id} for user ${username}`)
   })
 
   const deleteRecursive = (items, itemId) => {
@@ -1541,7 +1481,6 @@ const deleteItem = (id) => {
   }
   if (deleteRecursive(items, id)) {
     localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
-    console.log(`Deleted item ${id} for current user`)
     if (item.value && item.value.id === id) {
       router.push('/home')
     } else {
@@ -1553,16 +1492,12 @@ const deleteItem = (id) => {
 
 const viewItem = (id) => {
   if (id) {
-    console.log('Viewing item:', id)
     router.push(`/itemDetail/${id}`)
   }
 }
 
 const addSubitem = () => {
-  if (!canAddSubitems.value) {
-    console.log('Cannot add subitem: Insufficient permissions')
-    return
-  }
+  if (!canAddSubitems.value) return
   subitemFormSubmitted.value = true
   if (
     !subitemForm.value.type ||
@@ -1572,13 +1507,11 @@ const addSubitem = () => {
     !subitemForm.value.priority
   ) {
     errorMessage.value = 'Please fill all required fields'
-    console.error('Subitem form validation failed:', subitemForm.value)
     return
   }
   if (item.value.deadline && subitemForm.value.deadline) {
     if (new Date(subitemForm.value.deadline) > new Date(item.value.deadline)) {
       errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
-      console.error('Subitem deadline validation failed')
       return
     }
   }
@@ -1588,16 +1521,6 @@ const addSubitem = () => {
     Done: 'done',
   }
   if (item.value) {
-    const shareWith = item.value.shareWith.map((s) => ({ ...s }))
-    // If current user is assigned, set their role to 'admin' in the new subitem
-    if (item.value.assignedTo?.some((assignee) => assignee.username === currentUser.value)) {
-      const userIndex = shareWith.findIndex((s) => s.username === currentUser.value)
-      if (userIndex >= 0) {
-        shareWith[userIndex] = { ...shareWith[userIndex], role: 'admin' }
-      } else {
-        shareWith.push({ username: currentUser.value, role: 'admin' })
-      }
-    }
     const newSubitem = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       type: subitemForm.value.type,
@@ -1606,19 +1529,18 @@ const addSubitem = () => {
       status: statusMap[subitemForm.value.status] || 'backlog',
       priority: subitemForm.value.priority,
       parentId: item.value.id,
-      category: item.value.category,
+      category: item.value.category, // Set subitem category to parent category
       subitems: [],
-      shareWith,
+      shareWith: item.value.shareWith.map((s) => ({ ...s })),
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
       note: '',
-      creator: currentUser.value, // تنظیم creator به کاربر فعلی
+      creator: currentUser.value,
       assignedTo: item.value.assignedTo ? item.value.assignedTo.map((a) => ({ ...a })) : [],
       reports: [],
       calls: [],
     }
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
-    console.log('Added new subitem:', newSubitem)
     saveItem()
     resetSubitemForm()
     toggleSubitemForm.value = false
@@ -1643,7 +1565,6 @@ const saveItem = () => {
   if (item.value) {
     updateItem(items, item.value)
     localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(items))
-    console.log('Saved item:', item.value)
     updateSharedItems(item.value, currentUser.value)
     loadItems()
   }
@@ -1661,20 +1582,15 @@ const updateSharedItems = (updatedItem, sourceUser) => {
 }
 
 const saveDetails = () => {
-  if (!canEdit.value) {
-    console.log('Cannot save details: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   formSubmitted.value = true
   if (!item.value.title) {
     errorMessage.value = 'Please fill all required fields'
-    console.error('Details validation failed: Title is required')
     return
   }
   if (directParent.value?.deadline && item.value.deadline) {
     if (new Date(item.value.deadline) > new Date(directParent.value.deadline)) {
       errorMessage.value = 'Item deadline cannot be after the direct parent item deadline.'
-      console.error('Details validation failed: Invalid deadline')
       return
     }
   }
@@ -1689,26 +1605,20 @@ const saveDetails = () => {
       !item.value.subitems || item.value.subitems.every((sub) => sub.status === 'done')
     if (!allSubitemsDone) {
       errorMessage.value = 'Cannot set to Done: All subitems must be in Done status.'
-      console.error('Details validation failed: All subitems must be done')
       return
     }
     item.value.movedToDoneAt = Date.now()
   }
   item.value.status = newStatus
-  console.log('Saving item details:', item.value)
   saveItem()
   toggleEdit(false)
   errorMessage.value = ''
 }
 
 const toggleEdit = (value) => {
-  if (!canEdit.value) {
-    console.log('Cannot toggle edit: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   isEditing.value = value
   setEditingState(itemId.value, value)
-  console.log('Toggled edit mode:', value)
   if (!value) {
     formSubmitted.value = true
   }
@@ -1718,7 +1628,6 @@ const cancelSubitemForm = () => {
   resetSubitemForm()
   toggleSubitemForm.value = false
   errorMessage.value = ''
-  console.log('Cancelled subitem form')
 }
 
 const resetSubitemForm = () => {
@@ -1730,64 +1639,45 @@ const resetSubitemForm = () => {
     priority: '',
   }
   subitemFormSubmitted.value = false
-  console.log('Reset subitem form')
 }
 
 const toggleNoteEdit = (value) => {
-  if (!canEdit.value) {
-    console.log('Cannot toggle note edit: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   if (value) {
     originalNote.value = item.value.note
-    console.log('Started editing note:', originalNote.value)
   }
   isEditingNote.value = value
   if (!value && !item.value.note) {
     item.value.note = ''
   }
-  console.log('Toggled note edit mode:', value)
 }
 
 const cancelNoteEdit = () => {
   item.value.note = originalNote.value
   isEditingNote.value = false
   errorMessage.value = ''
-  console.log('Cancelled note edit')
 }
 
 const saveNote = () => {
-  if (!canEdit.value) {
-    console.log('Cannot save note: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   if (item.value.note && item.value.note.trim()) {
-    console.log('Saving note:', item.value.note)
     saveItem()
     isEditingNote.value = false
     errorMessage.value = ''
   } else {
     errorMessage.value = 'Note cannot be empty.'
-    console.error('Note validation failed: Note is empty')
   }
 }
 
 const deleteNote = () => {
-  if (!canEdit.value) {
-    console.log('Cannot delete note: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   item.value.note = ''
-  console.log('Deleted note')
   saveItem()
   errorMessage.value = ''
 }
 
 const toggleReportForm = (value) => {
-  if (!canManageOwnReports.value && value) {
-    console.log('Cannot toggle report form: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value && value) return
   if (value) {
     newReportDetails.value = ''
     reportFormSubmitted.value = false
@@ -1798,24 +1688,18 @@ const toggleReportForm = (value) => {
     selectedReportIndex.value = null
     showReportDialog.value = false
   }
-  console.log('Toggled report form:', value)
 }
 
 const cancelReport = () => {
   isAddingReport.value = false
   errorMessage.value = ''
-  console.log('Cancelled report form')
 }
 
 const saveReport = () => {
-  if (!canManageOwnReports.value) {
-    console.log('Cannot save report: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   reportFormSubmitted.value = true
   if (!newReportDetails.value || !newReportDetails.value.trim()) {
     errorMessage.value = 'Report details cannot be empty.'
-    console.error('Report validation failed: Details are empty')
     return
   }
   const currentDateTime = new Date().toLocaleString('en-US')
@@ -1826,7 +1710,6 @@ const saveReport = () => {
   }
   item.value.reports = item.value.reports || []
   item.value.reports.unshift(newReport)
-  console.log('Saved report:', newReport)
   saveItem()
   isAddingReport.value = false
   newReportDetails.value = ''
@@ -1838,7 +1721,6 @@ const openReportDialog = (report, index) => {
   selectedReportIndex.value = index
   showReportDialog.value = true
   isAddingReport.value = false
-  console.log('Opened report dialog for report:', report)
 }
 
 const closeReportDialog = () => {
@@ -1846,7 +1728,6 @@ const closeReportDialog = () => {
   selectedReport.value = null
   selectedReportIndex.value = null
   errorMessage.value = ''
-  console.log('Closed report dialog')
 }
 
 const cancelEditReport = () => {
@@ -1854,21 +1735,16 @@ const cancelEditReport = () => {
   selectedReportIndex.value = null
   showReportDialog.value = false
   errorMessage.value = ''
-  console.log('Cancelled report edit')
 }
 
 const saveEditedReport = () => {
-  if (!isReportOwner.value) {
-    console.log('Cannot save edited report: Not the report owner')
-    return
-  }
+  if (!isReportOwner.value) return
   if (
     !selectedReport.value ||
     !selectedReport.value.details ||
     !selectedReport.value.details.trim()
   ) {
     errorMessage.value = 'Report details cannot be empty.'
-    console.error('Report edit validation failed: Details are empty')
     return
   }
   if (
@@ -1881,7 +1757,6 @@ const saveEditedReport = () => {
       date: item.value.reports[selectedReportIndex.value].date,
       creator: item.value.reports[selectedReportIndex.value].creator
     }
-    console.log('Saved edited report:', selectedReport.value)
     saveItem()
   }
   selectedReport.value = null
@@ -1891,28 +1766,20 @@ const saveEditedReport = () => {
 }
 
 const deleteReportFromBox = (report, index) => {
-  if (!(report.creator === currentUser.value || currentUserRole.value === 'owner')) {
-    console.log('Cannot delete report: Insufficient permissions')
-    return
-  }
+  if (report.creator !== currentUser.value) return
   if (item.value.reports && item.value.reports.length > index) {
     item.value.reports.splice(index, 1)
-    console.log('Deleted report:', report)
     saveItem()
   }
   errorMessage.value = ''
 }
 
 const openCallDialog = () => {
-  if (!canEdit.value) {
-    console.log('Cannot open call dialog: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   showCallDialog.value = true
   callReason.value = ''
   callFormSubmitted.value = false
   selectedCallUsers.value = []
-  console.log('Opened call dialog')
 }
 
 const closeCallDialog = () => {
@@ -1921,32 +1788,25 @@ const closeCallDialog = () => {
   callFormSubmitted.value = false
   selectedCallUsers.value = []
   errorMessage.value = ''
-  console.log('Closed call dialog')
 }
 
 const toggleCallUser = (user) => {
-  if (user.status === 'pending') {
-    console.log('Cannot toggle call user: User is pending')
-    return
-  }
+  if (user.status === 'pending') return
   if (selectedCallUsers.value.includes(user.username)) {
     selectedCallUsers.value = selectedCallUsers.value.filter((u) => u !== user.username)
   } else {
     selectedCallUsers.value.push(user.username)
   }
-  console.log('Toggled call user:', user.username, selectedCallUsers.value)
 }
 
 const startCall = () => {
   callFormSubmitted.value = true
   if (!callReason.value || !callReason.value.trim()) {
     errorMessage.value = 'Reason for call is required.'
-    console.error('Call validation failed: Reason is empty')
     return
   }
   if (!selectedCallUsers.value.length) {
     errorMessage.value = 'At least one user must be selected for the call.'
-    console.error('Call validation failed: No users selected')
     return
   }
   const currentDateTime = new Date().toLocaleString()
@@ -1961,7 +1821,6 @@ const startCall = () => {
   }
   item.value.calls = item.value.calls || []
   item.value.calls.unshift(newCall)
-  console.log('Started call:', newCall)
   saveItem()
   // فرض می‌شود لینک Google Meet توسط بک‌اند تولید می‌شود
   // window.open('https://meet.google.com/xxx-yyyy-zzz', '_blank')
@@ -1973,7 +1832,6 @@ const openCallDetailsDialog = (call, index) => {
   selectedCall.value = { ...call }
   selectedCallIndex.value = index
   showCallDetailsDialog.value = true
-  console.log('Opened call details dialog for call:', call)
 }
 
 const closeCallDetailsDialog = () => {
@@ -1981,21 +1839,16 @@ const closeCallDetailsDialog = () => {
   selectedCall.value = null
   selectedCallIndex.value = null
   errorMessage.value = ''
-  console.log('Closed call details dialog')
 }
 
 const saveCallDescription = () => {
-  if (!isCallParticipant.value) {
-    console.log('Cannot save call description: Not a call participant')
-    return
-  }
+  if (!isCallParticipant.value) return
   if (!selectedCall.value || selectedCallIndex.value === null) return
   if (item.value.calls && item.value.calls.length > selectedCallIndex.value) {
     item.value.calls[selectedCallIndex.value] = {
       ...selectedCall.value,
       description: selectedCall.value.description || ''
     }
-    console.log('Saved call description:', selectedCall.value.description)
     saveItem()
   }
   closeCallDetailsDialog()
@@ -2003,13 +1856,9 @@ const saveCallDescription = () => {
 }
 
 const deleteCall = (callId) => {
-  if (currentUserRole.value !== 'owner') {
-    console.log('Cannot delete call: Not an owner')
-    return
-  }
+  if (currentUserRole.value !== 'owner') return
   if (item.value.calls) {
     item.value.calls = item.value.calls.filter(call => call.id !== callId)
-    console.log('Deleted call:', callId)
     saveItem()
   }
   errorMessage.value = ''
@@ -2021,10 +1870,7 @@ const truncateText = (text) => {
 }
 
 const openShareDialog = () => {
-  if (!canShare.value) {
-    console.log('Cannot open share dialog: Insufficient permissions')
-    return
-  }
+  if (!canShare.value) return
   showShareDialog.value = true
   searchUsername.value = ''
   selectedRole.value = 'observer'
@@ -2035,7 +1881,6 @@ const openShareDialog = () => {
   const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   availableUsers.value = Array.isArray(users) ? users : []
   isLoadingUsers.value = false
-  console.log('Opened share dialog')
 }
 
 const closeShareDialog = () => {
@@ -2046,20 +1891,17 @@ const closeShareDialog = () => {
   filteredUsers.value = []
   newSharedUsers.value = []
   isLoadingUsers.value = false
-  console.log('Closed share dialog')
 }
 
 const searchUsers = () => {
   if (!Array.isArray(availableUsers.value)) {
     filteredUsers.value = []
     usernameError.value = true
-    console.log('Search users failed: No available users')
     return
   }
   if (!searchUsername.value) {
     filteredUsers.value = []
     usernameError.value = false
-    console.log('Cleared user search')
     return
   }
   filteredUsers.value = availableUsers.value.filter(
@@ -2071,7 +1913,6 @@ const searchUsers = () => {
       !newSharedUsers.value.some((share) => share.username === user.username),
   )
   usernameError.value = !isValidUsername.value && !!searchUsername.value
-  console.log('Searched users:', filteredUsers.value)
 }
 
 const selectUser = (user) => {
@@ -2079,41 +1920,32 @@ const selectUser = (user) => {
   searchUsername.value = ''
   filteredUsers.value = []
   usernameError.value = false
-  console.log('Selected user for sharing:', user)
 }
 
 const addSharedUser = () => {
-  if (!canShare.value || !searchUsername.value || usernameError.value || !isValidUsername.value) {
-    console.log('Cannot add shared user: Invalid input or permissions')
+  if (!canShare.value || !searchUsername.value || usernameError.value || !isValidUsername.value)
     return
-  }
   const userExists =
     item.value.shareWith.some((share) => share.username === searchUsername.value) ||
     newSharedUsers.value.some((share) => share.username === searchUsername.value)
   if (userExists) {
     errorMessage.value = 'This user is already shared with this item.'
-    console.error('Add shared user failed: User already shared')
     return
   }
   newSharedUsers.value.push({ username: searchUsername.value, role: selectedRole.value })
   searchUsername.value = ''
   filteredUsers.value = []
   usernameError.value = false
-  console.log('Added shared user:', searchUsername.value)
 }
 
 const removeSharedUser = (index) => {
-  if (!canShare.value) {
-    console.log('Cannot remove shared user: Insufficient permissions')
-    return
-  }
+  if (!canShare.value) return
   if (index < item.value.shareWith.length && item.value.shareWith[index].role !== 'owner') {
     const removedUser = item.value.shareWith[index]
     const isPending = removedUser.status === 'pending'
     const removedUsername = removedUser.username
     item.value.shareWith.splice(index, 1)
     updateSubitemsShareWith(item.value, item.value.shareWith)
-    console.log('Removed shared user:', removedUsername)
     saveItem()
     const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${removedUsername}`) || '[]')
     const isParentItem = !item.value.parentId
@@ -2132,32 +1964,25 @@ const removeSharedUser = (index) => {
     if (isParentItem) {
       const newUserItems = userItems.filter(i => i.id !== item.value.id)
       localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(newUserItems))
-      console.log(`Removed item ${item.value.id} from user ${removedUsername}`)
       const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]')
       const newInvitations = invitations.filter(inv => inv.itemId !== item.value.id)
       localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
-      console.log(`Removed invitations for item ${item.value.id} for user ${removedUsername}`)
     } else if (!isPending) {
       for (let i = 0; i < userItems.length; i++) {
         if (deleteRecursive(userItems[i].subitems || [], item.value.id)) {
           localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(userItems))
-          console.log(`Removed subitem ${item.value.id} from user ${removedUsername}`)
           break
         }
       }
     }
   } else if (index >= item.value.shareWith.length) {
     newSharedUsers.value.splice(index - item.value.shareWith.length, 1)
-    console.log('Removed new shared user from list')
   }
   searchUsers()
 }
 
 const saveSharedUsers = () => {
-  if (!canShare.value) {
-    console.log('Cannot save shared users: Insufficient permissions')
-    return
-  }
+  if (!canShare.value) return
   newSharedUsers.value.forEach((share) => {
     item.value.shareWith.push({ username: share.username, role: share.role, status: 'pending' })
     const invitations = JSON.parse(
@@ -2172,7 +1997,6 @@ const saveSharedUsers = () => {
       invitedBy: currentUser.value,
     })
     localStorage.setItem(`kanbanInvitations_${share.username}`, JSON.stringify(invitations))
-    console.log('Saved shared user invitation:', share)
   })
   updateSubitemsShareWith(item.value, item.value.shareWith)
   saveItem()
@@ -2180,17 +2004,13 @@ const saveSharedUsers = () => {
 }
 
 const openAssignDialog = () => {
-  if (!canAssign.value) {
-    console.log('Cannot open assign dialog: Insufficient permissions')
-    return
-  }
+  if (!canAssign.value) return
   showAssignDialog.value = true
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
   newAssignees.value = []
   selectedItem.value = { label: `${item.value.type}: ${item.value.title}`, value: item.value }
   assignFormSubmitted.value = false
-  console.log('Opened assign dialog')
 }
 
 const closeAssignDialog = () => {
@@ -2200,13 +2020,11 @@ const closeAssignDialog = () => {
   newAssignees.value = []
   selectedItem.value = null
   assignFormSubmitted.value = false
-  console.log('Closed assign dialog')
 }
 
 const searchAssignUsers = () => {
   if (!Array.isArray(item.value?.shareWith)) {
     filteredAssignUsers.value = []
-    console.log('Search assign users failed: No shareWith data')
     return
   }
   if (!searchAssignUsername.value) {
@@ -2218,7 +2036,6 @@ const searchAssignUsers = () => {
           (share.role === 'admin' || share.role === 'owner'),
       )
       .map((share) => ({ username: share.username, role: share.role }))
-    console.log('Searched assign users (empty query):', filteredAssignUsers.value)
     return
   }
   filteredAssignUsers.value = item.value.shareWith
@@ -2230,30 +2047,21 @@ const searchAssignUsers = () => {
         share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
     )
     .map((share) => ({ username: share.username, role: share.role }))
-  console.log('Searched assign users:', filteredAssignUsers.value)
 }
 
 const selectAssignee = (user) => {
-  if (!canAssign.value) {
-    console.log('Cannot select assignee: Insufficient permissions')
-    return
-  }
+  if (!canAssign.value) return
   if (!newAssignees.value.some((a) => a.username === user.username)) {
     newAssignees.value.push({ username: user.username, role: user.role, note: '' })
-    console.log('Selected assignee:', user)
   }
   searchAssignUsername.value = ''
   filteredAssignUsers.value = []
 }
 
 const addAssignee = () => {
-  if (!canAssign.value || !searchAssignUsername.value || !isValidAssignUsername.value) {
-    console.log('Cannot add assignee: Invalid input or permissions')
-    return
-  }
+  if (!canAssign.value || !searchAssignUsername.value || !isValidAssignUsername.value) return
   if (newAssignees.value.some((a) => a.username === searchAssignUsername.value)) {
     errorMessage.value = 'This user is already selected for assignment.'
-    console.error('Add assignee failed: User already selected')
     return
   }
   const user = item.value.shareWith.find(
@@ -2264,37 +2072,29 @@ const addAssignee = () => {
   )
   if (user) {
     newAssignees.value.push({ username: user.username, role: user.role, note: '' })
-    console.log('Added assignee:', user)
     searchAssignUsername.value = ''
     filteredAssignUsers.value = []
   } else {
     errorMessage.value = 'Invalid or ineligible user.'
-    console.error('Add assignee failed: Invalid user')
   }
 }
 
 const removeAssignment = (index) => {
-  if (!canAssign.value || !item.value) {
-    console.log('Cannot remove assignment: Insufficient permissions or no item')
-    return
-  }
+  if (!canAssign.value || !item.value) return
   const removedUsername = item.value.assignedTo[index].username
   item.value.assignedTo.splice(index, 1)
   removeAssignmentFromSubitems(item.value, removedUsername)
-  console.log('Removed assignment for user:', removedUsername)
   saveItem()
 }
 
 const saveAssignment = () => {
   if (!canAssign.value || !selectedItem.value) {
     errorMessage.value = 'Please select an item.'
-    console.error('Assignment failed: No item selected')
     return
   }
   assignFormSubmitted.value = true
   if (!newAssignees.value.length) {
     errorMessage.value = 'Please select at least one user to assign.'
-    console.error('Assignment failed: No users selected')
     return
   }
   selectedItem.value.value.assignedTo = selectedItem.value.value.assignedTo || []
@@ -2305,7 +2105,6 @@ const saveAssignment = () => {
     }
   })
   updateSubitemsAssignedTo(selectedItem.value.value, selectedItem.value.value.assignedTo)
-  console.log('Saved assignment:', newAssignees.value)
   saveItem()
   item.value = JSON.parse(JSON.stringify(item.value))
   const shareUsernames = item.value.shareWith
@@ -2324,41 +2123,32 @@ const openAssigneeDialog = (assignee, index) => {
   selectedAssignee.value = { ...assignee }
   selectedAssigneeIndex.value = index
   showAssigneeDialog.value = true
-  console.log('Opened assignee dialog for:', assignee)
 }
 
 const closeAssigneeDialog = () => {
   showAssigneeDialog.value = false
   selectedAssignee.value = null
   selectedAssigneeIndex.value = null
-  console.log('Closed assignee dialog')
 }
 
 const saveAssigneeDetails = () => {
-  if (!canEditAssignee.value || !selectedAssignee.value || selectedAssigneeIndex.value === null) {
-    console.log('Cannot save assignee details: Invalid selection or permissions')
-    return
-  }
+  if (!canEditAssignee.value || !selectedAssignee.value || selectedAssigneeIndex.value === null) return
   if (!item.value.assignedTo || item.value.assignedTo.length <= selectedAssigneeIndex.value) {
     errorMessage.value = 'Invalid assignee selection.'
-    console.error('Assignee save failed: Invalid selection')
     return
   }
   item.value.assignedTo[selectedAssigneeIndex.value] = { ...selectedAssignee.value }
   updateSubitemsAssignedTo(item.value, item.value.assignedTo)
-  console.log('Saved assignee details:', selectedAssignee.value)
   saveItem()
   closeAssigneeDialog()
   errorMessage.value = ''
 }
 
 const openProfile = () => {
-  console.log('Navigating to profile')
   router.push('/profile')
 }
 
 const logout = () => {
-  console.log('Logging out user:', currentUser.value)
   localStorage.removeItem('authToken')
   localStorage.removeItem('userProfile')
   router.push('/login')
@@ -2388,16 +2178,12 @@ const sortedSubitems = (status) => {
 }
 
 const sortSubitems = () => {
-  if (!canEdit.value) {
-    console.log('Cannot sort subitems: Insufficient permissions')
-    return
-  }
+  if (!canEdit.value) return
   item.value.subitems = [
     ...sortedSubitems('backlog'),
     ...sortedSubitems('in progress'),
     ...sortedSubitems('done'),
   ]
-  console.log('Sorted subitems')
   saveItem()
 }
 </script>
