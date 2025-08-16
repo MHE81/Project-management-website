@@ -392,7 +392,7 @@
                   >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
                 >
                 <q-btn
-                  v-if="canShare && share.role !== 'owner' && share.username !== currentUser"
+                  v-if="currentUserRole === 'owner' && share.role !== 'owner' && share.username !== currentUser"
                   flat
                   round
                   icon="remove"
@@ -530,15 +530,6 @@
                 <div class="text-ellipsis single-line">
                   <span class="text-weight-bold">{{ call.creator }}</span>: {{ call.status }} - {{ truncateText(call.reason) }}
                 </div>
-                <q-btn
-                  v-if="currentUserRole === 'owner' || call.creator === currentUser"
-                  flat
-                  round
-                  icon="delete"
-                  color="negative"
-                  size="sm"
-                  @click.stop="deleteCall(call.id)"
-                />
               </div>
             </div>
             <div
@@ -672,17 +663,10 @@
               @click="openReportDialog(report, index)"
             >
               <div class="text-ellipsis single-line">
-                <span class="text-weight-bold">{{ report.creator }}</span>: {{ report.date }} - {{ truncateText(report.details) }}
+                <span class="text-weight-bold">{{ report.creator }}</span>
+                <span v-if="report.edited" class="text-grey-7"> (Edited)</span>:
+                {{ report.date }} - {{ truncateText(report.details) }}
               </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteReportFromBox(report, index)"
-                :disable="!(report.creator === currentUser || currentUserRole === 'owner')"
-              />
             </div>
           </div>
         </div>
@@ -700,7 +684,10 @@
               <div class="text-h6">Report Details</div>
             </q-card-section>
             <q-card-section>
-              <div class="text-subtitle2 q-mb-md">Written by: {{ selectedReport?.creator || 'Unknown' }}</div>
+              <div class="text-subtitle2 q-mb-md">
+                Written by: {{ selectedReport?.creator || 'Unknown' }}
+                <span v-if="selectedReport?.edited" class="text-weight-bold text-grey-7"> (Edited)</span>
+              </div>
               <div class="text-subtitle2 q-mb-md">Date: {{ selectedReport?.date || 'N/A' }}</div>
               <textarea
                 v-model="selectedReport.details"
@@ -708,6 +695,19 @@
                 class="resizable-note custom-textarea"
                 :disabled="!isReportOwner"
               />
+              <div v-if="currentUserRole === 'owner' && selectedReport?.history?.length" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">Previous Versions:</div>
+                <div class="report-history">
+                  <div
+                    v-for="(version, index) in selectedReport.history.slice().reverse()"
+                    :key="index"
+                    class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-grey-7"
+                  >
+                    <div class="text-caption">Edited on: {{ version.date }}</div>
+                    <div>{{ version.details }}</div>
+                  </div>
+                </div>
+              </div>
             </q-card-section>
             <q-card-actions align="right">
               <q-btn flat label="Close" color="primary" v-close-popup @click="closeReportDialog" />
@@ -717,6 +717,128 @@
                 color="positive"
                 @click="saveEditedReport"
                 :disable="!isReportOwner"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+
+        <!-- Comments Box -->
+        <div v-if="item" class="q-mb-md">
+          <div class="text-subtitle1">Comments:</div>
+          <div class="bg-grey-2 rounded-borders q-pa-sm comments-box">
+            <div
+              v-if="item.comments && item.comments.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+            >
+              <div
+                v-for="(comment, index) in sortedComments"
+                :key="index"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                @click="openCommentDialog(comment, index)"
+              >
+                <div class="text-ellipsis single-line">
+                  <span class="text-weight-bold">{{ comment.creator }}</span>
+                  <span v-if="comment.edited" class="text-grey-7"> (Edited)</span>:
+                  {{ comment.date }} - {{ truncateText(comment.details) }}
+                  <div v-if="comment.reply" class="text-caption">
+                    Reply by {{ comment.reply.creator }}:
+                    {{ truncateText(comment.reply.text) }}
+                    <span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+            >
+              No comments available.
+            </div>
+          </div>
+          <q-btn
+            v-if="currentUserRole === 'observer'"
+            label="Add Comment"
+            color="secondary"
+            class="full-width q-mb-xs"
+            @click="openCommentDialog(null, null)"
+            :disable="currentUserRole !== 'observer'"
+          />
+        </div>
+
+        <!-- Comment Dialog -->
+        <q-dialog v-model="showCommentDialog" persistent>
+          <q-card style="width: 400px; max-width: 90vw">
+            <q-card-section>
+              <div class="text-h6">Comment Details</div>
+            </q-card-section>
+            <q-card-section>
+              <div class="text-subtitle2 q-mb-md">
+                Written by: {{ selectedComment?.creator || 'Unknown' }}
+                <span v-if="selectedComment?.edited" class="text-weight-bold text-grey-7"> (Edited)</span>
+              </div>
+              <div class="text-subtitle2 q-mb-md">Date: {{ selectedComment?.date || 'N/A' }}</div>
+              <textarea
+                v-model="selectedComment.details"
+                placeholder="Comment details..."
+                class="resizable-note custom-textarea"
+                :disabled="!isCommentOwner"
+              />
+              <div v-if="selectedComment?.reply" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">
+                  Reply by {{ selectedComment.reply.creator }}
+                  <span v-if="selectedComment.reply.edited" class="text-weight-bold text-grey-7"> (Edited)</span>
+                </div>
+                <textarea
+                  v-model="selectedComment.reply.text"
+                  placeholder="Reply..."
+                  class="resizable-note custom-textarea"
+                  :disabled="currentUserRole !== 'owner'"
+                />
+              </div>
+              <div v-else-if="currentUserRole === 'owner'" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">Add Reply:</div>
+                <textarea
+                  v-model="newReplyText"
+                  placeholder="Enter your reply..."
+                  class="resizable-note custom-textarea"
+                  :disabled="currentUserRole !== 'owner'"
+                />
+              </div>
+              <div v-if="currentUserRole === 'owner' && selectedComment?.history?.length" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">Previous Comment Versions:</div>
+                <div class="comment-history">
+                  <div
+                    v-for="(version, index) in selectedComment.history.slice().reverse()"
+                    :key="index"
+                    class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-grey-7"
+                  >
+                    <div class="text-caption">Edited on: {{ version.date }}</div>
+                    <div>{{ version.details }}</div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="currentUserRole === 'owner' && selectedComment?.reply?.history?.length" class="q-mt-md">
+                <div class="text-subtitle2 q-mb-md">Previous Reply Versions:</div>
+                <div class="comment-history">
+                  <div
+                    v-for="(version, index) in selectedComment.reply.history.slice().reverse()"
+                    :key="index"
+                    class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-grey-7"
+                  >
+                    <div class="text-caption">Edited on: {{ version.date }}</div>
+                    <div>{{ version.text }}</div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCommentDialog" />
+              <q-btn
+                v-if="isCommentOwner || currentUserRole === 'owner'"
+                label="Save"
+                color="positive"
+                @click="saveCommentOrReply"
+                :disable="!isCommentOwner && currentUserRole !== 'owner'"
               />
             </q-card-actions>
           </q-card>
@@ -843,7 +965,7 @@
               </q-input>
               <q-select
                 v-model="selectedRole"
-                :options="['owner', 'admin', 'observer']"
+                :options="currentUserRole === 'admin' ? ['observer'] : ['owner', 'admin', 'observer']"
                 label="Role"
                 dense
                 class="col-4"
@@ -888,6 +1010,7 @@
                 <span class="text-weight-bold">({{ share.role }})</span></q-item-section
               >
               <q-btn
+                v-if="currentUserRole === 'owner'"
                 flat
                 round
                 icon="remove"
@@ -915,7 +1038,7 @@
                 ></q-item-section
               >
               <q-btn
-                v-if="canShare && share.role !== 'owner' && share.username !== currentUser"
+                v-if="currentUserRole === 'owner' && share.role !== 'owner' && share.username !== currentUser"
                 flat
                 round
                 icon="remove"
@@ -993,6 +1116,7 @@
                   :disable="!canAssign"
                 />
                 <q-btn
+                  v-if="canAssign"
                   flat
                   round
                   icon="remove"
@@ -1042,8 +1166,6 @@
     </q-dialog>
   </q-page>
 </template>
-
-
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
@@ -1105,6 +1227,10 @@ const selectedCallUsers = ref([])
 const showCallDetailsDialog = ref(false)
 const selectedCall = ref(null)
 const selectedCallIndex = ref(null)
+const showCommentDialog = ref(false)
+const selectedComment = ref(null)
+const selectedCommentIndex = ref(null)
+const newReplyText = ref('')
 
 // لاگ برای بررسی مقدار currentUser بعد از لاگین
 console.log('Current User:', currentUser.value)
@@ -1194,6 +1320,14 @@ const canManageOwnReports = computed(() => {
   )
 })
 
+const canAddComment = computed(() => {
+  return currentUserRole.value === 'observer'
+})
+
+const isCommentOwner = computed(() => {
+  return selectedComment.value?.creator === currentUser.value && currentUserRole.value === 'observer'
+})
+
 const canChangeStatus = computed(() => {
   if (!item.value) return false
   if (item.value.creator === currentUser.value) return true
@@ -1271,6 +1405,12 @@ const isValidUsername = computed(() => {
 const sortedReports = computed(() => {
   return item.value?.reports
     ? [...item.value.reports].sort((a, b) => new Date(b.date) - new Date(a.date))
+    : []
+})
+
+const sortedComments = computed(() => {
+  return item.value?.comments
+    ? [...item.value.comments].sort((a, b) => new Date(b.date) - new Date(a.date))
     : []
 })
 
@@ -1406,6 +1546,7 @@ const loadItems = () => {
   console.log('Item Creator:', item.value.creator)
   if (!item.value.assignedTo) item.value.assignedTo = []
   if (!item.value.calls) item.value.calls = []
+  if (!item.value.comments) item.value.comments = []
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
     console.log('Direct Parent:', directParent.value)
@@ -1429,6 +1570,10 @@ const loadItems = () => {
   showCallDetailsDialog.value = false
   selectedCall.value = null
   selectedCallIndex.value = null
+  showCommentDialog.value = false
+  selectedComment.value = null
+  selectedCommentIndex.value = null
+  newReplyText.value = ''
   resetSubitemForm()
   if (!item.value.note) item.value.note = ''
   if (!item.value.reports) item.value.reports = []
@@ -1615,10 +1760,11 @@ const addSubitem = () => {
       shareWith,
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
       note: '',
-      creator: currentUser.value, // Set creator to current user
+      creator: currentUser.value,
       assignedTo: item.value.assignedTo ? item.value.assignedTo.map((a) => ({ ...a })) : [],
       reports: [],
       calls: [],
+      comments: [],
     }
     item.value.subitems = item.value.subitems || []
     item.value.subitems.push(newSubitem)
@@ -1826,7 +1972,8 @@ const saveReport = () => {
   const newReport = {
     date: currentDateTime,
     details: newReportDetails.value,
-    creator: currentUser.value
+    creator: currentUser.value,
+    history: [],
   }
   item.value.reports = item.value.reports || []
   item.value.reports.unshift(newReport)
@@ -1880,10 +2027,20 @@ const saveEditedReport = () => {
     item.value.reports &&
     item.value.reports.length > selectedReportIndex.value
   ) {
+    // Save current version to history before updating
+    const currentReport = item.value.reports[selectedReportIndex.value]
+    if (!currentReport.history) {
+      currentReport.history = []
+    }
+    currentReport.history.push({
+      details: currentReport.details,
+      date: new Date().toLocaleString('en-US'),
+    })
     item.value.reports[selectedReportIndex.value] = {
       ...selectedReport.value,
-      date: item.value.reports[selectedReportIndex.value].date,
-      creator: item.value.reports[selectedReportIndex.value].creator
+      date: currentReport.date,
+      creator: currentReport.creator,
+      edited: true
     }
     console.log('Saved edited report:', selectedReport.value)
     saveItem()
@@ -1894,19 +2051,129 @@ const saveEditedReport = () => {
   errorMessage.value = ''
 }
 
-const deleteReportFromBox = (report, index) => {
-  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
-  const hasOwnerRole = userShare?.role === 'owner' && !userShare?.status
-  if (!(hasOwnerRole || report.creator === currentUser.value)) {
-    console.log('Cannot delete report: Insufficient permissions')
+const openCommentDialog = (comment, index) => {
+  if (!item.value) return
+  if (comment) {
+    selectedComment.value = { ...comment }
+    selectedCommentIndex.value = index
+  } else {
+    selectedComment.value = { creator: currentUser.value, details: '', history: [] }
+    selectedCommentIndex.value = null
+  }
+  showCommentDialog.value = true
+  newReplyText.value = ''
+  console.log('Opened comment dialog for:', comment || 'new comment')
+}
+
+const closeCommentDialog = () => {
+  showCommentDialog.value = false
+  selectedComment.value = null
+  selectedCommentIndex.value = null
+  newReplyText.value = ''
+  errorMessage.value = ''
+  console.log('Closed comment dialog')
+}
+
+const saveCommentOrReply = () => {
+  if (!item.value) return
+
+  // Save new or edited comment
+  if (isCommentOwner.value) {
+  if (!selectedComment.value.details || !selectedComment.value.details.trim()) {
+    errorMessage.value = 'Comment details cannot be empty.'
+    console.error('Comment validation failed: Details are empty')
     return
   }
-  if (item.value.reports && item.value.reports.length > index) {
-    item.value.reports.splice(index, 1)
-    console.log('Deleted report:', report)
+  if (selectedCommentIndex.value === null) {
+    // Add new comment
+    if (!canAddComment.value) {
+      console.log('Cannot add comment: Insufficient permissions')
+      return
+    }
+    const currentDateTime = new Date().toLocaleString('en-US')
+    const newComment = {
+      date: currentDateTime,
+      details: selectedComment.value.details,
+      creator: currentUser.value,
+      history: [],
+    }
+    item.value.comments = item.value.comments || []
+    item.value.comments.unshift(newComment)
+    console.log('Saved new comment:', newComment)
+    } else {
+      // Edit existing comment
+      if (
+        selectedCommentIndex.value !== null &&
+        item.value.comments &&
+        item.value.comments.length > selectedCommentIndex.value
+      ) {
+        const currentComment = item.value.comments[selectedCommentIndex.value]
+        if (!currentComment.history) {
+          currentComment.history = []
+        }
+        currentComment.history.push({
+          details: currentComment.details,
+          date: new Date().toLocaleString('en-US'),
+        })
+        item.value.comments[selectedCommentIndex.value] = {
+          ...selectedComment.value,
+          date: currentComment.date,
+          creator: currentComment.creator,
+          edited: true
+        }
+        console.log('Saved edited comment:', selectedComment.value)
+      }
+    }
     saveItem()
+    closeCommentDialog()
+    return
   }
-  errorMessage.value = ''
+
+  // Save new or edited reply (only for owner)
+  if (currentUserRole.value === 'owner') {
+    if (
+      selectedCommentIndex.value !== null &&
+      item.value.comments &&
+      item.value.comments.length > selectedCommentIndex.value
+    ) {
+      const currentComment = item.value.comments[selectedCommentIndex.value]
+      if (!newReplyText.value && !currentComment.reply) {
+        errorMessage.value = 'Reply cannot be empty.'
+        console.error('Reply validation failed: Reply is empty')
+        return
+      }
+      if (newReplyText.value && !currentComment.reply) {
+        // Add new reply
+        currentComment.reply = {
+          creator: currentUser.value,
+          text: newReplyText.value,
+          history: [],
+          date: new Date().toLocaleString('en-US')
+        }
+        console.log('Saved new reply:', currentComment.reply)
+      } else if (currentComment.reply && selectedComment.value.reply?.text) {
+        // Edit existing reply
+        if (!currentComment.reply.history) {
+          currentComment.reply.history = []
+        }
+        currentComment.reply.history.push({
+          text: currentComment.reply.text,
+          date: new Date().toLocaleString('en-US'),
+        })
+        currentComment.reply = {
+          ...currentComment.reply,
+          text: selectedComment.value.reply.text,
+          edited: true
+        }
+        console.log('Saved edited reply:', currentComment.reply)
+      }
+      item.value.comments[selectedCommentIndex.value] = {
+        ...currentComment
+      }
+      saveItem()
+      closeCommentDialog()
+    }
+  }
 }
 
 const openCallDialog = () => {
@@ -2008,22 +2275,6 @@ const saveCallDescription = () => {
   errorMessage.value = ''
 }
 
-const deleteCall = (callId) => {
-  const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
-  const hasOwnerRole = userShare?.role === 'owner' && !userShare?.status
-  const call = item.value.calls.find(call => call.id === callId)
-  if (!(hasOwnerRole || call?.creator === currentUser.value)) {
-    console.log('Cannot delete call: Not an owner or call creator')
-    return
-  }
-  if (item.value.calls) {
-    item.value.calls = item.value.calls.filter(call => call.id !== callId)
-    console.log('Deleted call:', callId)
-    saveItem()
-  }
-  errorMessage.value = ''
-}
-
 const truncateText = (text) => {
   if (!text) return ''
   return text.length > 30 ? text.substring(0, 30) + '...' : text
@@ -2112,8 +2363,9 @@ const addSharedUser = () => {
 }
 
 const removeSharedUser = (index) => {
-  if (!canShare.value) {
-    console.log('Cannot remove shared user: Insufficient permissions')
+  if (currentUserRole.value !== 'owner') {
+    console.log('Cannot remove shared user: Only owners can remove shared users')
+    errorMessage.value = 'Only owners can remove shared users.'
     return
   }
   if (index < item.value.shareWith.length && item.value.shareWith[index].role !== 'owner') {
@@ -2461,6 +2713,14 @@ const sortSubitems = () => {
   max-height: 200px;
   overflow-y: auto;
 }
+.comments-box {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.comment-history {
+  max-height: 200px;
+  overflow-y: auto;
+}
 .text-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2481,5 +2741,8 @@ const sortSubitems = () => {
 .user-item:hover {
   background-color: #f0f0f0;
 }
+.report-history {
+  max-height: 200px;
+  overflow-y: auto;
+}
 </style>
-

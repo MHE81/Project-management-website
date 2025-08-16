@@ -477,35 +477,26 @@ const canEdit = (item) => {
   )
 }
 
-const extractSubitem = (items, itemId) => {
-  for (let item of items) {
-    if (item.id === itemId) return item
-    if (item.subitems) {
-      const found = extractSubitem(item.subitems, itemId)
-      if (found) return found
-    }
-  }
-  return null
-}
-
 const acceptInvitation = (invitation) => {
   const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]')
   const index = invitations.findIndex(
     inv => inv.itemId === invitation.itemId && inv.username === invitation.username
   )
   if (index !== -1) {
-    invitations.splice(index, 1)
+    invitations[index].status = 'accepted'
     saveInvitations(invitations, currentUser.value)
 
     const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
-    const sharedItem = extractSubitem(creatorItems, invitation.itemId)
+    const sharedItem = findItemById(creatorItems, invitation.itemId)
     if (sharedItem) {
+      // Update shareWith in creator's item to remove pending status for all items and subitems
       const creatorShareIndex = sharedItem.shareWith.findIndex(s => s.username === currentUser.value)
       if (creatorShareIndex !== -1) {
         sharedItem.shareWith[creatorShareIndex] = {
           username: currentUser.value,
           role: invitation.role
         }
+        // Explicitly update subitems to remove pending status
         const updateSubitemsPendingStatus = (item) => {
           if (item.subitems) {
             item.subitems.forEach(subitem => {
@@ -523,12 +514,14 @@ const acceptInvitation = (invitation) => {
         updateSubitemsPendingStatus(sharedItem)
         updateItemInUserStorage(sharedItem, invitation.invitedBy)
 
+        // Add item to user's items
         const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
         const itemCopy = JSON.parse(JSON.stringify(sharedItem))
         itemCopy.shareWith = itemCopy.shareWith.map(s => ({
           username: s.username,
           role: s.role
         }))
+        // Ensure subitems also have pending status removed
         const cleanSubitemsPendingStatus = (item) => {
           if (item.subitems) {
             item.subitems.forEach(subitem => {
@@ -545,6 +538,7 @@ const acceptInvitation = (invitation) => {
         localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
         items.value = userItems
 
+        // Update other shared users
         updateSharedItems(sharedItem, invitation.invitedBy)
       }
     }
@@ -561,6 +555,7 @@ const rejectInvitation = (invitation) => {
     invitations.splice(index, 1)
     saveInvitations(invitations, currentUser.value)
 
+    // Remove from creator's shareWith
     const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]')
     const sharedItem = findItemById(creatorItems, invitation.itemId)
     if (sharedItem) {
@@ -570,6 +565,7 @@ const rejectInvitation = (invitation) => {
       updateSharedItems(sharedItem, invitation.invitedBy)
     }
 
+    // Add rejection message for the inviter
     const inviterMessages = JSON.parse(localStorage.getItem(`kanbanMessages_${invitation.invitedBy}`) || '[]')
     const itemName = sharedItem ? `${sharedItem.type}: ${sharedItem.title}` : 'Unknown Item'
     inviterMessages.push({
@@ -618,39 +614,6 @@ const updateItemInUserStorage = (updatedItem, username) => {
 const updateSubitemsShareWith = (item, shareWith) => {
   if (item.subitems) {
     item.subitems.forEach(subitem => {
-      // Update shareWith for the subitem and check if it was shared independently
-      const previousSubitem = findItemById(
-        JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]'),
-        subitem.id
-      )
-      const previousShareUsernames = previousSubitem
-        ? previousSubitem.shareWith
-            .filter(share => !share.status || share.status !== 'pending')
-            .map(share => share.username)
-        : []
-      const newShareUsernames = shareWith
-        .filter(share => !share.status || share.status !== 'pending')
-        .map(share => share.username)
-      const removedUsernames = previousShareUsernames.filter(username => !newShareUsernames.includes(username))
-
-      // Handle removed users for independently shared subitems
-      removedUsernames.forEach(username => {
-        const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
-        const newUserItems = userItems.filter(i => i.id !== subitem.id)
-        localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
-
-        const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
-        const newInvitations = invitations.filter(inv => inv.itemId !== subitem.id)
-        localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
-
-        const userMessages = JSON.parse(localStorage.getItem(`kanbanMessages_${username}`) || '[]')
-        userMessages.push({
-          text: `You were removed from ${subitem.type}: ${subitem.title} by ${currentUser.value}`,
-          timestamp: Date.now()
-        })
-        localStorage.setItem(`kanbanMessages_${username}`, JSON.stringify(userMessages))
-      })
-
       subitem.shareWith = shareWith.map(s => ({ ...s }))
       updateSubitemsShareWith(subitem, shareWith)
     })
@@ -715,7 +678,7 @@ const addItem = () => {
       status: subitem.status || 'backlog',
       priority: subitem.priority || 'Low',
       parentId: parentId,
-      category: itemForm.value.category,
+      category: itemForm.value.category, // Set subitem category to parent category
       shareWith: [{ username: currentUser.value, role: 'owner' }],
       movedToDoneAt: null,
       creator: currentUser.value,
@@ -757,6 +720,7 @@ const deleteItem = (id) => {
     return
   }
 
+  // Remove item from all shared users
   const shareUsernames = item.shareWith
     .filter(share => share.username !== currentUser.value)
     .map(share => share.username)
@@ -765,11 +729,13 @@ const deleteItem = (id) => {
     const newUserItems = userItems.filter(i => i.id !== id)
     localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
 
+    // Remove invitations
     const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
     const newInvitations = invitations.filter(inv => inv.itemId !== id)
     localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
   })
 
+  // Remove item from current user's items
   items.value = items.value.filter(i => i.id !== id)
   saveItems()
 }
@@ -810,41 +776,6 @@ const updateSharedItems = (updatedItem, sourceUser) => {
   const shareUsernames = updatedItem.shareWith
     .filter(share => share.username !== sourceUser && (!share.status || share.status !== 'pending'))
     .map(share => share.username)
-
-  // Get the previous shareWith list to detect removed users
-  const creatorItems = JSON.parse(localStorage.getItem(`kanbanItems_${sourceUser}`) || '[]')
-  const originalItem = findItemById(creatorItems, updatedItem.id)
-  const previousShareUsernames = originalItem
-    ? originalItem.shareWith
-        .filter(share => share.username !== sourceUser && (!share.status || share.status !== 'pending'))
-        .map(share => share.username)
-    : []
-
-  // Find users that were removed from shareWith
-  const removedUsernames = previousShareUsernames.filter(username => !shareUsernames.includes(username))
-
-  // Remove the item and invitations for removed users
-  removedUsernames.forEach(username => {
-    // Remove item from user's items
-    const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
-    const newUserItems = userItems.filter(i => i.id !== updatedItem.id)
-    localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(newUserItems))
-
-    // Remove pending invitations for the item
-    const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${username}`) || '[]')
-    const newInvitations = invitations.filter(inv => inv.itemId !== updatedItem.id)
-    localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations))
-
-    // Notify the removed user
-    const userMessages = JSON.parse(localStorage.getItem(`kanbanMessages_${username}`) || '[]')
-    userMessages.push({
-      text: `You were removed from ${updatedItem.type}: ${updatedItem.title} by ${sourceUser}`,
-      timestamp: Date.now()
-    })
-    localStorage.setItem(`kanbanMessages_${username}`, JSON.stringify(userMessages))
-  })
-
-  // Update items for users still in shareWith
   shareUsernames.forEach(username => {
     const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
     const targetItem = findItemById(userItems, updatedItem.id)
@@ -854,23 +785,11 @@ const updateSharedItems = (updatedItem, sourceUser) => {
       localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
     }
   })
-
-  // Update current user's items if they are not the source user
-  if (currentUser.value !== sourceUser) {
-    const currentUserItems = JSON.parse(localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]')
-    const currentUserTargetItem = findItemById(currentUserItems, updatedItem.id)
-    if (currentUserTargetItem) {
-      Object.assign(currentUserTargetItem, JSON.parse(JSON.stringify(updatedItem)))
-      updateSubitemsShareWith(currentUserTargetItem, updatedItem.shareWith)
-      localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(currentUserItems))
-      items.value = currentUserItems
-    }
-  }
 }
 
 const completionPercent = computed(() => {
   const rootItems = items.value.filter((item) => !item.parentId || item.shareWith?.some(
-    (share) => share.username === currentUser.value && !share.status
+    (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner') && !share.status
   ))
   if (rootItems.length === 0) return 0
   const doneItems = rootItems.filter((item) => item.status?.toLowerCase() === 'done').length
@@ -895,7 +814,7 @@ const sortedItems = (status) => {
     const itemStatus = item.status?.toLowerCase() || ''
     return (
       (!item.parentId || item.shareWith?.some(
-        (share) => share.username === currentUser.value && !share.status
+        (share) => share.username === currentUser.value && (share.role === 'admin' || share.role === 'owner') && !share.status
       )) && itemStatus === normalizedStatus
     )
   })
