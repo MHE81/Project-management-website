@@ -90,17 +90,6 @@
           <q-separator class="q-my-md" />
 
           <q-btn
-            label="Login with Google"
-            color="red"
-            class="full-width"
-            icon="fab fa-google"
-            @click="loginWithGoogle"
-            aria-label="Login with Google account"
-          />
-
-          <q-separator class="q-my-md" />
-
-          <q-btn
             label="Sign up"
             color="secondary"
             class="full-width q-mt-md"
@@ -240,10 +229,6 @@ const clearPasswordError = () => {
     passwordError.value = false;
     apiError.value = '';
   }
-};
-
-const loginWithGoogle = () => {
-  console.log('Google Login clicked (no Firebase connected yet)');
 };
 
 const signup = () => {

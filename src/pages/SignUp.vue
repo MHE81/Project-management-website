@@ -17,6 +17,17 @@
           {{ apiError }}
         </q-banner>
 
+        <!-- Email verification success banner -->
+        <q-banner
+          v-if="emailVerified"
+          dense
+          class="bg-positive text-white q-mb-md"
+          aria-live="polite"
+          role="alert"
+        >
+          Email verified successfully!
+        </q-banner>
+
         <q-form @submit.prevent="signUp">
           <!-- Email input -->
           <q-input
@@ -32,6 +43,41 @@
             autofocus
             aria-label="Enter your email"
           />
+
+          <!-- Send Code button -->
+          <q-btn
+            label="Send Code"
+            color="primary"
+            class="full-width q-mb-md"
+            :disable="!isEmailValid || emailVerificationSent"
+            @click="sendVerificationCode"
+            aria-label="Send verification code to your email"
+          />
+
+          <!-- Verification Code input -->
+          <q-input
+            v-if="emailVerificationSent"
+            filled
+            v-model="verificationCode"
+            label="Verification Code"
+            class="q-mb-md"
+            dense
+            maxlength="4"
+            :error="verificationError"
+            error-message="Invalid verification code"
+            @input="clearVerificationError"
+            aria-label="Enter the 4-digit verification code"
+          >
+            <template v-slot:append>
+              <q-btn
+                label="Verify Email"
+                color="primary"
+                :disable="verificationCode.length !== 4"
+                @click="verifyEmail"
+                aria-label="Verify email with code"
+              />
+            </template>
+          </q-input>
 
           <!-- Username input -->
           <q-input
@@ -90,19 +136,6 @@
             </template>
           </q-input>
 
-          <!-- Terms of Service Checkbox -->
-          <q-checkbox
-            v-model="acceptTerms"
-            label="I agree to the Terms of Service and Privacy Policy"
-            class="q-mb-md"
-            dense
-            color="primary"
-            :error="termsError"
-            error-message="You must accept the terms to sign up"
-            @input="clearTermsError"
-            aria-label="Accept Terms of Service and Privacy Policy"
-          />
-
           <!-- Sign Up button -->
           <q-btn
             label="Sign Up"
@@ -110,20 +143,10 @@
             class="full-width q-mt-md"
             :loading="isLoading"
             type="submit"
+            :disable="!emailVerified"
             aria-label="Sign up with your details"
           />
         </q-form>
-
-        <q-separator class="q-my-md" />
-
-        <q-btn
-          label="Sign up with Google"
-          color="red"
-          class="full-width"
-          icon="fab fa-google"
-          @click="signUpWithGoogle"
-          aria-label="Sign up with Google account"
-        />
 
         <q-separator class="q-my-md" />
 
@@ -154,8 +177,11 @@ const confirmPassword = ref('')
 const showPassword = ref(false)
 const isLoading = ref(false)
 const apiError = ref('')
-const acceptTerms = ref(false)
-const termsTouched = ref(false)
+const emailVerificationSent = ref(false)
+const emailVerified = ref(false)
+const verificationCode = ref('')
+const verificationError = ref(false)
+const generatedCode = ref('')
 const usernameTouched = ref(false)
 const emailTouched = ref(false)
 const passwordTouched = ref(false)
@@ -174,7 +200,6 @@ const usernameError = computed(() => usernameTouched.value && username.value ===
 const emailError = computed(() => emailTouched.value && (email.value === '' || !isEmailValid.value))
 const passwordError = computed(() => passwordTouched.value && (password.value === '' || !isPasswordValid.value))
 const confirmError = computed(() => confirmTouched.value && confirmPassword.value !== password.value)
-const termsError = computed(() => termsTouched.value && !acceptTerms.value)
 
 const emailErrorMessage = computed(() => {
   if (emailTouched.value && email.value === '') return 'Email is required'
@@ -188,12 +213,52 @@ const passwordErrorMessage = computed(() => {
   return ''
 })
 
+// Commented out for local testing without backend; uncomment when backend is available
+// const sendVerificationCode = () => {
+//   if (!isEmailValid.value) {
+//     emailTouched.value = true
+//     return
+//   }
+//   // Simulate sending a 4-digit code
+//   generatedCode.value = Math.floor(1000 + Math.random() * 9000).toString()
+//   emailVerificationSent.value = true
+//   console.log('Verification code sent (mock):', generatedCode.value)
+// }
+
+const sendVerificationCode = () => {
+  if (!isEmailValid.value) {
+    emailTouched.value = true
+    return
+  }
+  // For local testing, set a fixed code and log it
+  generatedCode.value = '1234' // Fixed code for testing
+  emailVerificationSent.value = true
+  console.log('Verification code for testing (use this):', generatedCode.value)
+}
+
+const verifyEmail = () => {
+  if (verificationCode.value === generatedCode.value) {
+    emailVerified.value = true
+    apiError.value = ''
+  } else {
+    emailVerified.value = false
+    verificationError.value = true
+    apiError.value = 'Invalid verification code'
+    // Clear all fields except email
+    username.value = ''
+    password.value = ''
+    confirmPassword.value = ''
+    usernameTouched.value = false
+    passwordTouched.value = false
+    confirmTouched.value = false
+  }
+}
+
 const signUp = () => {
   usernameTouched.value = true
   emailTouched.value = true
   passwordTouched.value = true
   confirmTouched.value = true
-  termsTouched.value = true
   apiError.value = ''
   isLoading.value = true
 
@@ -202,7 +267,7 @@ const signUp = () => {
     emailError.value ||
     passwordError.value ||
     confirmError.value ||
-    termsError.value
+    !emailVerified.value
   ) {
     isLoading.value = false
     return
@@ -242,15 +307,10 @@ const signUp = () => {
     console.log('Username:', username.value)
     console.log('Email:', email.value)
     console.log('Password:', password.value)
-    console.log('Terms Accepted:', acceptTerms.value)
     alert('Sign up successful (demo only).')
-    router.push('/home')
+    router.push('/login')
     isLoading.value = false
   }, 1000)
-}
-
-const signUpWithGoogle = () => {
-  console.log('Google Sign Up clicked (no Firebase connected yet)')
 }
 
 const goToLogin = () => {
@@ -273,7 +333,7 @@ const clearConfirmError = () => {
   if (confirmPassword.value === password.value) confirmTouched.value = false
 }
 
-const clearTermsError = () => {
-  if (acceptTerms.value) termsTouched.value = false
+const clearVerificationError = () => {
+  if (verificationCode.value.length === 4) verificationError.value = false
 }
 </script>
