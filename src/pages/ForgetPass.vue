@@ -312,6 +312,7 @@ const resetPassword = () => {
       kanbanUsers[userIndex].password = newPassword.value;
       localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers));
       console.log('Password updated for user:', usernameOrEmail.value);
+      console.log('kanbanUsers after reset:', JSON.parse(localStorage.getItem('kanbanUsers')));
       alert('Password reset successful (demo only).');
       router.push('/login');
     } else {

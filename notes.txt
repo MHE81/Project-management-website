@@ -39,12 +39,13 @@ if an subitem is shared instead of an item the invite will be sent so the shared
 the thing that need to be changed is that the subitem that has been shared should be appeared in the homepage as an item (not its parents) and it has to contain its subitems until the last layer like other sharing senarios 
 but now the invitation comes and when user accepts it, the invitation is gone but the item doesnt appear in his homepage!
 
+
+forget pass page
+
 **********
 وقتی اونر اختصاص (assiged to) ادمینی که یه زیر ایتمی رو ساخته حذف میکنه (ینی دیگه نمیتونه برای اون زیر ایتمی که بهش اختصاص داده شده بود( و همه زیر ایتم های اون تا اخرین لایه) و الان دیگه نیست زیر ایتم بسازه یا با کسی به اشتراکش بذاره یا note بنویسه و ویرایش کنه یا details زیر ایتم رو تغییر بده. انگار میشه مثل یه ادمین عادی که بهش هیچی اختصاص ندادن) نقش سازنده (creator) اون زیر ایتم که ادمین بوده باید به کاربر سازنده ایتم پدرش منتقل بشه تا ادمین به ادمین عادی تبدیل بشه
 
 وقتی اونر یکی رو از اشتراکات یه زیرایتم حذف میکنه ایتم باید برای اون کاربر حذف شه
-
-forget pass!
 
 invitations display(name, inviter, date and time)
 

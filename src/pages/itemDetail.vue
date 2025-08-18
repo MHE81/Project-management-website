@@ -1,3 +1,4 @@
+```vue
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
@@ -456,7 +457,7 @@
           <q-btn
             v-if="canAssign"
             label="Assign Item"
-            color="secondary"
+            color="positive"
             class="full-width"
             @click="openAssignDialog"
           />
@@ -513,22 +514,22 @@
           </q-card>
         </q-dialog>
 
-        <!-- Calls Box -->
+        <!-- Meetings Box -->
         <div v-if="item" class="q-mb-md">
-          <div class="text-subtitle1">Calls:</div>
-          <div class="bg-grey-2 rounded-borders q-pa-sm calls-box">
+          <div class="text-subtitle1">Meetings:</div>
+          <div class="q-pa-sm bg-grey-2 rounded-borders meetings-box">
             <div
-              v-if="item.calls && item.calls.length"
+              v-if="item.meetings && item.meetings.length"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
             >
               <div
-                v-for="(call, index) in sortedCalls"
+                v-for="(meeting, index) in sortedMeetings"
                 :key="index"
                 class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
-                @click="openCallDetailsDialog(call, index)"
+                @click="openMeetingDetailsDialog(meeting, index)"
               >
                 <div class="text-ellipsis single-line">
-                  <span class="text-weight-bold">{{ call.creator }}</span>: {{ call.status }} - {{ truncateText(call.reason) }}
+                  <span class="text-weight-bold">{{ meeting.creator }}</span>: {{ meeting.status }} - {{ truncateText(meeting.title) }}
                 </div>
               </div>
             </div>
@@ -536,32 +537,70 @@
               v-else
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
             >
-              No calls available.
+              No meetings available.
             </div>
           </div>
           <q-btn
-            label="Call"
+            v-if="item"
+            label="Add Meeting"
             color="secondary"
             class="full-width q-mb-xs"
-            @click="openCallDialog"
+            @click="openMeetingDialog"
             :disable="currentUserRole === 'observer'"
+            aria-label="Add a new meeting"
           />
         </div>
 
-        <!-- Call Dialog -->
-        <q-dialog v-model="showCallDialog" persistent>
+        <!-- Meeting Dialog -->
+        <q-dialog v-model="showMeetingDialog" persistent>
           <q-card style="width: 600px; max-width: 90vw">
             <q-card-section>
-              <div class="text-h6">Start a Call</div>
+              <div class="text-h6">Start a Meeting</div>
             </q-card-section>
             <q-card-section>
-              <q-form @submit.prevent="startCall">
-                <q-input
-                  v-model="callReason"
-                  label="Reason for Call"
+              <q-form @submit.prevent="startMeeting">
+                <q-select
+                  v-model="meetingType"
+                  :options="['Online', 'In-person']"
+                  label="Meeting Type"
                   dense
-                  :error="!callReason && callFormSubmitted"
+                  :error="!meetingType && meetingFormSubmitted"
+                  error-message="Meeting type is required"
+                  class="q-mb-md"
+                />
+                <q-input
+                  v-model="meetingTitle"
+                  label="Meeting Title"
+                  dense
+                  :error="!meetingTitle && meetingFormSubmitted"
+                  error-message="Title is required"
+                  class="q-mb-md"
+                />
+                <q-input
+                  v-model="meetingReason"
+                  label="Reason for Meeting"
+                  dense
+                  :error="!meetingReason && meetingFormSubmitted"
                   error-message="Reason is required"
+                  class="q-mb-md"
+                />
+                <q-input
+                  v-model="meetingEntranceDateTime"
+                  label="Entrance Date and Time"
+                  dense
+                  type="datetime-local"
+                  :min="currentDateTime"
+                  :error="!meetingEntranceDateTime && meetingFormSubmitted"
+                  error-message="Entrance date and time is required"
+                  class="q-mb-md"
+                />
+                <q-input
+                  v-if="meetingType === 'In-person'"
+                  v-model="meetingPlace"
+                  label="Meeting Place"
+                  dense
+                  :error="meetingType === 'In-person' && !meetingPlace && meetingFormSubmitted"
+                  error-message="Place is required for in-person meetings"
                   class="q-mb-md"
                 />
                 <div class="text-subtitle2 q-mb-md">Select Users:</div>
@@ -570,8 +609,8 @@
                     v-for="user in item.shareWith.filter(u => u.username !== currentUser)"
                     :key="user.username"
                     clickable
-                    @click="toggleCallUser(user)"
-                    :active="selectedCallUsers.includes(user.username)"
+                    @click="toggleMeetingUser(user)"
+                    :active="selectedMeetingUsers.includes(user.username)"
                     active-class="bg-grey-3"
                   >
                     <q-item-section>
@@ -580,7 +619,7 @@
                     </q-item-section>
                     <q-item-section side>
                       <q-checkbox
-                        v-model="selectedCallUsers"
+                        v-model="selectedMeetingUsers"
                         :val="user.username"
                         :disable="user.status === 'pending'"
                       />
@@ -588,53 +627,78 @@
                   </q-item>
                 </q-list>
                 <q-btn
-                  label="Start Call"
+                  label="Start Meeting"
                   color="positive"
                   type="submit"
                   class="full-width q-mb-md"
-                  :disable="!selectedCallUsers.length || !callReason"
+                  :disable="!selectedMeetingUsers.length || !meetingTitle || !meetingReason || !meetingEntranceDateTime || (meetingType === 'In-person' && !meetingPlace)"
                 />
               </q-form>
             </q-card-section>
             <q-card-actions align="right">
-              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCallDialog" />
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeMeetingDialog" />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
-        <!-- Call Details Dialog -->
-        <q-dialog v-model="showCallDetailsDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw">
+        <!-- Meeting Details Dialog -->
+        <q-dialog v-model="showMeetingDetailsDialog" persistent>
+          <q-card style="width: 600px; max-width: 90vw">
             <q-card-section>
-              <div class="text-h6">Call Details</div>
+              <div class="text-h6">Meeting Details</div>
             </q-card-section>
             <q-card-section>
-              <div class="text-subtitle2 q-mb-md">Creator: {{ selectedCall?.creator || 'Unknown' }}</div>
-              <div class="text-subtitle2 q-mb-md">Status: {{ selectedCall?.status || 'N/A' }}</div>
-              <div class="text-subtitle2 q-mb-md">Time: {{ selectedCall?.startTime || 'N/A' }}</div>
-              <div class="text-subtitle2 q-mb-md">Duration: {{ selectedCall?.duration || '-' }}</div>
-              <div class="text-subtitle2 q-mb-md">Reason: {{ selectedCall?.reason || 'N/A' }}</div>
-              <div class="text-subtitle2 q-mb-md">Users in Call:</div>
+              <div class="text-subtitle2 q-mb-md">Title: {{ selectedMeeting?.title || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Creator: {{ selectedMeeting?.creator || 'Unknown' }}</div>
+              <div class="text-subtitle2 q-mb-md">Status: {{ selectedMeeting?.status || 'pending' }}</div>
+              <div class="text-subtitle2 q-mb-md">Entrance Time: {{ selectedMeeting?.entranceDateTime || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Exit Time: {{ selectedMeeting?.exitDateTime || 'N/A' }}</div>
+              <div v-if="selectedMeeting?.type === 'In-person'" class="text-subtitle2 q-mb-md">Place: {{ selectedMeeting?.place || 'N/A' }}</div>
+              <div v-if="selectedMeeting?.type === 'Online'" class="text-subtitle2 q-mb-md">
+                Meeting Link: <a :href="selectedMeeting?.link" target="_blank">{{ selectedMeeting?.link || 'N/A' }}</a>
+              </div>
+              <div class="text-subtitle2 q-mb-md">Reason: {{ selectedMeeting?.reason || 'N/A' }}</div>
+              <div class="text-subtitle2 q-mb-md">Users in Meeting:</div>
               <div class="q-mb-md">
-                <span v-for="(user, index) in selectedCall?.users" :key="index">
-                  {{ user }}{{ index < selectedCall.users.length - 1 ? ', ' : '' }}
+                <span v-for="(user, index) in selectedMeeting?.users" :key="index">
+                  {{ user }}{{ index < selectedMeeting.users.length - 1 ? ', ' : '' }}
                 </span>
               </div>
+              <q-form v-if="selectedMeeting?.creator === currentUser" @submit.prevent="saveAllMeetingDetails">
+                <q-input
+                  v-model="selectedMeeting.exitDateTime"
+                  label="Exit Date and Time (Optional)"
+                  dense
+                  type="datetime-local"
+                  :min="selectedMeeting?.entranceDateTime"
+                  :max="restrictExitDate(selectedMeeting?.entranceDateTime)"
+                  class="q-mb-md"
+                  :disable="selectedMeeting?.creator !== currentUser"
+                />
+                <q-select
+                  v-model="selectedMeeting.status"
+                  :options="['canceled', 'succeed', 'pending']"
+                  label="Status"
+                  dense
+                  class="q-mb-md"
+                  :disable="selectedMeeting?.creator !== currentUser"
+                />
+              </q-form>
               <textarea
-                v-model="selectedCall.description"
-                placeholder="Call description..."
+                v-model="selectedMeeting.description"
+                placeholder="Meeting description..."
                 class="resizable-note custom-textarea"
-                :disabled="!isCallParticipant"
+                :disabled="!isMeetingParticipant"
               />
             </q-card-section>
             <q-card-actions align="right">
-              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCallDetailsDialog" />
+              <q-btn flat label="Close" color="primary" v-close-popup @click="closeMeetingDetailsDialog" />
               <q-btn
-                v-if="isCallParticipant"
-                label="Save"
+                v-if="selectedMeeting?.creator === currentUser || isMeetingParticipant"
+                label="Save All"
                 color="positive"
-                @click="saveCallDescription"
-                :disable="!isCallParticipant"
+                @click="saveAllMeetingDetails"
+                :disable="!(selectedMeeting?.creator === currentUser || isMeetingParticipant)"
               />
             </q-card-actions>
           </q-card>
@@ -1167,6 +1231,8 @@
   </q-page>
 </template>
 
+
+
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -1220,13 +1286,17 @@ const showAssigneeDialog = ref(false)
 const selectedAssignee = ref(null)
 const selectedAssigneeIndex = ref(null)
 const showReportDialog = ref(false)
-const showCallDialog = ref(false)
-const callReason = ref('')
-const callFormSubmitted = ref(false)
-const selectedCallUsers = ref([])
-const showCallDetailsDialog = ref(false)
-const selectedCall = ref(null)
-const selectedCallIndex = ref(null)
+const showMeetingDialog = ref(false)
+const meetingType = ref('')
+const meetingTitle = ref('')
+const meetingReason = ref('')
+const meetingEntranceDateTime = ref('')
+const meetingPlace = ref('')
+const meetingFormSubmitted = ref(false)
+const selectedMeetingUsers = ref([])
+const showMeetingDetailsDialog = ref(false)
+const selectedMeeting = ref(null)
+const selectedMeetingIndex = ref(null)
 const showCommentDialog = ref(false)
 const selectedComment = ref(null)
 const selectedCommentIndex = ref(null)
@@ -1264,28 +1334,26 @@ const sortedAssignees = computed(() => {
     : []
 })
 
-const sortedCalls = computed(() => {
-  if (!item.value?.calls) return []
+const sortedMeetings = computed(() => {
+  if (!item.value?.meetings) return []
   const now = new Date()
-  return item.value.calls
-    .filter((call) => {
-      if (call.status === 'On Call') return true
-      if (call.status === 'Finished' && call.endTime) {
-        const endTime = new Date(call.endTime)
+  return item.value.meetings
+    .filter((meeting) => {
+      if (meeting.status === 'On Call') return true
+      if (meeting.status === 'Finished' && meeting.exitDateTime) {
+        const endTime = new Date(meeting.exitDateTime)
         const oneHourAfterEnd = new Date(endTime.getTime() + 60 * 60 * 1000)
         return now <= oneHourAfterEnd
       }
       return false
     })
-    .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 })
 
 const currentUserRole = computed(() => {
   if (!item.value) return 'N/A'
-  // ابتدا بررسی shareWith برای یافتن نقش کاربر
   const userShare = item.value.shareWith?.find((share) => share.username === currentUser.value)
   if (userShare) return userShare.role
-  // اگر در shareWith نیست و سازنده آیتم است، نقش owner
   return item.value.creator === currentUser.value ? 'owner' : 'observer'
 })
 
@@ -1299,7 +1367,6 @@ const canEdit = computed(() => {
       (share) => share.username === currentUser.value && share.role === 'owner' && !share.status
     )
   })
-  // اجازه ویرایش به سازنده آیتم یا کاربران با نقش owner در shareWith
   return (
     item.value.creator === currentUser.value ||
     item.value.shareWith?.some(
@@ -1418,8 +1485,8 @@ const isReportOwner = computed(() => {
   return selectedReport.value?.creator === currentUser.value
 })
 
-const isCallParticipant = computed(() => {
-  return selectedCall.value?.users.includes(currentUser.value)
+const isMeetingParticipant = computed(() => {
+  return selectedMeeting.value?.users.includes(currentUser.value)
 })
 
 const completionPercent = computed(() => {
@@ -1545,7 +1612,7 @@ const loadItems = () => {
   if (!item.value.creator) item.value.creator = currentUser.value
   console.log('Item Creator:', item.value.creator)
   if (!item.value.assignedTo) item.value.assignedTo = []
-  if (!item.value.calls) item.value.calls = []
+  if (!item.value.meetings) item.value.meetings = []
   if (!item.value.comments) item.value.comments = []
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
@@ -1563,13 +1630,17 @@ const loadItems = () => {
   selectedReport.value = null
   selectedReportIndex.value = null
   showReportDialog.value = false
-  showCallDialog.value = false
-  callReason.value = ''
-  callFormSubmitted.value = false
-  selectedCallUsers.value = []
-  showCallDetailsDialog.value = false
-  selectedCall.value = null
-  selectedCallIndex.value = null
+  showMeetingDialog.value = false
+  meetingType.value = ''
+  meetingTitle.value = ''
+  meetingReason.value = ''
+  meetingEntranceDateTime.value = ''
+  meetingPlace.value = ''
+  meetingFormSubmitted.value = false
+  selectedMeetingUsers.value = []
+  showMeetingDetailsDialog.value = false
+  selectedMeeting.value = null
+  selectedMeetingIndex.value = null
   showCommentDialog.value = false
   selectedComment.value = null
   selectedCommentIndex.value = null
@@ -1738,7 +1809,6 @@ const addSubitem = () => {
   }
   if (item.value) {
     const shareWith = item.value.shareWith.map((s) => ({ ...s }))
-    // If current user is assigned, set their role to 'admin' in the new subitem
     if (item.value.assignedTo?.some((assignee) => assignee.username === currentUser.value)) {
       const userIndex = shareWith.findIndex((s) => s.username === currentUser.value)
       if (userIndex >= 0) {
@@ -1763,7 +1833,7 @@ const addSubitem = () => {
       creator: currentUser.value,
       assignedTo: item.value.assignedTo ? item.value.assignedTo.map((a) => ({ ...a })) : [],
       reports: [],
-      calls: [],
+      meetings: [],
       comments: [],
     }
     item.value.subitems = item.value.subitems || []
@@ -2027,7 +2097,6 @@ const saveEditedReport = () => {
     item.value.reports &&
     item.value.reports.length > selectedReportIndex.value
   ) {
-    // Save current version to history before updating
     const currentReport = item.value.reports[selectedReportIndex.value]
     if (!currentReport.history) {
       currentReport.history = []
@@ -2077,31 +2146,28 @@ const closeCommentDialog = () => {
 const saveCommentOrReply = () => {
   if (!item.value) return
 
-  // Save new or edited comment
   if (isCommentOwner.value) {
-  if (!selectedComment.value.details || !selectedComment.value.details.trim()) {
-    errorMessage.value = 'Comment details cannot be empty.'
-    console.error('Comment validation failed: Details are empty')
-    return
-  }
-  if (selectedCommentIndex.value === null) {
-    // Add new comment
-    if (!canAddComment.value) {
-      console.log('Cannot add comment: Insufficient permissions')
+    if (!selectedComment.value.details || !selectedComment.value.details.trim()) {
+      errorMessage.value = 'Comment details cannot be empty.'
+      console.error('Comment validation failed: Details are empty')
       return
     }
-    const currentDateTime = new Date().toLocaleString('en-US')
-    const newComment = {
-      date: currentDateTime,
-      details: selectedComment.value.details,
-      creator: currentUser.value,
-      history: [],
-    }
-    item.value.comments = item.value.comments || []
-    item.value.comments.unshift(newComment)
-    console.log('Saved new comment:', newComment)
+    if (selectedCommentIndex.value === null) {
+      if (!canAddComment.value) {
+        console.log('Cannot add comment: Insufficient permissions')
+        return
+      }
+      const currentDateTime = new Date().toLocaleString('en-US')
+      const newComment = {
+        date: currentDateTime,
+        details: selectedComment.value.details,
+        creator: currentUser.value,
+        history: [],
+      }
+      item.value.comments = item.value.comments || []
+      item.value.comments.unshift(newComment)
+      console.log('Saved new comment:', newComment)
     } else {
-      // Edit existing comment
       if (
         selectedCommentIndex.value !== null &&
         item.value.comments &&
@@ -2129,7 +2195,6 @@ const saveCommentOrReply = () => {
     return
   }
 
-  // Save new or edited reply (only for owner)
   if (currentUserRole.value === 'owner') {
     if (
       selectedCommentIndex.value !== null &&
@@ -2143,7 +2208,6 @@ const saveCommentOrReply = () => {
         return
       }
       if (newReplyText.value && !currentComment.reply) {
-        // Add new reply
         currentComment.reply = {
           creator: currentUser.value,
           text: newReplyText.value,
@@ -2152,7 +2216,6 @@ const saveCommentOrReply = () => {
         }
         console.log('Saved new reply:', currentComment.reply)
       } else if (currentComment.reply && selectedComment.value.reply?.text) {
-        // Edit existing reply
         if (!currentComment.reply.history) {
           currentComment.reply.history = []
         }
@@ -2176,102 +2239,135 @@ const saveCommentOrReply = () => {
   }
 }
 
-const openCallDialog = () => {
+const openMeetingDialog = () => {
   if (currentUserRole.value === 'observer') {
-    console.log('Cannot open call dialog: User is observer')
+    console.log('Cannot open meeting dialog: User is observer')
     return
   }
-  showCallDialog.value = true
-  callReason.value = ''
-  callFormSubmitted.value = false
-  selectedCallUsers.value = []
-  console.log('Opened call dialog')
+  showMeetingDialog.value = true
+  meetingType.value = ''
+  meetingTitle.value = ''
+  meetingReason.value = ''
+  meetingEntranceDateTime.value = ''
+  meetingPlace.value = ''
+  meetingFormSubmitted.value = false
+  selectedMeetingUsers.value = []
+  console.log('Opened meeting dialog')
 }
 
-const closeCallDialog = () => {
-  showCallDialog.value = false
-  callReason.value = ''
-  callFormSubmitted.value = false
-  selectedCallUsers.value = []
+const closeMeetingDialog = () => {
+  showMeetingDialog.value = false
+  meetingType.value = ''
+  meetingTitle.value = ''
+  meetingReason.value = ''
+  meetingEntranceDateTime.value = ''
+  meetingPlace.value = ''
+  meetingFormSubmitted.value = false
+  selectedMeetingUsers.value = []
   errorMessage.value = ''
-  console.log('Closed call dialog')
+  console.log('Closed meeting dialog')
 }
 
-const toggleCallUser = (user) => {
+const toggleMeetingUser = (user) => {
   if (user.status === 'pending') {
-    console.log('Cannot toggle call user: User is pending')
+    console.log('Cannot toggle meeting user: User is pending')
     return
   }
-  if (selectedCallUsers.value.includes(user.username)) {
-    selectedCallUsers.value = selectedCallUsers.value.filter((u) => u !== user.username)
+  if (selectedMeetingUsers.value.includes(user.username)) {
+    selectedMeetingUsers.value = selectedMeetingUsers.value.filter((u) => u !== user.username)
   } else {
-    selectedCallUsers.value.push(user.username)
+    selectedMeetingUsers.value.push(user.username)
   }
-  console.log('Toggled call user:', user.username, selectedCallUsers.value)
+  console.log('Toggled meeting user:', user.username, selectedMeetingUsers.value)
 }
 
-const startCall = () => {
-  callFormSubmitted.value = true
-  if (!callReason.value || !callReason.value.trim()) {
-    errorMessage.value = 'Reason for call is required.'
-    console.error('Call validation failed: Reason is empty')
-    return
-  }
-  if (!selectedCallUsers.value.length) {
-    errorMessage.value = 'At least one user must be selected for the call.'
-    console.error('Call validation failed: No users selected')
+const startMeeting = () => {
+  meetingFormSubmitted.value = true
+  if (
+    !meetingType.value ||
+    !meetingTitle.value ||
+    !meetingReason.value ||
+    !meetingEntranceDateTime.value ||
+    !selectedMeetingUsers.value.length ||
+    (meetingType.value === 'In-person' && !meetingPlace.value)
+  ) {
+    errorMessage.value = 'All required meeting fields must be filled.'
+    console.error('Meeting validation failed: Required fields missing')
     return
   }
   const currentDateTime = new Date().toLocaleString()
-  const newCall = {
+  const newMeeting = {
     id: Date.now() + Math.floor(Math.random() * 1000),
     creator: currentUser.value,
     status: 'On Call',
-    startTime: currentDateTime,
-    reason: callReason.value,
-    users: [currentUser.value, ...selectedCallUsers.value],
+    createdAt: currentDateTime,
+    type: meetingType.value,
+    title: meetingTitle.value,
+    reason: meetingReason.value,
+    entranceDateTime: meetingEntranceDateTime.value,
+    place: meetingType.value === 'In-person' ? meetingPlace.value : null,
+    link: meetingType.value === 'Online' ? `https://meet.example.com/${Date.now()}` : null,
+    users: [currentUser.value, ...selectedMeetingUsers.value],
     description: '',
   }
-  item.value.calls = item.value.calls || []
-  item.value.calls.unshift(newCall)
-  console.log('Started call:', newCall)
+  item.value.meetings = item.value.meetings || []
+  item.value.meetings.unshift(newMeeting)
+  console.log('Started meeting:', newMeeting)
   saveItem()
-  // فرض می‌شود لینک Google Meet توسط بک‌اند تولید می‌شود
-  // window.open('https://meet.google.com/xxx-yyyy-zzz', '_blank')
-  closeCallDialog()
+  closeMeetingDialog()
   errorMessage.value = ''
 }
 
-const openCallDetailsDialog = (call, index) => {
-  selectedCall.value = { ...call }
-  selectedCallIndex.value = index
-  showCallDetailsDialog.value = true
-  console.log('Opened call details dialog for call:', call)
+const openMeetingDetailsDialog = (meeting, index) => {
+  selectedMeeting.value = { ...meeting }
+  selectedMeetingIndex.value = index
+  showMeetingDetailsDialog.value = true
+  console.log('Opened meeting details dialog for meeting:', meeting)
 }
 
-const closeCallDetailsDialog = () => {
-  showCallDetailsDialog.value = false
-  selectedCall.value = null
-  selectedCallIndex.value = null
+const closeMeetingDetailsDialog = () => {
+  showMeetingDetailsDialog.value = false
+  selectedMeeting.value = null
+  selectedMeetingIndex.value = null
   errorMessage.value = ''
-  console.log('Closed call details dialog')
+  console.log('Closed meeting details dialog')
 }
 
-const saveCallDescription = () => {
-  if (!isCallParticipant.value) {
-    console.log('Cannot save call description: Not a call participant')
+const restrictExitDate = (entranceDateTime) => {
+  if (!entranceDateTime) return ''
+  const date = new Date(entranceDateTime)
+  date.setHours(23, 59, 59, 999)
+  return date.toISOString().slice(0, 16)
+}
+
+const saveAllMeetingDetails = () => {
+  if (!selectedMeeting.value || selectedMeetingIndex.value === null) {
+    errorMessage.value = 'Invalid meeting selection.'
+    console.error('Meeting save failed: Invalid selection')
     return
   }
-  if (!selectedCall.value || selectedCallIndex.value === null) return
-  if (item.value.calls && item.value.calls.length > selectedCallIndex.value) {
-    item.value.calls[selectedCallIndex.value] = {
-      ...selectedCall.value,
-      description: selectedCall.value.description || ''
-    }
-    console.log('Saved call description:', selectedCall.value.description)
-    saveItem()
+  if (!item.value.meetings || item.value.meetings.length <= selectedMeetingIndex.value) {
+    errorMessage.value = 'Meeting not found.'
+    console.error('Meeting save failed: Meeting not found')
+    return
   }
-  closeCallDetailsDialog()
+  if (selectedMeeting.value.creator === currentUser.value) {
+    item.value.meetings[selectedMeetingIndex.value] = {
+      ...item.value.meetings[selectedMeetingIndex.value],
+      status: selectedMeeting.value.status || 'On Call',
+      exitDateTime: selectedMeeting.value.exitDateTime || ''
+    }
+    console.log('Saved meeting details for creator:', {
+      status: selectedMeeting.value.status,
+      exitDateTime: selectedMeeting.value.exitDateTime
+    })
+  }
+  if (isMeetingParticipant.value) {
+    item.value.meetings[selectedMeetingIndex.value].description = selectedMeeting.value.description || ''
+    console.log('Saved meeting description for participant:', selectedMeeting.value.description)
+  }
+  saveItem()
+  closeMeetingDetailsDialog()
   errorMessage.value = ''
 }
 
@@ -2666,6 +2762,7 @@ const sortSubitems = () => {
   console.log('Sorted subitems')
   saveItem()
 }
+
 </script>
 
 <style scoped>
@@ -2705,7 +2802,7 @@ const sortSubitems = () => {
   max-height: 200px;
   overflow-y: auto;
 }
-.calls-box {
+.meetings-box {
   max-height: 200px;
   overflow-y: auto;
 }

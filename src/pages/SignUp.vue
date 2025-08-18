@@ -213,18 +213,6 @@ const passwordErrorMessage = computed(() => {
   return ''
 })
 
-// Commented out for local testing without backend; uncomment when backend is available
-// const sendVerificationCode = () => {
-//   if (!isEmailValid.value) {
-//     emailTouched.value = true
-//     return
-//   }
-//   // Simulate sending a 4-digit code
-//   generatedCode.value = Math.floor(1000 + Math.random() * 9000).toString()
-//   emailVerificationSent.value = true
-//   console.log('Verification code sent (mock):', generatedCode.value)
-// }
-
 const sendVerificationCode = () => {
   if (!isEmailValid.value) {
     emailTouched.value = true
@@ -298,8 +286,12 @@ const signUp = () => {
       picture: ''
     }
 
-    // Add user to kanbanUsers
-    kanbanUsers.push({ username: username.value, email: email.value })
+    // Add user to kanbanUsers with password
+    kanbanUsers.push({
+      username: username.value,
+      email: email.value,
+      password: password.value // Store password
+    })
     localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
     localStorage.setItem('userProfile', JSON.stringify(userProfile))
     localStorage.setItem('authToken', 'demo-token-' + Date.now())
@@ -307,6 +299,7 @@ const signUp = () => {
     console.log('Username:', username.value)
     console.log('Email:', email.value)
     console.log('Password:', password.value)
+    console.log('kanbanUsers after signup:', JSON.parse(localStorage.getItem('kanbanUsers')))
     alert('Sign up successful (demo only).')
     router.push('/login')
     isLoading.value = false
@@ -336,4 +329,16 @@ const clearConfirmError = () => {
 const clearVerificationError = () => {
   if (verificationCode.value.length === 4) verificationError.value = false
 }
+
+// Commented out for local testing without backend; uncomment when backend is available
+// const sendVerificationCode = () => {
+//   if (!isEmailValid.value) {
+//     emailTouched.value = true
+//     return
+//   }
+//   // Simulate sending a 4-digit code
+//   generatedCode.value = Math.floor(1000 + Math.random() * 9000).toString()
+//   emailVerificationSent.value = true
+//   console.log('Verification code sent (mock):', generatedCode.value)
+// }
 </script>

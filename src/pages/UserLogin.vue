@@ -169,12 +169,21 @@ const login = () => {
   setTimeout(() => {
     // Check if username or email exists in kanbanUsers
     const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+    console.log('kanbanUsers:', kanbanUsers); // Debug log
     const user = kanbanUsers.find(
       user => (user.username === username.value || user.email === username.value)
     );
     if (!user) {
       apiError.value = 'Invalid username or email';
       usernameError.value = true;
+      isLoading.value = false;
+      return;
+    }
+
+    // Check if password matches
+    if (user.password !== password.value) {
+      apiError.value = 'Invalid password';
+      passwordError.value = true;
       isLoading.value = false;
       return;
     }
@@ -236,6 +245,6 @@ const signup = () => {
 };
 
 const forgotPassword = () => {
-  router.push('/ForgetPass');
+  router.push('/forgot-password');
 };
 </script>
