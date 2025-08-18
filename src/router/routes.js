@@ -10,12 +10,8 @@ const routes = [
       { path: 'home', component: () => import('pages/homePage.vue') },
       { path: 'forgetPass', component: () => import('pages/ForgetPass.vue') },
       { path: 'itemDetail/:id', component: () => import('pages/itemDetail.vue') },
-      // { path: 'test', component: () => import('pages/newFile.vue') }
     ]
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue')

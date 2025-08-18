@@ -6,235 +6,352 @@
           <q-icon name="lock_reset" size="64px" class="text-primary" />
         </div>
 
-        <q-form @submit.prevent="handleSubmit">
-          <!-- Step 1: Email input -->
-          <div v-if="step === 1">
-            <q-input
-              filled
-              v-model="email"
-              label="Email"
-              type="email"
-              class="q-mb-md"
-              dense
-              :error="emailError"
-              error-message="Valid email is required"
-              @input="clearEmailError"
-            />
+        <!-- API error banner -->
+        <q-banner
+          v-if="apiError"
+          dense
+          class="bg-negative text-white q-mb-md"
+          aria-live="polite"
+          role="alert"
+        >
+          {{ apiError }}
+        </q-banner>
 
-            <q-btn
-              label="Send Verification Code"
-              color="primary"
-              class="full-width q-mt-md"
-              :loading="isLoading"
-              type="submit"
-            />
-          </div>
+        <!-- Success banner for verification -->
+        <q-banner
+          v-if="emailVerified"
+          dense
+          class="bg-positive text-white q-mb-md"
+          aria-live="polite"
+          role="alert"
+        >
+          Verification code validated successfully!
+        </q-banner>
 
-          <!-- Step 2: Code input -->
-          <div v-if="step === 2">
-            <q-input
-              filled
-              v-model="code"
-              label="Verification Code"
-              class="q-mb-md"
-              dense
-              :error="codeError"
-              error-message="Invalid code"
-              @input="clearCodeError"
-            />
+        <q-form @submit.prevent="verifyUser">
+          <!-- Username or Email input -->
+          <q-input
+            filled
+            v-model="usernameOrEmail"
+            label="Username or Email"
+            class="q-mb-md"
+            dense
+            :error="usernameError"
+            error-message="Username or Email is required"
+            @input="clearUsernameError"
+            autofocus
+            aria-label="Enter your username or email"
+            :disable="emailVerificationSent"
+          />
 
-            <q-btn
-              label="Verify Code"
-              color="primary"
-              class="full-width q-mt-md"
-              :loading="isLoading"
-              type="submit"
-            />
+          <!-- Verify button -->
+          <q-btn
+            label="Verify"
+            color="primary"
+            class="full-width q-mb-md"
+            :loading="isVerifying"
+            :disable="emailVerificationSent"
+            @click="verifyUser"
+            aria-label="Verify your username or email"
+          />
 
-            <div class="text-center q-mt-md">
+          <!-- Verification Code input -->
+          <q-input
+            v-if="emailVerificationSent"
+            filled
+            v-model="verificationCode"
+            label="Verification Code"
+            class="q-mb-md"
+            dense
+            maxlength="4"
+            :error="verificationError"
+            error-message="Invalid verification code"
+            @input="clearVerificationError"
+            aria-label="Enter the 4-digit verification code"
+          >
+            <template v-slot:append>
               <q-btn
-                flat
-                label="Resend Code"
+                label="Validate Code"
                 color="primary"
-                size="sm"
-                :disable="isLoading"
-                @click="sendCode"
+                :disable="verificationCode.length !== 4"
+                @click="validateCode"
+                aria-label="Validate the verification code"
               />
-            </div>
-          </div>
-
-          <!-- Step 3: New Password input -->
-          <div v-if="step === 3">
-            <q-input
-              filled
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              label="New Password"
-              class="q-mb-md"
-              dense
-              :error="passwordError"
-              error-message="Password is required"
-              @input="clearPasswordError"
-            >
-              <template v-slot:append>
-                <q-icon
-                  :name="showPassword ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </q-input>
-
-            <q-input
-              filled
-              v-model="confirmPassword"
-              :type="showPassword ? 'text' : 'password'"
-              label="Confirm Password"
-              class="q-mb-md"
-              dense
-              :error="confirmPasswordError"
-              error-message="Passwords must match"
-              @input="clearConfirmPasswordError"
-            >
-              <template v-slot:append>
-                <q-icon
-                  :name="showPassword ? 'visibility_off' : 'visibility'"
-                  class="cursor-pointer"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </q-input>
-
-            <q-btn
-              label="Reset Password"
-              color="primary"
-              class="full-width q-mt-md"
-              :loading="isLoading"
-              type="submit"
-            />
-          </div>
+            </template>
+          </q-input>
         </q-form>
+
+        <!-- Password reset dialog -->
+        <q-dialog v-model="showPasswordDialog" persistent>
+          <q-card style="width: 400px; max-width: 90vw;">
+            <q-card-section>
+              <div class="text-h6">Set New Password</div>
+            </q-card-section>
+
+            <q-card-section>
+              <q-form @submit.prevent="resetPassword">
+                <!-- New Password input -->
+                <q-input
+                  filled
+                  v-model="newPassword"
+                  :type="showPassword ? 'text' : 'password'"
+                  label="New Password"
+                  class="q-mb-md"
+                  dense
+                  :error="newPasswordError"
+                  :error-message="newPasswordErrorMessage"
+                  @input="clearNewPasswordError"
+                  aria-label="Enter your new password"
+                >
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPassword ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="showPassword = !showPassword"
+                    />
+                  </template>
+                </q-input>
+
+                <!-- Confirm New Password input -->
+                <q-input
+                  filled
+                  v-model="confirmNewPassword"
+                  :type="showPassword ? 'text' : 'password'"
+                  label="Confirm New Password"
+                  class="q-mb-md"
+                  dense
+                  :error="confirmError"
+                  error-message="Passwords do not match"
+                  @input="clearConfirmError"
+                  aria-label="Confirm your new password"
+                >
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPassword ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer"
+                      @click="showPassword = !showPassword"
+                    />
+                  </template>
+                </q-input>
+
+                <q-btn
+                  label="Reset Password"
+                  color="primary"
+                  class="full-width q-mt-md"
+                  :loading="isResetting"
+                  type="submit"
+                  aria-label="Reset your password"
+                />
+              </q-form>
+            </q-card-section>
+
+            <q-card-actions align="right">
+              <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel password reset" />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
 
         <q-separator class="q-my-md" />
 
-        <q-btn
-          flat
-          label="Back to Login"
-          color="primary"
-          class="full-width"
+        <router-link
           to="/login"
-        />
+          class="text-primary text-caption full-width text-center"
+          style="text-decoration: none; display: block;"
+          tabindex="0"
+          @click="goToLogin"
+          aria-label="Navigate back to login page"
+        >
+          Back to Login
+        </router-link>
       </q-card-section>
     </q-card>
   </q-page>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 
-// Form fields and state
-const email = ref('')
-const code = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const showPassword = ref(false)
-const step = ref(1) // 1: email, 2: code, 3: password
-const isLoading = ref(false)
-const emailError = ref(false)
-const codeError = ref(false)
-const passwordError = ref(false)
-const confirmPasswordError = ref(false)
+const router = useRouter();
+const usernameOrEmail = ref('');
+const verificationCode = ref('');
+const newPassword = ref('');
+const confirmNewPassword = ref('');
+const showPassword = ref(false);
+const isVerifying = ref(false);
+const isResetting = ref(false);
+const apiError = ref('');
+const emailVerificationSent = ref(false);
+const emailVerified = ref(false);
+const showPasswordDialog = ref(false);
+const usernameError = ref(false);
+const verificationError = ref(false);
+const newPasswordError = ref(false);
+const confirmError = ref(false);
+const generatedCode = ref('');
 
-const sendCode = () => {
-  emailError.value = false
-  isLoading.value = true
+const isEmailValid = computed(() => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(usernameOrEmail.value);
+});
 
-  // Basic email validation
-  if (!email.value || !email.value.includes('@')) {
-    emailError.value = true
-    isLoading.value = false
-    return
+const isPasswordValid = computed(() => {
+  return newPassword.value.length >= 8;
+});
+
+const isPasswordRepeated = computed(() => {
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+  const user = kanbanUsers.find(
+    user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
+  );
+  return user && user.password === newPassword.value;
+});
+
+const newPasswordErrorMessage = computed(() => {
+  if (!newPassword.value) return 'Password is required';
+  if (!isPasswordValid.value) return 'Password must be at least 8 characters';
+  if (isPasswordRepeated.value) return 'New password cannot be the same as the old password';
+  return '';
+});
+
+const usernameErrorMessage = computed(() => {
+  return 'Username or Email is required';
+});
+
+const verifyUser = () => {
+  usernameError.value = false;
+  apiError.value = '';
+  isVerifying.value = true;
+
+  if (!usernameOrEmail.value) {
+    usernameError.value = true;
+    apiError.value = usernameErrorMessage.value;
+    isVerifying.value = false;
+    return;
   }
 
-  // Simulate backend API call to send code
-  setTimeout(() => {
-    console.log('Requesting verification code for:', email.value)
-    // Placeholder: Assume backend sends code via email
-    isLoading.value = false
-    step.value = 2
-  }, 1000) // Simulate 1-second API delay
-}
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+  const user = kanbanUsers.find(
+    user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
+  );
 
-const verifyCode = () => {
-  codeError.value = false
-  isLoading.value = true
+  if (!user) {
+    apiError.value = 'Username or Email not found';
+    usernameError.value = true;
+    isVerifying.value = false;
+    return;
+  }
 
-  // Simulate backend API call to verify code
-  setTimeout(() => {
-    // Placeholder: Assume backend verifies code
-    // For demo, proceed to next step (in real app, check API response)
-    console.log('Verifying code:', code.value)
-    isLoading.value = false
-    step.value = 3
-    // Note: Backend would return success/failure; here we assume success
-    // If code is invalid, backend would trigger error (handled in real app)
-  }, 1000) // Simulate 1-second API delay
-}
+  sendVerificationCode();
+  isVerifying.value = false;
+};
+
+// Commented out for local testing without backend; uncomment when backend is available
+// const sendVerificationCode = () => {
+//   if (!isEmailValid.value && !usernameOrEmail.value) {
+//     usernameError.value = true;
+//     apiError.value = 'Valid email or username required';
+//     return;
+//   }
+//   // Simulate sending a 4-digit code
+//   generatedCode.value = Math.floor(1000 + Math.random() * 9000).toString();
+//   emailVerificationSent.value = true;
+//   console.log('Verification code sent (mock):', generatedCode.value);
+// }
+
+const sendVerificationCode = () => {
+  if (!isEmailValid.value && !usernameOrEmail.value) {
+    usernameError.value = true;
+    apiError.value = 'Valid email or username required';
+    return;
+  }
+  // For local testing, set a fixed code and log it
+  generatedCode.value = '1234'; // Fixed code for testing
+  emailVerificationSent.value = true;
+  console.log('Verification code for testing (use this):', generatedCode.value);
+};
+
+const validateCode = () => {
+  if (verificationCode.value === generatedCode.value) {
+    emailVerified.value = true;
+    apiError.value = '';
+    showPasswordDialog.value = true;
+  } else {
+    emailVerified.value = false;
+    verificationError.value = true;
+    apiError.value = 'Invalid verification code';
+  }
+};
 
 const resetPassword = () => {
-  passwordError.value = false
-  confirmPasswordError.value = false
-  isLoading.value = true
+  newPasswordError.value = false;
+  confirmError.value = false;
+  apiError.value = '';
+  isResetting.value = true;
 
-  // Validate password
-  if (!password.value) {
-    passwordError.value = true
-    isLoading.value = false
-    return
-  }
-  if (password.value !== confirmPassword.value) {
-    confirmPasswordError.value = true
-    isLoading.value = false
-    return
+  if (!newPassword.value || !isPasswordValid.value || isPasswordRepeated.value) {
+    newPasswordError.value = true;
+    isResetting.value = false;
+    return;
   }
 
-  // Simulate backend API call to reset password
+  if (newPassword.value !== confirmNewPassword.value) {
+    confirmError.value = true;
+    isResetting.value = false;
+    return;
+  }
+
   setTimeout(() => {
-    console.log('Resetting password for:', email.value)
-    console.log('New password:', password.value)
-    isLoading.value = false
-    alert('Password reset successful (demo only)')
-    window.location.href = 'http://localhost:9000/#/home'
-  }, 1000) // Simulate 1-second API delay
-}
+    // Update user password in kanbanUsers
+    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+    const userIndex = kanbanUsers.findIndex(
+      user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
+    );
 
-const handleSubmit = () => {
-  if (step.value === 1) sendCode()
-  else if (step.value === 2) verifyCode()
-  else if (step.value === 3) resetPassword()
-}
+    if (userIndex !== -1) {
+      kanbanUsers[userIndex].password = newPassword.value;
+      localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers));
+      console.log('Password updated for user:', usernameOrEmail.value);
+      alert('Password reset successful (demo only).');
+      router.push('/login');
+    } else {
+      apiError.value = 'User not found';
+    }
 
-const clearEmailError = () => {
-  if (email.value && email.value.includes('@')) {
-    emailError.value = false
+    isResetting.value = false;
+    showPasswordDialog.value = false;
+  }, 1000);
+};
+
+const clearUsernameError = () => {
+  if (usernameOrEmail.value !== '') {
+    usernameError.value = false;
+    apiError.value = '';
   }
-}
+};
 
-const clearCodeError = () => {
-  if (code.value) {
-    codeError.value = false
+const clearVerificationError = () => {
+  if (verificationCode.value.length === 4) {
+    verificationError.value = false;
+    apiError.value = '';
   }
-}
+};
 
-const clearPasswordError = () => {
-  if (password.value) {
-    passwordError.value = false
+const clearNewPasswordError = () => {
+  if (newPassword.value && isPasswordValid.value && !isPasswordRepeated.value) {
+    newPasswordError.value = false;
+    apiError.value = '';
   }
-}
+};
 
-const clearConfirmPasswordError = () => {
-  if (confirmPassword.value) {
-    confirmPasswordError.value = false
+const clearConfirmError = () => {
+  if (confirmNewPassword.value === newPassword.value) {
+    confirmError.value = false;
+    apiError.value = '';
   }
-}
+};
+
+const goToLogin = () => {
+  router.push('/login');
+};
 </script>

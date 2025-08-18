@@ -236,6 +236,6 @@ const signup = () => {
 };
 
 const forgotPassword = () => {
-  router.push('/forgot-password');
+  router.push('/ForgetPass');
 };
 </script>
