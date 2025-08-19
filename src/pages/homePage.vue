@@ -1,3 +1,4 @@
+
 <template>
   <q-page class="q-pa-md">
     <!-- Top bar -->
@@ -217,11 +218,12 @@
           <q-form @submit.prevent="addItem" style="padding: 5px 15px">
             <q-select
               v-model="itemForm.type"
-              :options="['Task', 'Project', 'Portfolio', 'Other']"
+              :options="statusOptions"
               label="Item Type (select or type)"
               dense
               use-input
               input-debounce="0"
+              new-value-mode="add-unique"
               :error="!itemForm.type && formSubmitted"
               error-message="Item Type is required"
             />
@@ -259,11 +261,14 @@
             <q-select
               v-model="itemForm.category"
               :options="categoryOptions"
-              use-input
-              use-chips
               label="Category"
               multiple
+              use-chips
+              use-input
+              new-value-mode="add-unique"
               dense
+              :error="!itemForm.category.length && formSubmitted"
+              error-message="Category is required"
             />
             <div class="q-mt-sm">
               <div class="text-subtitle2">Subitems</div>
@@ -274,11 +279,12 @@
               >
                 <q-select
                   v-model="itemForm.subitems[index].type"
-                  :options="['Task', 'Project', 'Portfolio', 'Other']"
+                  :options="statusOptions"
                   label="Subitem Type"
                   dense
                   use-input
                   input-debounce="0"
+                  new-value-mode="add-unique"
                   :error="!itemForm.subitems[index].type && formSubmitted"
                   error-message="Subitem Type is required"
                 />
@@ -394,6 +400,8 @@
     </q-dialog>
   </q-page>
 </template>
+
+
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
@@ -692,6 +700,25 @@ const addItem = () => {
     errorMessage.value = 'Subitem deadline cannot be after the parent item deadline.'
     return
   }
+
+  // Add new type to statusOptions if it doesn't exist
+  if (!statusOptions.value.includes(itemForm.value.type)) {
+    statusOptions.value.push(itemForm.value.type)
+  }
+
+  // Add new categories to categoryOptions if they don't exist
+  itemForm.value.category.forEach((cat) => {
+    if (!categoryOptions.value.includes(cat)) {
+      categoryOptions.value.push(cat)
+    }
+  })
+
+  // Add new subitem types to statusOptions if they don't exist
+  itemForm.value.subitems.forEach((subitem) => {
+    if (!statusOptions.value.includes(subitem.type)) {
+      statusOptions.value.push(subitem.type)
+    }
+  })
 
   const statusMap = {
     Backlog: 'backlog',
