@@ -1,4 +1,3 @@
-
 <template>
   <q-page class="q-pa-md bg-primary" style="min-height: 100vh; overflow-y: auto">
     <!-- Loading State -->
@@ -530,7 +529,8 @@
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
                 <div class="text-ellipsis single-line">
-                  <span class="text-weight-bold">{{ meeting.creator }}</span>: {{ meeting.status }} - {{ truncateText(meeting.title) }}
+                  <span class="text-weight-bold">{{ meeting.creator }}</span>:
+                  {{ meeting.type }} - {{ meeting.status }} - {{ truncateText(meeting.title) }}
                 </div>
               </div>
             </div>
@@ -649,6 +649,7 @@
               <div class="text-h6">Meeting Details</div>
             </q-card-section>
             <q-card-section>
+              <div class="text-subtitle2 q-mb-md">Type: {{ selectedMeeting?.type || 'N/A' }}</div>
               <div class="text-subtitle2 q-mb-md">Title: {{ selectedMeeting?.title || 'N/A' }}</div>
               <div class="text-subtitle2 q-mb-md">Creator: {{ selectedMeeting?.creator || 'Unknown' }}</div>
               <div class="text-subtitle2 q-mb-md">Status: {{ selectedMeeting?.status || 'pending' }}</div>
