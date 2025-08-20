@@ -509,6 +509,7 @@
                 color="positive"
                 @click="saveAssigneeDetails"
                 :disable="!canEditAssignee"
+                aria-label="Save assignee details"
               />
             </q-card-actions>
           </q-card>
@@ -1157,7 +1158,7 @@
               option-value="value"
               dense
               :error="!selectedItem && assignFormSubmitted"
-              error-message="Item is required"
+              error-message="Please select an item"
               class="q-mb-md"
               :disable="!canAssign"
             />
@@ -1166,6 +1167,8 @@
               label="Search Username"
               dense
               @input="searchAssignUsers"
+              :error="assignFormSubmitted && !isValidAssignUsername"
+              error-message="Please enter a valid username with admin or owner role"
               aria-label="Search for users to assign"
               :disable="!canAssign"
             />
@@ -1182,8 +1185,11 @@
                 >
               </q-item>
             </q-list>
-            <div v-else-if="searchAssignUsername" class="q-mt-md text-negative">
+            <div v-else-if="searchAssignUsername && !isLoadingUsers" class="q-mt-md text-negative">
               No eligible users found
+            </div>
+            <div v-if="isLoadingUsers" class="q-mt-md text-grey">
+              Loading users...
             </div>
             <div v-if="newAssignees.length" class="q-mt-md">
               <div class="text-subtitle2">Selected Users:</div>
@@ -1245,15 +1251,20 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
-          <q-btn label="Save" color="positive" @click="saveAssignment" :disable="!canAssign || !selectedItem" />
+          <q-btn
+            label="Save"
+            color="positive"
+            @click="saveAssignment"
+            :disable="!canAssign || !selectedItem || !newAssignees.length"
+            aria-label="Save assignment"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
   </q-page>
 </template>
 
-
-
+```vue:disable-run
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -1274,7 +1285,7 @@ const subitemForm = ref({
   deadline: '',
   status: '',
   priority: '',
-  category: [], // Modified: Allow category to be an array to support multiple selections
+  category: [],
 });
 const statusOptions = ref(['Backlog', 'In Progress', 'Done']);
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others']);
@@ -1338,7 +1349,7 @@ const isValidAssignUsername = computed(() => {
   return item.value.shareWith.some(
     (share) =>
       share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
-      (share.role === 'admin' || share.role === 'observer') &&
+      (share.role === 'admin' || share.role === 'owner') &&
       !share.status,
   );
 });
@@ -1376,14 +1387,6 @@ const currentUserRole = computed(() => {
 
 const canEdit = computed(() => {
   if (!item.value) return false;
-  console.log('canEdit Check:', {
-    creator: item.value.creator,
-    currentUser: currentUser.value,
-    isCreator: item.value.creator === currentUser.value,
-    hasOwnerRole: item.value.shareWith?.some(
-      (share) => share.username === currentUser.value && share.role === 'owner' && !share.status,
-    ),
-  });
   return (
     item.value.creator === currentUser.value ||
     item.value.shareWith?.some(
@@ -1761,8 +1764,6 @@ const deleteItem = (id) => {
     console.log('Item not found for deletion:', id);
     return;
   }
-
-  // Remove item from all shared users
   const shareUsernames = targetItem.shareWith
     .filter((share) => share.username !== currentUser.value)
     .map((share) => share.username);
@@ -1798,7 +1799,6 @@ const deleteItem = (id) => {
     localStorage.setItem(`kanbanInvitations_${username}`, JSON.stringify(newInvitations));
     console.log(`Removed invitations for item ${id} for user ${username}`);
   });
-
   const deleteRecursive = (items, itemId) => {
     for (let i = 0; i < items.length; i++) {
       if (items[i].id === itemId) {
@@ -1854,19 +1854,14 @@ const addSubitem = () => {
       return;
     }
   }
-
-  // Modified: Add new type to statusOptions if it doesn't exist
   if (!statusOptions.value.includes(subitemForm.value.type)) {
     statusOptions.value.push(subitemForm.value.type);
   }
-
-  // Modified: Add new categories to categoryOptions if they don't exist
   subitemForm.value.category.forEach((cat) => {
     if (!categoryOptions.value.includes(cat)) {
       categoryOptions.value.push(cat);
     }
   });
-
   const statusMap = {
     Backlog: 'backlog',
     'In Progress': 'in progress',
@@ -1890,7 +1885,7 @@ const addSubitem = () => {
       status: statusMap[subitemForm.value.status] || 'backlog',
       priority: subitemForm.value.priority,
       parentId: item.value.id,
-      category: subitemForm.value.category, // Modified: Use the category array from form
+      category: subitemForm.value.category,
       subitems: [],
       shareWith,
       movedToDoneAt: subitemForm.value.status === 'Done' ? Date.now() : null,
@@ -2013,7 +2008,7 @@ const resetSubitemForm = () => {
     deadline: '',
     status: '',
     priority: '',
-    category: [], // Modified: Reset category as an empty array
+    category: [],
   };
   subitemFormSubmitted.value = false;
   console.log('Reset subitem form');
@@ -2265,7 +2260,7 @@ const saveCommentOrReply = () => {
           currentComment.history.push({
             details: currentComment.details,
             date: new Date().toLocaleString('en-US'),
-        });
+          });
           selectedComment.value.edited = true;
         }
         item.value.comments[selectedCommentIndex.value] = {
@@ -2310,7 +2305,7 @@ const saveCommentOrReply = () => {
           currentComment.reply.history.push({
             text: currentComment.reply.text,
             date: new Date().toLocaleString('en-US'),
-        });
+          });
           currentComment.reply.edited = true;
         }
         currentComment.reply = {
@@ -2685,7 +2680,7 @@ const searchAssignUsers = () => {
         (share) =>
           share.username !== currentUser.value &&
           (!share.status || share.status !== 'pending') &&
-          (share.role === 'admin' || share.role === 'observer'),
+          (share.role === 'admin' || share.role === 'owner'),
       )
       .map((share) => ({ username: share.username, role: share.role }));
     console.log('Searched assign users (empty query):', filteredAssignUsers.value);
@@ -2696,7 +2691,7 @@ const searchAssignUsers = () => {
       (share) =>
         share.username !== currentUser.value &&
         (!share.status || share.status !== 'pending') &&
-        (share.role === 'admin' || share.role === 'observer') &&
+        (share.role === 'admin' || share.role === 'owner') &&
         share.username.toLowerCase().includes(searchAssignUsername.value.toLowerCase()),
     )
     .map((share) => ({ username: share.username, role: share.role }));
@@ -2709,7 +2704,12 @@ const selectAssignee = (user) => {
     return;
   }
   if (!newAssignees.value.some((a) => a.username === user.username)) {
-    newAssignees.value.push({ username: user.username, role: user.role, note: '' });
+    newAssignees.value.push({ 
+      username: user.username, 
+      role: user.role, 
+      note: '', 
+      assignedAt: new Date().toLocaleString('en-US')
+    });
     console.log('Selected assignee:', user);
   }
   searchAssignUsername.value = '';
@@ -2729,11 +2729,16 @@ const addAssignee = () => {
   const user = item.value.shareWith.find(
     (share) =>
       share.username.toLowerCase() === searchAssignUsername.value.toLowerCase() &&
-      (share.role === 'admin' || share.role === 'observer') &&
+      (share.role === 'admin' || share.role === 'owner') &&
       !share.status,
   );
   if (user) {
-    newAssignees.value.push({ username: user.username, role: user.role, note: '' });
+    newAssignees.value.push({ 
+      username: user.username, 
+      role: user.role, 
+      note: '',
+      assignedAt: new Date().toLocaleString('en-US')
+    });
     console.log('Added assignee:', user);
     searchAssignUsername.value = '';
     filteredAssignUsers.value = [];
@@ -2741,6 +2746,43 @@ const addAssignee = () => {
     errorMessage.value = 'Invalid or ineligible user.';
     console.error('Add assignee failed: Invalid user');
   }
+};
+
+const saveAssignment = () => {
+  if (!canAssign.value) {
+    errorMessage.value = 'You do not have permission to assign users';
+    console.log('Cannot save assignment: Insufficient permissions');
+    return;
+  }
+  assignFormSubmitted.value = true;
+  if (!selectedItem.value) {
+    errorMessage.value = 'Please select an item to assign';
+    console.error('Assignment failed: No item selected');
+    return;
+  }
+  if (!newAssignees.value.length) {
+    errorMessage.value = 'Please select at least one user to assign';
+    console.error('Assignment failed: No users selected');
+    return;
+  }
+  if (!selectedItem.value.value.assignedTo) {
+    selectedItem.value.value.assignedTo = [];
+  }
+  newAssignees.value.forEach((assignee) => {
+    if (!selectedItem.value.value.assignedTo.some((a) => a.username === assignee.username)) {
+      selectedItem.value.value.assignedTo.push({
+        username: assignee.username,
+        role: assignee.role,
+        note: assignee.note || 'No note',
+        assignedAt: assignee.assignedAt,
+      });
+    }
+  });
+  updateSubitemsAssignedTo(selectedItem.value.value, newAssignees.value);
+  saveItem();
+  closeAssignDialog();
+  errorMessage.value = '';
+  console.log('Saved assignment:', newAssignees.value);
 };
 
 const removeAssignment = (index) => {
@@ -2753,6 +2795,13 @@ const removeAssignment = (index) => {
   removeAssignmentFromSubitems(item.value, removedUsername);
   console.log('Removed assignment for user:', removedUsername);
   saveItem();
+};
+
+const openAssigneeDialog = (assignee, index) => {
+  selectedAssignee.value = { ...assignee };
+  selectedAssigneeIndex.value = index;
+  showAssigneeDialog.value = true;
+  console.log('Opened assignee dialog for:', assignee);
 };
 
 const closeAssigneeDialog = () => {
