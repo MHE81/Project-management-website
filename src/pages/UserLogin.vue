@@ -1,250 +1,125 @@
 <template>
-  <q-page class="q-pa-md flex flex-center">
-    <q-card class="q-pa-lg shadow-2" style="width: 400px; max-width: 90vw;">
-      <q-card-section>
-        <div class="flex flex-center q-mb-md">
-          <q-icon name="account_circle" size="64px" class="text-primary" />
+  <q-page class="login-gradient flex flex-center">
+    <q-card flat class="login-card q-pa-xl">
+      <q-card-section class="q-pb-none">
+        <div class="row items-center q-gutter-sm q-mb-md">
+          <q-avatar size="32px" class="bg-primary text-white">
+            <q-icon name="flight_takeoff" size="20px" />
+          </q-avatar>
+          <div class="text-h6 text-weight-bold">Planova</div>
         </div>
+        <div class="text-h5 text-weight-bold q-mt-sm">Welcome back, Login.</div>
+      </q-card-section>
 
-        <!-- API error banner -->
-        <q-banner
-          v-if="apiError"
-          dense
-          class="bg-negative text-white q-mb-md"
-          aria-live="polite"
-          role="alert"
-        >
-          {{ apiError }}
-        </q-banner>
-
-        <q-form @submit.prevent="login">
-          <!-- Username input -->
+      <q-card-section class="q-pt-lg">
+        <q-form @submit="onSubmit" class="q-gutter-md" greedy>
           <q-input
+            v-model="email"
+            type="email"
+            label="Email"
             filled
-            v-model="username"
-            label="Username or Email"
-            class="q-mb-md"
             dense
-            :error="usernameError"
-            error-message="Username or Email is required"
-            @input="clearUsernameError"
-            autofocus
-            aria-label="Enter your username or email"
+            :rules="[val => !!val || 'Email is required']"
+            input-class="login-input"
+            class="login-input-wrapper"
           />
 
-          <!-- Password input -->
           <q-input
-            filled
             v-model="password"
-            :type="showPassword ? 'text' : 'password'"
+            :type="isPwd ? 'password' : 'text'"
             label="Password"
-            class="q-mb-md"
+            filled
             dense
-            :error="passwordError"
-            :error-message="passwordErrorMessage"
-            @input="clearPasswordError"
-            aria-label="Enter your password"
+            :rules="[val => !!val || 'Password is required']"
+            input-class="login-input"
+            class="login-input-wrapper"
           >
-            <template v-slot:append>
+            <template #append>
               <q-icon
-                :name="showPassword ? 'visibility_off' : 'visibility'"
+                :name="isPwd ? 'visibility' : 'visibility_off'"
                 class="cursor-pointer"
-                @click="showPassword = !showPassword"
+                @click="isPwd = !isPwd"
               />
             </template>
           </q-input>
 
-          <!-- Remember Me checkbox -->
-          <q-checkbox
-            v-model="rememberMe"
-            label="Remember Me"
-            class="q-mb-md"
-            dense
-            color="primary"
-            aria-label="Remember me for future logins"
-          />
-
-          <!-- Forgot Password link -->
-          <div class="text-right q-mb-md">
-            <router-link
-              to="/forgot-password"
-              class="text-primary text-caption"
-              style="text-decoration: none;"
-              tabindex="0"
-              @click="forgotPassword"
-            >
-              Forgot Password?
-            </router-link>
-          </div>
-
-          <!-- Login button -->
           <q-btn
-            label="Login"
-            color="primary"
-            class="full-width q-mt-md"
-            :loading="isLoading"
             type="submit"
-            aria-label="Login with username or email and password"
-          />
-
-          <q-separator class="q-my-md" />
-
-          <q-btn
-            label="Sign up"
-            color="secondary"
-            class="full-width q-mt-md"
-            icon="person_add"
-            @click="signup"
-            aria-label="Navigate to sign-up page"
+            label="Login"
+            color="dark"
+            class="q-mt-sm login-btn full-width"
+            :loading="loading"
+            icon-right="arrow_forward"
+            unelevated
           />
         </q-form>
+
+        <div class="q-mt-md text-caption text-grey-7">
+          Don't have an account?
+          <q-btn flat padding="0" class="q-ml-xs text-primary text-weight-medium" label="Sign up" @click="goSignup" />
+        </div>
       </q-card-section>
     </q-card>
   </q-page>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-// Form fields and state
-const username = ref('');
-const password = ref('');
-const showPassword = ref(false);
-const isLoading = ref(false);
-const apiError = ref('');
-const rememberMe = ref(false);
+const router = useRouter()
+const email = ref()
+const password = ref()
+const isPwd = ref(true)
+const loading = ref(false)
 
-// Error states for validation
-const usernameError = ref(false);
-const passwordError = ref(false);
-
-// Router instance
-const router = useRouter();
-
-// Password strength validator
-const isPasswordValid = computed(() => {
-  return password.value.length >= 8;
-});
-
-const passwordErrorMessage = computed(() => {
-  if (!password.value) return 'Password is required';
-  if (!isPasswordValid.value) return 'Password must be at least 8 characters';
-  return '';
-});
-
-// Load saved credentials on mount
-onMounted(() => {
-  const savedCredentials = localStorage.getItem('rememberedCredentials');
-  if (savedCredentials) {
-    const { username: savedUsername, password: savedPassword } = JSON.parse(savedCredentials);
-    username.value = savedUsername;
-    password.value = savedPassword;
-    rememberMe.value = true;
-    console.log('Loaded remembered credentials:', savedUsername);
+const onSubmit = async () => {
+  loading.value = true
+  try {
+    // TODO: replace with real auth call
+    await new Promise(r => setTimeout(r, 800))
+    // Example: router.push({ name: 'dashboard' })
+  } finally {
+    loading.value = false
   }
-});
+}
 
-const login = () => {
-  // Reset error states
-  usernameError.value = false;
-  passwordError.value = false;
-  apiError.value = '';
-  isLoading.value = true;
-
-  // Validate fields
-  if (!username.value) {
-    usernameError.value = true;
-    apiError.value = 'Username or Email is required';
-    isLoading.value = false;
-    return;
-  }
-  if (!password.value || !isPasswordValid.value) {
-    passwordError.value = true;
-    isLoading.value = false;
-    return;
-  }
-
-  // Simulate backend API call
-  setTimeout(() => {
-    // Check if username or email exists in kanbanUsers
-    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
-    console.log('kanbanUsers:', kanbanUsers); // Debug log
-    const user = kanbanUsers.find(
-      user => (user.username === username.value || user.email === username.value)
-    );
-    if (!user) {
-      apiError.value = 'Invalid username or email';
-      usernameError.value = true;
-      isLoading.value = false;
-      return;
-    }
-
-    // Check if password matches
-    if (user.password !== password.value) {
-      apiError.value = 'Invalid password';
-      passwordError.value = true;
-      isLoading.value = false;
-      return;
-    }
-
-    // Handle Remember Me
-    if (rememberMe.value) {
-      localStorage.setItem(
-        'rememberedCredentials',
-        JSON.stringify({
-          username: username.value,
-          password: password.value
-        })
-      );
-      console.log('Credentials saved for Remember Me');
-    } else {
-      localStorage.removeItem('rememberedCredentials');
-      console.log('Remember Me not selected, cleared saved credentials');
-    }
-
-    // Load user profile from kanbanUsers
-    const newProfile = {
-      username: user.username,
-      email: user.email,
-      firstName: user.firstName || '',
-      lastName: user.lastName || '',
-      dob: user.dob || '',
-      job: user.job || '',
-      bio: user.bio || '',
-      picture: user.picture || ''
-    };
-    localStorage.setItem('userProfile', JSON.stringify(newProfile));
-
-    // Store demo token for authenticated redirect
-    localStorage.setItem('authToken', 'demo-token');
-    console.log('Login successful, redirecting to /home');
-    alert('Login successful (demo only)');
-    router.push('/home');
-    isLoading.value = false;
-  }, 1000); // Simulate 1-second delay
-};
-
-// Clear error states on input
-const clearUsernameError = () => {
-  if (username.value !== '') {
-    usernameError.value = false;
-    apiError.value = '';
-  }
-};
-
-const clearPasswordError = () => {
-  if (password.value && isPasswordValid.value) {
-    passwordError.value = false;
-    apiError.value = '';
-  }
-};
-
-const signup = () => {
-  router.push('/signup');
-};
-
-const forgotPassword = () => {
-  router.push('/forgetPass');
-};
+const goSignup = () => {
+  router.push('/signup')
+}
 </script>
+
+<style scoped>
+.login-gradient {
+  /* Soft multi-stop gradient close to the screenshot */
+  min-height: 100vh;
+  background: radial-gradient(1200px 700px at 15% 85%, #ffb6c1 0%, rgba(255, 182, 193, 0) 60%),
+  radial-gradient(900px 600px at 85% 15%, #c7d2fe 0%, rgba(199, 210, 254, 0) 55%),
+  linear-gradient(135deg, #ffe1c7 0%, #f5d9ff 35%, #c9f1ff 70%, #ffd6e7 100%);
+}
+
+.login-card {
+  width: 540px;
+  max-width: 92vw;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
+}
+
+.login-input-wrapper :deep(.q-field__control) {
+  border-radius: 10px;
+  background: #f6f7fb;
+  min-height: 46px;
+}
+
+.login-input {
+  font-size: 14px;
+}
+
+.login-btn {
+  height: 44px;
+  border-radius: 10px;
+  background: #131a2a;
+  color: #ffffff;
+}
+</style>
