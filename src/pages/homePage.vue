@@ -6,22 +6,29 @@
         <span class="brand-title">PLANOVA</span>
       </div>
     </div>
-    <!-- Top bar -->
-    <div class="row justify-between items-center q-mb-md">
-      <div class="text-h6">Date: {{ currentDate }}</div>
-      <div class="q-gutter-sm row items-center">
-        <div class="row items-center">
+    <!-- Top bar: date left, centered search, actions right -->
+    <div class="row items-center q-mb-md topbar">
+      <div class="col-3">
+        <div class="date-pill">
+          <q-icon name="event" size="sm" class="q-mr-xs" />
+          {{ currentDate }}
+        </div>
+      </div>
+      <div class="col-6 flex flex-center">
+        <div class="row items-center no-wrap">
           <q-input
             v-model="searchQuery"
-            label="Search"
+            placeholder="Search items..."
             dense
             outlined
-            class="q-mr-sm"
-            style="width: 200px; background-color: white"
+            rounded
+            class="top-search-input"
             aria-label="Search items"
           />
-          <q-btn round color="primary" icon="search" aria-label="Perform search" />
+          <q-btn round color="primary" icon="search" class="q-ml-sm" aria-label="Perform search" />
         </div>
+      </div>
+      <div class="col-3 row justify-end items-center q-gutter-sm">
         <q-btn
           round
           color="primary"
@@ -32,14 +39,16 @@
         <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
       </div>
     </div>
-    <q-toggle
-      v-model="sortByPriority"
-      label="Sort by"
-      left-label
-      checked-icon="sort"
-      unchecked-icon="event"
-      color="primary"
-    />
+    <div class="fancy-toggle">
+      <q-toggle
+        v-model="sortByPriority"
+        label="Sort by Priority"
+        left-label
+        checked-icon="sort"
+        unchecked-icon="event"
+        color="primary"
+      />
+    </div>
 
     <!-- Error Banner -->
     <q-banner
@@ -90,83 +99,162 @@
         <div class="row" style="min-height: 100%; flex-wrap: nowrap">
           <!-- Backlog Column -->
           <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
-            <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
-            <div
-              v-for="item in sortedItems('backlog')"
-              :key="item.id"
-              class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              :draggable="canEdit(item)"
-              @dragstart="startDrag(item)"
-              @click="viewItem(item.id)"
-            >
-              <div>
-                <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(item.id)"
-                :disable="!canEdit(item)"
-              />
-            </div>
+            <q-card class="board-surface column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">Backlog</div>
+                <q-badge color="warning" text-color="black">{{
+                  sortedItems('backlog').length
+                }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm">
+                <div
+                  v-for="item in sortedItems('backlog').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="item.id"
+                  class="item-card"
+                  :class="priorityClass(item.priority)"
+                  :draggable="canEdit(item)"
+                  @dragstart="startDrag(item)"
+                  @click="viewItem(item.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ item.type }}</strong
+                      >: {{ item.title }}
+                    </div>
+                    <div class="text-caption">
+                      {{ formatItemDate(item.deadline) }}
+                    </div>
+                  </div>
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(item.id)"
+                      :disable="!canEdit(item)"
+                      aria-label="Delete item"
+                    />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- In Progress Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
-            <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
-            <div
-              v-for="item in sortedItems('In Progress')"
-              :key="item.id"
-              class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              :draggable="canEdit(item)"
-              @dragstart="startDrag(item)"
-              @click="viewItem(item.id)"
-            >
-              <div>
-                <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(item.id)"
-                :disable="!canEdit(item)"
-              />
-            </div>
+            <q-card class="board-surface column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">In Progress</div>
+                <q-badge color="primary">{{ sortedItems('In Progress').length }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm">
+                <div
+                  v-for="item in sortedItems('In Progress').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="item.id"
+                  class="item-card"
+                  :draggable="canEdit(item)"
+                  @dragstart="startDrag(item)"
+                  @click="viewItem(item.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ item.type }}</strong
+                      >: {{ item.title }}
+                    </div>
+                    <div class="text-caption">
+                      {{ formatItemDate(item.deadline) }}
+                    </div>
+                  </div>
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(item.id)"
+                      :disable="!canEdit(item)"
+                      aria-label="Delete item"
+                    />
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- Done Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
-            <div class="text-center text-subtitle2 q-mb-sm">Done</div>
-            <div
-              v-for="item in sortedItems('done')"
-              :key="item.id"
-              class="q-mb-sm bg-white q-pa-sm shadow-1 row justify-between items-center"
-              :draggable="canEdit(item)"
-              @dragstart="startDrag(item)"
-              @click="viewItem(item.id)"
-            >
-              <div>
-                <strong>{{ item.type }}</strong
-                >: {{ item.title }} (Due: {{ item.deadline || 'N/A' }})
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(item.id)"
-                :disable="!canEdit(item)"
-              />
-            </div>
+            <q-card class="column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">Done</div>
+                <q-badge color="positive">{{ sortedItems('done').length }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm">
+                <div
+                  v-for="item in sortedItems('done').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="item.id"
+                  class="item-card"
+                  :draggable="canEdit(item)"
+                  @dragstart="startDrag(item)"
+                  @click="viewItem(item.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ item.type }}</strong
+                      >: {{ item.title }}
+                    </div>
+                    <div class="row items-center q-gutter-xs">
+                      <q-chip
+                        dense
+                        square
+                        :color="
+                          item.priority === 'High'
+                            ? 'negative'
+                            : item.priority === 'Medium'
+                              ? 'warning'
+                              : 'grey-5'
+                        "
+                        text-color="white"
+                        >{{ item.priority || 'Low' }}</q-chip
+                      >
+                      <q-chip dense square icon="event" color="primary" text-color="white">{{
+                        item.deadline || 'N/A'
+                      }}</q-chip>
+                    </div>
+                  </div>
+                  <q-btn
+                    flat
+                    round
+                    icon="delete"
+                    color="negative"
+                    size="sm"
+                    class="absolute-top-right q-ma-xs"
+                    @click.stop="deleteItem(item.id)"
+                    :disable="!canEdit(item)"
+                    aria-label="Delete item"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
         </div>
       </div>
@@ -174,190 +262,194 @@
       <!-- Right-side Form Panel -->
       <div
         class="fixed-top-right"
-        style="
-          width: 260px;
-          top: 60px;
-          right: 10px;
-          bottom: 10px;
-          overflow-y: auto;
-          padding: 10px 0px;
-        "
+        style="width: 260px; top: 60px; right: 10px; bottom: 10px; overflow-y: auto; padding: 0"
       >
-        <q-btn
-          label="Add Item"
-          icon="add"
-          color="secondary"
-          class="full-width q-mb-md"
-          @click="toggleForm = !toggleForm"
-        />
-
-        <!-- Invitations Banner -->
-        <q-banner dense class="bg-yellow-9 text-white q-mb-md" aria-live="polite" role="alert">
-          <template v-if="pendingInvitations.length">
-            Invitations ({{ pendingInvitations.length }})
+        <q-card flat bordered class="right-panel-card">
+          <q-card-section class="q-pb-sm">
             <q-btn
-              flat
-              label="View"
-              color="white"
-              @click="showInvitationsDialog = true"
-              aria-label="View pending invitations"
+              label="Add Item"
+              icon="add"
+              color="secondary"
+              class="full-width"
+              @click="toggleForm = !toggleForm"
             />
-          </template>
-          <template v-else> Invitations </template>
-        </q-banner>
+          </q-card-section>
 
-        <!-- Progress Chart -->
-        <div class="q-my-md flex flex-center">
-          <q-circular-progress
-            show-value
-            :value="completionPercent"
-            size="80px"
-            color="green"
-            track-color="grey-3"
-          >
-            {{ completionPercent }}%
-          </q-circular-progress>
-        </div>
+          <q-card-section>
+            <!-- Invitations Banner -->
+            <q-banner dense class="bg-yellow-9 text-white q-mb-md" aria-live="polite" role="alert">
+              <template v-if="pendingInvitations.length">
+                Invitations ({{ pendingInvitations.length }})
+                <q-btn
+                  flat
+                  label="View"
+                  color="white"
+                  @click="showInvitationsDialog = true"
+                  aria-label="View pending invitations"
+                />
+              </template>
+              <template v-else> Invitations </template>
+            </q-banner>
 
-        <!-- Item Form -->
-        <div v-if="toggleForm" class="bg-white">
-          <q-form @submit.prevent="addItem" style="padding: 5px 15px">
-            <q-select
-              v-model="itemForm.type"
-              :options="statusOptions"
-              label="Item Type (select or type)"
-              dense
-              use-input
-              input-debounce="0"
-              new-value-mode="add-unique"
-              :error="!itemForm.type && formSubmitted"
-              error-message="Item Type is required"
-            />
-            <q-input
-              v-model="itemForm.title"
-              label="Item Title"
-              dense
-              :error="!itemForm.title && formSubmitted"
-              error-message="Title is required"
-            />
-            <q-input
-              v-model="itemForm.deadline"
-              label="Deadline"
-              dense
-              type="datetime-local"
-              :error="!itemForm.deadline && formSubmitted"
-              error-message="Deadline is required"
-            />
-            <q-select
-              v-model="itemForm.status"
-              :options="statusOptions"
-              label="Status"
-              dense
-              :error="!itemForm.status && formSubmitted"
-              error-message="Status is required"
-            />
-            <q-select
-              v-model="itemForm.priority"
-              :options="['Low', 'Medium', 'High']"
-              label="Priority"
-              dense
-              :error="!itemForm.priority && formSubmitted"
-              error-message="Priority is required"
-            />
-            <q-select
-              v-model="itemForm.category"
-              :options="categoryOptions"
-              label="Category"
-              multiple
-              use-chips
-              use-input
-              new-value-mode="add-unique"
-              dense
-              :error="!itemForm.category.length && formSubmitted"
-              error-message="Category is required"
-            />
-            <div class="q-mt-sm">
-              <div class="text-subtitle2">Subitems</div>
-              <div
-                v-for="(subitem, index) in itemForm.subitems"
-                :key="index"
-                class="row items-center q-mb-xs"
+            <!-- Progress Chart -->
+            <div class="q-my-md flex flex-center">
+              <q-circular-progress
+                show-value
+                :value="completionPercent"
+                size="80px"
+                color="green"
+                track-color="grey-3"
               >
+                {{ completionPercent }}%
+              </q-circular-progress>
+            </div>
+
+            <!-- Item Form -->
+            <div v-if="toggleForm" class="bg-white">
+              <q-form @submit.prevent="addItem" style="padding: 5px 15px">
                 <q-select
-                  v-model="itemForm.subitems[index].type"
+                  v-model="itemForm.type"
                   :options="statusOptions"
-                  label="Subitem Type"
+                  label="Item Type (select or type)"
                   dense
                   use-input
                   input-debounce="0"
                   new-value-mode="add-unique"
-                  :error="!itemForm.subitems[index].type && formSubmitted"
-                  error-message="Subitem Type is required"
+                  :error="!itemForm.type && formSubmitted"
+                  error-message="Item Type is required"
                 />
                 <q-input
-                  v-model="itemForm.subitems[index].title"
-                  label="Subitem Title"
+                  v-model="itemForm.title"
+                  label="Item Title"
                   dense
-                  class="q-ml-sm"
-                  :error="!itemForm.subitems[index].title && formSubmitted"
-                  error-message="Subitem Title is required"
+                  :error="!itemForm.title && formSubmitted"
+                  error-message="Title is required"
                 />
                 <q-input
-                  v-model="itemForm.subitems[index].deadline"
+                  v-model="itemForm.deadline"
                   label="Deadline"
                   dense
                   type="datetime-local"
-                  :max="itemForm.deadline || undefined"
-                  :error="!itemForm.subitems[index].deadline && formSubmitted"
+                  :error="!itemForm.deadline && formSubmitted"
                   error-message="Deadline is required"
-                  class="q-ml-sm"
                 />
                 <q-select
-                  v-model="itemForm.subitems[index].status"
+                  v-model="itemForm.status"
                   :options="statusOptions"
                   label="Status"
                   dense
-                  class="q-ml-sm"
-                  :error="!itemForm.subitems[index].status && formSubmitted"
+                  :error="!itemForm.status && formSubmitted"
                   error-message="Status is required"
                 />
                 <q-select
-                  v-model="itemForm.subitems[index].priority"
+                  v-model="itemForm.priority"
                   :options="['Low', 'Medium', 'High']"
                   label="Priority"
                   dense
-                  class="q-ml-sm"
-                  :error="!itemForm.subitems[index].priority && formSubmitted"
+                  :error="!itemForm.priority && formSubmitted"
                   error-message="Priority is required"
                 />
-                <q-btn
-                  flat
-                  round
-                  icon="remove"
-                  color="negative"
-                  size="sm"
-                  @click="itemForm.subitems.splice(index, 1)"
+                <q-select
+                  v-model="itemForm.category"
+                  :options="categoryOptions"
+                  label="Category"
+                  multiple
+                  use-chips
+                  use-input
+                  new-value-mode="add-unique"
+                  dense
+                  :error="!itemForm.category.length && formSubmitted"
+                  error-message="Category is required"
                 />
-              </div>
-              <q-btn
-                flat
-                icon="add"
-                size="sm"
-                color="secondary"
-                @click="
-                  itemForm.subitems.push({
-                    type: '',
-                    title: '',
-                    deadline: '',
-                    status: 'backlog',
-                    priority: 'Low',
-                  })
-                "
-              />
+                <div class="q-mt-sm">
+                  <div class="text-subtitle2">Subitems</div>
+                  <div
+                    v-for="(subitem, index) in itemForm.subitems"
+                    :key="index"
+                    class="row items-center q-mb-xs"
+                  >
+                    <q-select
+                      v-model="itemForm.subitems[index].type"
+                      :options="statusOptions"
+                      label="Subitem Type"
+                      dense
+                      use-input
+                      input-debounce="0"
+                      new-value-mode="add-unique"
+                      :error="!itemForm.subitems[index].type && formSubmitted"
+                      error-message="Subitem Type is required"
+                    />
+                    <q-input
+                      v-model="itemForm.subitems[index].title"
+                      label="Subitem Title"
+                      dense
+                      class="q-ml-sm"
+                      :error="!itemForm.subitems[index].title && formSubmitted"
+                      error-message="Subitem Title is required"
+                    />
+                    <q-input
+                      v-model="itemForm.subitems[index].deadline"
+                      label="Deadline"
+                      dense
+                      type="datetime-local"
+                      :max="itemForm.deadline || undefined"
+                      :error="!itemForm.subitems[index].deadline && formSubmitted"
+                      error-message="Deadline is required"
+                      class="q-ml-sm"
+                    />
+                    <q-select
+                      v-model="itemForm.subitems[index].status"
+                      :options="statusOptions"
+                      label="Status"
+                      dense
+                      class="q-ml-sm"
+                      :error="!itemForm.subitems[index].status && formSubmitted"
+                      error-message="Status is required"
+                    />
+                    <q-select
+                      v-model="itemForm.subitems[index].priority"
+                      :options="['Low', 'Medium', 'High']"
+                      label="Priority"
+                      dense
+                      class="q-ml-sm"
+                      :error="!itemForm.subitems[index].priority && formSubmitted"
+                      error-message="Priority is required"
+                    />
+                    <q-btn
+                      flat
+                      round
+                      icon="remove"
+                      color="negative"
+                      size="sm"
+                      @click="itemForm.subitems.splice(index, 1)"
+                    />
+                  </div>
+                  <q-btn
+                    flat
+                    icon="add"
+                    size="sm"
+                    color="secondary"
+                    @click="
+                      itemForm.subitems.push({
+                        type: '',
+                        title: '',
+                        deadline: '',
+                        status: 'backlog',
+                        priority: 'Low',
+                      })
+                    "
+                  />
+                </div>
+                <q-btn
+                  type="submit"
+                  label="Save Item"
+                  color="secondary"
+                  class="q-mt-sm full-width"
+                />
+              </q-form>
             </div>
-            <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
-          </q-form>
-        </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
 
@@ -409,6 +501,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const items = ref([])
+const searchQuery = ref('')
 const sortByPriority = ref(false)
 const toggleForm = ref(false)
 const formSubmitted = ref(false)
@@ -465,6 +558,13 @@ const loadMessages = () => {
     localStorage.getItem(`kanbanMessages_${currentUser.value}`) || '[]',
   )
   messages.value = savedMessages
+}
+
+const formatItemDate = (value) => {
+  if (!value) return 'No due date'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return 'No due date'
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric' })
 }
 
 const saveItems = () => {
@@ -970,6 +1070,12 @@ const sortedItems = (status) => {
   return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
 
+const priorityClass = (priority) => {
+  if (priority === 'High') return 'priority-high'
+  if (priority === 'Medium') return 'priority-medium'
+  return 'priority-low'
+}
+
 watch(
   () => localStorage.getItem(`kanbanItems_${currentUser.value}`),
   async (newValue) => {
@@ -1040,5 +1146,74 @@ watch(
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;
+}
+/* New styles to match login UI aesthetics */
+.column-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+}
+.item-card {
+  position: relative;
+  background: white;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+.item-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.ellipsis {
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.right-panel-card {
+  border-radius: 12px;
+}
+
+/* Board container fixed and rounded like login */
+.login-bg {
+  overflow: hidden;
+}
+.board-surface {
+  border-radius: 16px;
+}
+.topbar {
+  position: relative;
+}
+.date-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: #123;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+.top-search-input {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+}
+.fancy-toggle {
+  margin-bottom: 8px;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+/* Priority full-card coloring */
+.priority-low {
+  background: #e6f6ea;
+}
+.priority-medium {
+  background: #f1e6ff;
+}
+.priority-high {
+  background: #ffe9d6;
 }
 </style>
