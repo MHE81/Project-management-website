@@ -1,9 +1,16 @@
 <template>
-  <q-page class="q-pa-md flex flex-center">
-    <q-card class="q-pa-lg shadow-2" style="width: 400px; max-width: 90vw;">
+  <q-page class="q-pa-md flex flex-center login-bg">
+    <div class="login-navbar">
+      <div class="brand">
+        <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
+        <span class="brand-title">PLANOVA</span>
+      </div>
+    </div>
+    <q-card class="q-pa-lg shadow-2" style="width: 420px; max-width: 95vw; border-radius: 16px">
       <q-card-section>
-        <div class="flex flex-center q-mb-md">
-          <q-icon name="lock_reset" size="64px" class="text-primary" />
+        <div class="flex column items-center q-mb-md">
+          <img src="/logo.png" alt="PLANOVA logo" class="login-logo" />
+          <div class="text-h4 text-primary q-mt-sm">Reset Password</div>
         </div>
 
         <!-- API error banner -->
@@ -34,7 +41,7 @@
             filled
             v-model="usernameOrEmail"
             label="Username or Email"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             :error="usernameError"
             error-message="Username or Email is required"
@@ -61,7 +68,7 @@
             filled
             v-model="verificationCode"
             label="Verification Code"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             maxlength="4"
             :error="verificationError"
@@ -83,7 +90,7 @@
 
         <!-- Password reset dialog -->
         <q-dialog v-model="showPasswordDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw;">
+          <q-card style="width: 400px; max-width: 90vw">
             <q-card-section>
               <div class="text-h6">Set New Password</div>
             </q-card-section>
@@ -96,7 +103,7 @@
                   v-model="newPassword"
                   :type="showPassword ? 'text' : 'password'"
                   label="New Password"
-                  class="q-mb-md"
+                  class="q-mb-md tall-input"
                   dense
                   :error="newPasswordError"
                   :error-message="newPasswordErrorMessage"
@@ -118,7 +125,7 @@
                   v-model="confirmNewPassword"
                   :type="showPassword ? 'text' : 'password'"
                   label="Confirm New Password"
-                  class="q-mb-md"
+                  class="q-mb-md tall-input"
                   dense
                   :error="confirmError"
                   error-message="Passwords do not match"
@@ -146,7 +153,13 @@
             </q-card-section>
 
             <q-card-actions align="right">
-              <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel password reset" />
+              <q-btn
+                flat
+                label="Cancel"
+                color="primary"
+                v-close-popup
+                aria-label="Cancel password reset"
+              />
             </q-card-actions>
           </q-card>
         </q-dialog>
@@ -155,8 +168,8 @@
 
         <router-link
           to="/login"
-          class="text-primary text-caption full-width text-center"
-          style="text-decoration: none; display: block;"
+          class="link full-width text-center"
+          style="display: block"
           tabindex="0"
           @click="goToLogin"
           aria-label="Navigate back to login page"
@@ -169,82 +182,82 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 
-const router = useRouter();
-const usernameOrEmail = ref('');
-const verificationCode = ref('');
-const newPassword = ref('');
-const confirmNewPassword = ref('');
-const showPassword = ref(false);
-const isVerifying = ref(false);
-const isResetting = ref(false);
-const apiError = ref('');
-const emailVerificationSent = ref(false);
-const emailVerified = ref(false);
-const showPasswordDialog = ref(false);
-const usernameError = ref(false);
-const verificationError = ref(false);
-const newPasswordError = ref(false);
-const confirmError = ref(false);
-const generatedCode = ref('');
+const router = useRouter()
+const usernameOrEmail = ref('')
+const verificationCode = ref('')
+const newPassword = ref('')
+const confirmNewPassword = ref('')
+const showPassword = ref(false)
+const isVerifying = ref(false)
+const isResetting = ref(false)
+const apiError = ref('')
+const emailVerificationSent = ref(false)
+const emailVerified = ref(false)
+const showPasswordDialog = ref(false)
+const usernameError = ref(false)
+const verificationError = ref(false)
+const newPasswordError = ref(false)
+const confirmError = ref(false)
+const generatedCode = ref('')
 
 const isEmailValid = computed(() => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(usernameOrEmail.value);
-});
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(usernameOrEmail.value)
+})
 
 const isPasswordValid = computed(() => {
-  return newPassword.value.length >= 8;
-});
+  return newPassword.value.length >= 8
+})
 
 const isPasswordRepeated = computed(() => {
-  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   const user = kanbanUsers.find(
-    user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
-  );
-  return user && user.password === newPassword.value;
-});
+    (user) => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value,
+  )
+  return user && user.password === newPassword.value
+})
 
 const newPasswordErrorMessage = computed(() => {
-  if (!newPassword.value) return 'Password is required';
-  if (!isPasswordValid.value) return 'Password must be at least 8 characters';
-  if (isPasswordRepeated.value) return 'New password cannot be the same as the old password';
-  return '';
-});
+  if (!newPassword.value) return 'Password is required'
+  if (!isPasswordValid.value) return 'Password must be at least 8 characters'
+  if (isPasswordRepeated.value) return 'New password cannot be the same as the old password'
+  return ''
+})
 
 const usernameErrorMessage = computed(() => {
-  return 'Username or Email is required';
-});
+  return 'Username or Email is required'
+})
 
 const verifyUser = () => {
-  usernameError.value = false;
-  apiError.value = '';
-  isVerifying.value = true;
+  usernameError.value = false
+  apiError.value = ''
+  isVerifying.value = true
 
   if (!usernameOrEmail.value) {
-    usernameError.value = true;
-    apiError.value = usernameErrorMessage.value;
-    isVerifying.value = false;
-    return;
+    usernameError.value = true
+    apiError.value = usernameErrorMessage.value
+    isVerifying.value = false
+    return
   }
 
-  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   const user = kanbanUsers.find(
-    user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
-  );
+    (user) => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value,
+  )
 
   if (!user) {
-    apiError.value = 'Username or Email not found';
-    usernameError.value = true;
-    isVerifying.value = false;
-    return;
+    apiError.value = 'Username or Email not found'
+    usernameError.value = true
+    isVerifying.value = false
+    return
   }
 
-  sendVerificationCode();
-  isVerifying.value = false;
-};
+  sendVerificationCode()
+  isVerifying.value = false
+}
 
 // Commented out for local testing without backend; uncomment when backend is available
 // const sendVerificationCode = () => {
@@ -261,98 +274,157 @@ const verifyUser = () => {
 
 const sendVerificationCode = () => {
   if (!isEmailValid.value && !usernameOrEmail.value) {
-    usernameError.value = true;
-    apiError.value = 'Valid email or username required';
-    return;
+    usernameError.value = true
+    apiError.value = 'Valid email or username required'
+    return
   }
   // For local testing, set a fixed code and log it
-  generatedCode.value = '1234'; // Fixed code for testing
-  emailVerificationSent.value = true;
-  console.log('Verification code for testing (use this):', generatedCode.value);
-};
+  generatedCode.value = '1234' // Fixed code for testing
+  emailVerificationSent.value = true
+  console.log('Verification code for testing (use this):', generatedCode.value)
+}
 
 const validateCode = () => {
   if (verificationCode.value === generatedCode.value) {
-    emailVerified.value = true;
-    apiError.value = '';
-    showPasswordDialog.value = true;
+    emailVerified.value = true
+    apiError.value = ''
+    showPasswordDialog.value = true
   } else {
-    emailVerified.value = false;
-    verificationError.value = true;
-    apiError.value = 'Invalid verification code';
+    emailVerified.value = false
+    verificationError.value = true
+    apiError.value = 'Invalid verification code'
   }
-};
+}
 
 const resetPassword = () => {
-  newPasswordError.value = false;
-  confirmError.value = false;
-  apiError.value = '';
-  isResetting.value = true;
+  newPasswordError.value = false
+  confirmError.value = false
+  apiError.value = ''
+  isResetting.value = true
 
   if (!newPassword.value || !isPasswordValid.value || isPasswordRepeated.value) {
-    newPasswordError.value = true;
-    isResetting.value = false;
-    return;
+    newPasswordError.value = true
+    isResetting.value = false
+    return
   }
 
   if (newPassword.value !== confirmNewPassword.value) {
-    confirmError.value = true;
-    isResetting.value = false;
-    return;
+    confirmError.value = true
+    isResetting.value = false
+    return
   }
 
   setTimeout(() => {
     // Update user password in kanbanUsers
-    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]');
+    const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
     const userIndex = kanbanUsers.findIndex(
-      user => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value
-    );
+      (user) => user.username === usernameOrEmail.value || user.email === usernameOrEmail.value,
+    )
 
     if (userIndex !== -1) {
-      kanbanUsers[userIndex].password = newPassword.value;
-      localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers));
-      console.log('Password updated for user:', usernameOrEmail.value);
-      console.log('kanbanUsers after reset:', JSON.parse(localStorage.getItem('kanbanUsers')));
-      alert('Password reset successful (demo only).');
-      router.push('/login');
+      kanbanUsers[userIndex].password = newPassword.value
+      localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
+      console.log('Password updated for user:', usernameOrEmail.value)
+      console.log('kanbanUsers after reset:', JSON.parse(localStorage.getItem('kanbanUsers')))
+      alert('Password reset successful (demo only).')
+      router.push('/login')
     } else {
-      apiError.value = 'User not found';
+      apiError.value = 'User not found'
     }
 
-    isResetting.value = false;
-    showPasswordDialog.value = false;
-  }, 1000);
-};
+    isResetting.value = false
+    showPasswordDialog.value = false
+  }, 1000)
+}
 
 const clearUsernameError = () => {
   if (usernameOrEmail.value !== '') {
-    usernameError.value = false;
-    apiError.value = '';
+    usernameError.value = false
+    apiError.value = ''
   }
-};
+}
 
 const clearVerificationError = () => {
   if (verificationCode.value.length === 4) {
-    verificationError.value = false;
-    apiError.value = '';
+    verificationError.value = false
+    apiError.value = ''
   }
-};
+}
 
 const clearNewPasswordError = () => {
   if (newPassword.value && isPasswordValid.value && !isPasswordRepeated.value) {
-    newPasswordError.value = false;
-    apiError.value = '';
+    newPasswordError.value = false
+    apiError.value = ''
   }
-};
+}
 
 const clearConfirmError = () => {
   if (confirmNewPassword.value === newPassword.value) {
-    confirmError.value = false;
-    apiError.value = '';
+    confirmError.value = false
+    apiError.value = ''
   }
-};
+}
 
 const goToLogin = () => {
-  router.push('/login');
-};
+  router.push('/login')
+}
 </script>
+
+<style scoped>
+.login-bg {
+  background-image: url('/back3.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  padding-top: 84px;
+}
+
+.login-navbar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 8px;
+  background-color: #4d81c5;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.brand-logo {
+  height: 35px;
+  width: auto;
+}
+
+.login-logo {
+  height: 120px;
+  width: auto;
+}
+
+.link {
+  color: #114992;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style>

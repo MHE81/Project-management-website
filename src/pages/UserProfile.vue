@@ -1,5 +1,11 @@
 <template>
-  <q-page class="q-pa-md flex flex-center">
+  <q-page class="q-pa-md flex flex-center login-bg">
+    <div class="login-navbar">
+      <div class="brand">
+        <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
+        <span class="brand-title">PLANOVA</span>
+      </div>
+    </div>
     <q-card class="q-pa-lg shadow-2 constrained-card">
       <!-- Fixed Profile Section -->
       <q-card-section class="fixed-section">
@@ -147,11 +153,7 @@
               anchor="bottom middle"
               self="top middle"
             >
-              <q-date
-                v-model="profile.dob"
-                mask="YYYY-MM-DD"
-                @update:model-value="validateDob"
-              />
+              <q-date v-model="profile.dob" mask="YYYY-MM-DD" @update:model-value="validateDob" />
             </q-popup-proxy>
           </q-input>
 
@@ -301,7 +303,7 @@
         <router-link
           to="/home"
           class="text-primary text-caption full-width text-center"
-          style="text-decoration: none; display: block;"
+          style="text-decoration: none; display: block"
           tabindex="0"
           @click="goToHome"
           aria-label="Navigate back to home page"
@@ -319,7 +321,8 @@
           <span class="text-h6">Confirm Account Deletion</span>
         </q-card-section>
         <q-card-section>
-          Are you sure you want to delete your account? This action will permanently remove all your data, including your profile and kanban items, and cannot be undone.
+          Are you sure you want to delete your account? This action will permanently remove all your
+          data, including your profile and kanban items, and cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
           <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" />
@@ -349,13 +352,13 @@ const profile = ref({
   email: '',
   job: '',
   bio: '',
-  picture: ''
+  picture: '',
 })
 
 // Password change data
 const password = ref({
   new: '',
-  confirm: ''
+  confirm: '',
 })
 
 const router = useRouter()
@@ -400,7 +403,8 @@ const isPasswordValid = computed(() => {
 
 const passwordErrorMessage = computed(() => {
   if (passwordTouched.value && password.value.new === '') return 'Password is required'
-  if (passwordTouched.value && !isPasswordValid.value) return 'Password must be at least 8 characters'
+  if (passwordTouched.value && !isPasswordValid.value)
+    return 'Password must be at least 8 characters'
   return ''
 })
 
@@ -455,10 +459,16 @@ const saveProfile = () => {
     emailError: emailError.value,
     dobError: dobError.value,
     passwordError: passwordError.value,
-    confirmPasswordError: confirmPasswordError.value
+    confirmPasswordError: confirmPasswordError.value,
   })
 
-  if (usernameError.value || emailError.value || dobError.value || passwordError.value || confirmPasswordError.value) {
+  if (
+    usernameError.value ||
+    emailError.value ||
+    dobError.value ||
+    passwordError.value ||
+    confirmPasswordError.value
+  ) {
     isLoading.value = false
     console.log('Validation failed, stopping save')
     return
@@ -466,13 +476,19 @@ const saveProfile = () => {
 
   // Check uniqueness of username and email
   const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
-  if (profile.value.username !== originalUsername.value && kanbanUsers.some(user => user.username === profile.value.username)) {
+  if (
+    profile.value.username !== originalUsername.value &&
+    kanbanUsers.some((user) => user.username === profile.value.username)
+  ) {
     apiError.value = 'Username already taken'
     usernameError.value = true
     isLoading.value = false
     return
   }
-  if (profile.value.email !== originalEmail.value && kanbanUsers.some(user => user.email === profile.value.email)) {
+  if (
+    profile.value.email !== originalEmail.value &&
+    kanbanUsers.some((user) => user.email === profile.value.email)
+  ) {
     apiError.value = 'Email already taken'
     isLoading.value = false
     return
@@ -483,12 +499,12 @@ const saveProfile = () => {
     console.log('Simulating API call')
     try {
       // Preserve existing password if not changed
-      const existingUser = kanbanUsers.find(user => user.username === originalUsername.value)
+      const existingUser = kanbanUsers.find((user) => user.username === originalUsername.value)
       const existingPassword = existingUser?.password
 
       // Update kanbanUsers: Remove old user and add new one with all profile data
-      const updatedUsers = kanbanUsers.filter(user =>
-        user.username !== originalUsername.value || user.email !== originalEmail.value
+      const updatedUsers = kanbanUsers.filter(
+        (user) => user.username !== originalUsername.value || user.email !== originalEmail.value,
       )
       updatedUsers.push({
         username: profile.value.username,
@@ -499,14 +515,18 @@ const saveProfile = () => {
         job: profile.value.job,
         bio: profile.value.bio,
         picture: profile.value.picture,
-        password: password.value.new || existingPassword || ''
+        password: password.value.new || existingPassword || '',
       })
       localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
 
       // If username changed, transfer kanbanItems and kanbanInvitations to new username
       if (profile.value.username !== originalUsername.value) {
-        const oldItems = JSON.parse(localStorage.getItem(`kanbanItems_${originalUsername.value}`) || '[]')
-        const oldInvitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${originalUsername.value}`) || '[]')
+        const oldItems = JSON.parse(
+          localStorage.getItem(`kanbanItems_${originalUsername.value}`) || '[]',
+        )
+        const oldInvitations = JSON.parse(
+          localStorage.getItem(`kanbanInvitations_${originalUsername.value}`) || '[]',
+        )
 
         // Transfer items
         if (oldItems.length > 0) {
@@ -516,18 +536,23 @@ const saveProfile = () => {
 
         // Transfer invitations
         if (oldInvitations.length > 0) {
-          localStorage.setItem(`kanbanInvitations_${profile.value.username}`, JSON.stringify(oldInvitations))
+          localStorage.setItem(
+            `kanbanInvitations_${profile.value.username}`,
+            JSON.stringify(oldInvitations),
+          )
           localStorage.removeItem(`kanbanInvitations_${originalUsername.value}`)
         }
 
         // Update creator and shareWith fields in items
-        const items = JSON.parse(localStorage.getItem(`kanbanItems_${profile.value.username}`) || '[]')
-        items.forEach(item => {
+        const items = JSON.parse(
+          localStorage.getItem(`kanbanItems_${profile.value.username}`) || '[]',
+        )
+        items.forEach((item) => {
           if (item.creator === originalUsername.value) {
             item.creator = profile.value.username
           }
           if (item.shareWith) {
-            item.shareWith = item.shareWith.map(share => {
+            item.shareWith = item.shareWith.map((share) => {
               if (share.username === originalUsername.value) {
                 return { ...share, username: profile.value.username }
               }
@@ -535,12 +560,12 @@ const saveProfile = () => {
             })
           }
           if (item.subitems) {
-            item.subitems.forEach(subitem => {
+            item.subitems.forEach((subitem) => {
               if (subitem.creator === originalUsername.value) {
                 subitem.creator = profile.value.username
               }
               if (subitem.shareWith) {
-                subitem.shareWith = subitem.shareWith.map(share => {
+                subitem.shareWith = subitem.shareWith.map((share) => {
                   if (share.username === originalUsername.value) {
                     return { ...share, username: profile.value.username }
                   }
@@ -700,26 +725,30 @@ const deleteAccount = () => {
   try {
     // Remove user from kanbanUsers
     const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
-    const updatedUsers = kanbanUsers.filter(user =>
-      user.username !== profile.value.username || user.email !== profile.value.email
+    const updatedUsers = kanbanUsers.filter(
+      (user) => user.username !== profile.value.username || user.email !== profile.value.email,
     )
     localStorage.setItem('kanbanUsers', JSON.stringify(updatedUsers))
 
     // Remove user from shared items and invitations
-    kanbanUsers.forEach(user => {
+    kanbanUsers.forEach((user) => {
       if (user.username !== profile.value.username) {
         // Update shared items
         const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${user.username}`) || '[]')
-        userItems.forEach(item => {
+        userItems.forEach((item) => {
           // Remove user from shareWith in parent items
           if (item.shareWith) {
-            item.shareWith = item.shareWith.filter(share => share.username !== profile.value.username)
+            item.shareWith = item.shareWith.filter(
+              (share) => share.username !== profile.value.username,
+            )
           }
           // Remove user from shareWith in subitems
           if (item.subitems) {
-            item.subitems.forEach(subitem => {
+            item.subitems.forEach((subitem) => {
               if (subitem.shareWith) {
-                subitem.shareWith = subitem.shareWith.filter(share => share.username !== profile.value.username)
+                subitem.shareWith = subitem.shareWith.filter(
+                  (share) => share.username !== profile.value.username,
+                )
               }
             })
           }
@@ -727,9 +756,16 @@ const deleteAccount = () => {
         localStorage.setItem(`kanbanItems_${user.username}`, JSON.stringify(userItems))
 
         // Remove invitations
-        const invitations = JSON.parse(localStorage.getItem(`kanbanInvitations_${user.username}`) || '[]')
-        const updatedInvitations = invitations.filter(inv => inv.invitedBy !== profile.value.username)
-        localStorage.setItem(`kanbanInvitations_${user.username}`, JSON.stringify(updatedInvitations))
+        const invitations = JSON.parse(
+          localStorage.getItem(`kanbanInvitations_${user.username}`) || '[]',
+        )
+        const updatedInvitations = invitations.filter(
+          (inv) => inv.invitedBy !== profile.value.username,
+        )
+        localStorage.setItem(
+          `kanbanInvitations_${user.username}`,
+          JSON.stringify(updatedInvitations),
+        )
       }
     })
 
@@ -757,6 +793,47 @@ const goToHome = () => {
 </script>
 
 <style scoped>
+.login-bg {
+  background-image: url('/back3.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  padding-top: 84px;
+}
+
+.login-navbar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 8px;
+  background-color: #4d81c5;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.brand-logo {
+  height: 35px;
+  width: auto;
+}
 .hidden {
   display: none;
 }

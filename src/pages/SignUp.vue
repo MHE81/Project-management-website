@@ -1,9 +1,16 @@
 <template>
-  <q-page class="q-pa-md flex flex-center">
-    <q-card class="q-pa-lg shadow-2" style="width: 400px; max-width: 90vw;">
+  <q-page class="q-pa-md flex flex-center login-bg">
+    <div class="login-navbar">
+      <div class="brand">
+        <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
+        <span class="brand-title">PLANOVA</span>
+      </div>
+    </div>
+    <q-card class="q-pa-lg shadow-2" style="width: 420px; max-width: 95vw; border-radius: 16px">
       <q-card-section>
-        <div class="flex flex-center q-mb-md">
-          <q-icon name="person_add" size="64px" class="text-primary" />
+        <div class="flex column items-center q-mb-md">
+          <img src="/logo.png" alt="PLANOVA logo" class="login-logo" />
+          <div class="text-h4 text-primary q-mt-sm">Sign Up</div>
         </div>
 
         <!-- API error banner -->
@@ -35,7 +42,7 @@
             v-model="email"
             label="Email"
             type="email"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             :error="emailError"
             :error-message="emailErrorMessage"
@@ -60,7 +67,7 @@
             filled
             v-model="verificationCode"
             label="Verification Code"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             maxlength="4"
             :error="verificationError"
@@ -84,7 +91,7 @@
             filled
             v-model="username"
             label="Username"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             :error="usernameError"
             error-message="Username is required"
@@ -98,7 +105,7 @@
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             label="Password"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             :error="passwordError"
             :error-message="passwordErrorMessage"
@@ -120,7 +127,7 @@
             v-model="confirmPassword"
             :type="showPassword ? 'text' : 'password'"
             label="Confirm Password"
-            class="q-mb-md"
+            class="q-mb-md tall-input"
             dense
             :error="confirmError"
             error-message="Passwords do not match"
@@ -152,8 +159,8 @@
 
         <router-link
           to="/login"
-          class="text-primary text-caption full-width text-center"
-          style="text-decoration: none; display: block;"
+          class="link full-width text-center"
+          style="display: block"
           tabindex="0"
           @click="goToLogin"
           aria-label="Navigate back to login page"
@@ -198,8 +205,12 @@ const isPasswordValid = computed(() => {
 
 const usernameError = computed(() => usernameTouched.value && username.value === '')
 const emailError = computed(() => emailTouched.value && (email.value === '' || !isEmailValid.value))
-const passwordError = computed(() => passwordTouched.value && (password.value === '' || !isPasswordValid.value))
-const confirmError = computed(() => confirmTouched.value && confirmPassword.value !== password.value)
+const passwordError = computed(
+  () => passwordTouched.value && (password.value === '' || !isPasswordValid.value),
+)
+const confirmError = computed(
+  () => confirmTouched.value && confirmPassword.value !== password.value,
+)
 
 const emailErrorMessage = computed(() => {
   if (emailTouched.value && email.value === '') return 'Email is required'
@@ -209,7 +220,8 @@ const emailErrorMessage = computed(() => {
 
 const passwordErrorMessage = computed(() => {
   if (passwordTouched.value && password.value === '') return 'Password is required'
-  if (passwordTouched.value && !isPasswordValid.value) return 'Password must be at least 8 characters'
+  if (passwordTouched.value && !isPasswordValid.value)
+    return 'Password must be at least 8 characters'
   return ''
 })
 
@@ -262,12 +274,12 @@ const signUp = () => {
   }
 
   const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
-  if (kanbanUsers.some(user => user.username === username.value)) {
+  if (kanbanUsers.some((user) => user.username === username.value)) {
     apiError.value = 'Username already taken'
     isLoading.value = false
     return
   }
-  if (kanbanUsers.some(user => user.email === email.value)) {
+  if (kanbanUsers.some((user) => user.email === email.value)) {
     apiError.value = 'Email already taken'
     isLoading.value = false
     return
@@ -283,14 +295,14 @@ const signUp = () => {
       dob: '',
       job: '',
       bio: '',
-      picture: ''
+      picture: '',
     }
 
     // Add user to kanbanUsers with password
     kanbanUsers.push({
       username: username.value,
       email: email.value,
-      password: password.value // Store password
+      password: password.value, // Store password
     })
     localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
     localStorage.setItem('userProfile', JSON.stringify(userProfile))
@@ -342,3 +354,62 @@ const clearVerificationError = () => {
 //   console.log('Verification code sent (mock):', generatedCode.value)
 // }
 </script>
+
+<style scoped>
+.login-bg {
+  background-image: url('/back3.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  padding-top: 84px;
+}
+
+.login-navbar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 8px;
+  background-color: #4d81c5;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.brand-logo {
+  height: 35px;
+  width: auto;
+}
+
+.login-logo {
+  height: 120px;
+  width: auto;
+}
+
+.link {
+  color: #114992;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+</style>
