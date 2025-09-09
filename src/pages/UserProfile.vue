@@ -7,6 +7,10 @@
       </div>
     </div>
     <q-card class="q-pa-lg shadow-2 constrained-card">
+      <q-card-section class="flex column items-center q-mb-sm">
+        <!-- <img src="/logo.png" alt="PLANOVA logo" class="login-logo" /> -->
+        <!-- <div class="text-h5 text-primary q-mt-xs">Profile</div> -->
+      </q-card-section>
       <!-- Fixed Profile Section -->
       <q-card-section class="fixed-section">
         <!-- API error banner -->
@@ -32,7 +36,7 @@
         </q-banner>
 
         <!-- Profile Picture -->
-        <div class="flex flex-center q-mb-md">
+        <div class="flex flex-center q-mb">
           <q-avatar size="80px" aria-label="Profile picture">
             <template v-if="profile.picture">
               <img :src="profile.picture" alt="User profile picture" />
@@ -71,6 +75,18 @@
             aria-label="Upload profile picture"
           />
         </div>
+
+        <!-- Change Password (dialog trigger) -->
+        <div class="flex flex-center q-mb-sm">
+          <q-btn
+            outline
+            color="primary"
+            icon="lock"
+            label="Change Password"
+            class="right-btn"
+            @click="showChangePassDialog = true"
+          />
+        </div>
       </q-card-section>
 
       <!-- Scrollable Input Section -->
@@ -78,7 +94,8 @@
         <q-form @submit.prevent="saveProfile">
           <!-- Username input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.username"
             label="Username"
             dense
@@ -94,7 +111,8 @@
 
           <!-- First Name input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.firstName"
             label="First Name"
             dense
@@ -107,7 +125,8 @@
 
           <!-- Last Name input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.lastName"
             label="Last Name"
             dense
@@ -120,7 +139,8 @@
 
           <!-- Date of Birth input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.dob"
             label="Date of Birth"
             dense
@@ -159,7 +179,8 @@
 
           <!-- Email input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.email"
             label="Email"
             type="email"
@@ -175,7 +196,8 @@
 
           <!-- Job input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.job"
             label="Job"
             dense
@@ -188,7 +210,8 @@
 
           <!-- Bio input -->
           <q-input
-            filled
+            outlined
+            rounded
             v-model="profile.bio"
             label="Bio"
             type="textarea"
@@ -201,72 +224,14 @@
             no-error-icon
           />
 
-          <!-- Change Password Section (visible in edit mode) -->
-          <q-expansion-item
-            v-if="editMode"
-            label="Change Password"
-            icon="lock"
-            dense
-            class="q-mt-md"
-            expand-icon="chevron_right"
-            expanded-icon="chevron_down"
-          >
-            <q-card>
-              <q-card-section>
-                <q-input
-                  filled
-                  v-model="password.new"
-                  :type="showPassword ? 'text' : 'password'"
-                  label="New Password"
-                  dense
-                  class="uniform-input"
-                  :error="passwordError"
-                  :error-message="passwordErrorMessage"
-                  @input="clearPasswordError"
-                  aria-label="Enter new password"
-                  no-error-icon
-                >
-                  <template v-slot:append>
-                    <q-icon
-                      :name="showPassword ? 'visibility_off' : 'visibility'"
-                      class="cursor-pointer"
-                      @click="showPassword = !showPassword"
-                      aria-label="Toggle password visibility"
-                    />
-                  </template>
-                </q-input>
-                <q-input
-                  filled
-                  v-model="password.confirm"
-                  :type="showPassword ? 'text' : 'password'"
-                  label="Confirm New Password"
-                  dense
-                  class="uniform-input"
-                  :error="confirmPasswordError"
-                  error-message="Passwords do not match"
-                  @input="clearConfirmPasswordError"
-                  aria-label="Confirm new password"
-                  no-error-icon
-                >
-                  <template v-slot:append>
-                    <q-icon
-                      :name="showPassword ? 'visibility_off' : 'visibility'"
-                      class="cursor-pointer"
-                      @click="showPassword = !showPassword"
-                      aria-label="Toggle password visibility"
-                    />
-                  </template>
-                </q-input>
-              </q-card-section>
-            </q-card>
-          </q-expansion-item>
+          <!-- Change Password moved to dialog -->
 
           <!-- Buttons -->
           <q-btn
             v-if="!editMode"
             label="Edit Profile"
             color="primary"
-            class="full-width q-mt-md"
+            class="full-width q-mt-md right-btn"
             @click="editMode = true"
             aria-label="Edit profile"
           />
@@ -274,7 +239,7 @@
             <q-btn
               label="Save"
               color="primary"
-              class="col"
+              class="col right-btn"
               :loading="isLoading"
               type="submit"
               aria-label="Save profile changes"
@@ -283,7 +248,7 @@
               label="Cancel"
               flat
               color="primary"
-              class="col"
+              class="col right-btn"
               @click="cancelEdit"
               aria-label="Cancel profile changes"
             />
@@ -291,7 +256,7 @@
               label="Delete Account"
               flat
               color="negative"
-              class="col"
+              class="col right-btn"
               @click="showDeleteDialog = true"
               aria-label="Delete your account"
             />
@@ -336,6 +301,107 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Change Password Dialog -->
+    <q-dialog v-model="showChangePassDialog">
+      <q-card class="dialog-card" style="width: 420px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="lock" color="primary" />
+            <div class="text-h6 text-primary">Change Password</div>
+          </div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <div class="text-subtitle2 q-mb-sm">Verify current password</div>
+          <div class="row items-center q-gutter-sm">
+            <q-input
+              v-model="currentPassword"
+              :type="showPassword ? 'text' : 'password'"
+              label="Current Password"
+              dense
+              outlined
+              rounded
+              class="col"
+              :error="!!currentPassError"
+              :error-message="currentPassError"
+              no-error-icon
+            >
+              <template v-slot:append>
+                <q-icon
+                  :name="showPassword ? 'visibility_off' : 'visibility'"
+                  class="cursor-pointer"
+                  @click="showPassword = !showPassword"
+                />
+              </template>
+            </q-input>
+            <q-btn
+              :disable="currentPassVerified"
+              color="primary"
+              label="Verify"
+              class="right-btn"
+              @click="verifyCurrentPassword"
+            />
+          </div>
+
+          <q-separator class="q-my-md" />
+
+          <div class="text-subtitle2 q-mb-sm">Set new password</div>
+          <q-input
+            v-model="newPasswordDialog"
+            :type="showPassword ? 'text' : 'password'"
+            label="New Password"
+            dense
+            outlined
+            rounded
+            :disable="!currentPassVerified"
+            :error="newPassError"
+            :error-message="newPassErrorMessage"
+            no-error-icon
+          >
+            <template v-slot:append>
+              <q-icon
+                :name="showPassword ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
+          <q-input
+            v-model="confirmPasswordDialog"
+            :type="showPassword ? 'text' : 'password'"
+            label="Confirm New Password"
+            dense
+            outlined
+            rounded
+            class="q-mt-sm"
+            :disable="!currentPassVerified"
+            :error="confirmPassError"
+            error-message="Passwords do not match"
+            no-error-icon
+          >
+            <template v-slot:append>
+              <q-icon
+                :name="showPassword ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
+          <q-btn
+            :disable="!currentPassVerified"
+            color="primary"
+            label="Save"
+            class="right-btn"
+            @click="submitChangePassword"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -360,6 +426,13 @@ const password = ref({
   new: '',
   confirm: '',
 })
+const currentPassword = ref('')
+const currentPassVerified = ref(false)
+const currentPassError = ref('')
+const newPasswordDialog = ref('')
+const confirmPasswordDialog = ref('')
+const newPassError = ref(false)
+const confirmPassError = ref(false)
 
 const router = useRouter()
 const editMode = ref(false)
@@ -368,6 +441,7 @@ const showPassword = ref(false)
 const backupProfile = ref(null)
 const showDatePicker = ref(false)
 const showDeleteDialog = ref(false)
+const showChangePassDialog = ref(false)
 const usernameTouched = ref(false)
 const emailTouched = ref(false)
 const passwordTouched = ref(false)
@@ -401,12 +475,12 @@ const isPasswordValid = computed(() => {
   return password.value.new.length >= 8
 })
 
-const passwordErrorMessage = computed(() => {
-  if (passwordTouched.value && password.value.new === '') return 'Password is required'
-  if (passwordTouched.value && !isPasswordValid.value)
-    return 'Password must be at least 8 characters'
-  return ''
-})
+// const passwordErrorMessage = computed(() => {
+//   if (passwordTouched.value && password.value.new === '') return 'Password is required'
+//   if (passwordTouched.value && !isPasswordValid.value)
+//     return 'Password must be at least 8 characters'
+//   return ''
+// })
 
 // Validate DOB
 const validateDob = () => {
@@ -687,12 +761,57 @@ const clearEmailError = () => {
   if (profile.value.email && isEmailValid.value) emailError.value = false
 }
 
-const clearPasswordError = () => {
-  if (password.value.new && isPasswordValid.value) passwordError.value = false
+// const clearPasswordError = () => {
+//   if (password.value.new && isPasswordValid.value) passwordError.value = false
+// }
+
+// const clearConfirmPasswordError = () => {
+//   if (password.value.new === password.value.confirm) confirmPasswordError.value = false
+// }
+
+const verifyCurrentPassword = () => {
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  const user = kanbanUsers.find((u) => u.username === originalUsername.value)
+  if (user && user.password === currentPassword.value) {
+    currentPassVerified.value = true
+    currentPassError.value = ''
+  } else {
+    currentPassVerified.value = false
+    currentPassError.value = 'Current password is incorrect'
+  }
 }
 
-const clearConfirmPasswordError = () => {
-  if (password.value.new === password.value.confirm) confirmPasswordError.value = false
+const newPassErrorMessage = computed(() => {
+  if (!newPasswordDialog.value) return 'Password is required'
+  if (newPasswordDialog.value.length < 8) return 'Password must be at least 8 characters'
+  return ''
+})
+
+const submitChangePassword = () => {
+  newPassError.value = false
+  confirmPassError.value = false
+
+  if (!currentPassVerified.value) return
+  if (!newPasswordDialog.value || newPasswordDialog.value.length < 8) {
+    newPassError.value = true
+    return
+  }
+  if (newPasswordDialog.value !== confirmPasswordDialog.value) {
+    confirmPassError.value = true
+    return
+  }
+
+  const kanbanUsers = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
+  const idx = kanbanUsers.findIndex((u) => u.username === originalUsername.value)
+  if (idx !== -1) {
+    kanbanUsers[idx].password = newPasswordDialog.value
+    localStorage.setItem('kanbanUsers', JSON.stringify(kanbanUsers))
+    showChangePassDialog.value = false
+    currentPassword.value = ''
+    currentPassVerified.value = false
+    newPasswordDialog.value = ''
+    confirmPasswordDialog.value = ''
+  }
 }
 
 // Check authentication and load profile
@@ -812,8 +931,8 @@ const goToHome = () => {
   align-items: center;
   padding: 0 16px;
   border-radius: 8px;
-  background-color: #4d81c5;
-  color: white;
+  background-color: #ffffff;
+  color: #1f2937;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 1;
 }
@@ -838,11 +957,13 @@ const goToHome = () => {
   display: none;
 }
 .constrained-card {
-  width: 400px;
+  width: 450px;
   max-width: 90vw;
+  /* height: 860px; */
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
+  border-radius: 16px;
 }
 .fixed-section {
   position: sticky;
@@ -855,6 +976,14 @@ const goToHome = () => {
   overflow-y: auto;
   max-height: calc(100vh - 180px);
   padding-right: 8px;
+}
+.login-logo {
+  height: 120px;
+  width: auto;
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
 }
 .uniform-input {
   margin-bottom: 0px !important;

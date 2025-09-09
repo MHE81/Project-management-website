@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md login-bg">
+  <q-page class="q-pa-md login-bg fixed-page">
     <div class="login-navbar">
       <div class="brand">
         <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
@@ -22,7 +22,8 @@
             dense
             outlined
             rounded
-            class="top-search-input"
+            bg-color="grey-3"
+            class="text-black big-search-input"
             aria-label="Search items"
           />
           <q-btn round color="primary" icon="search" class="q-ml-sm" aria-label="Perform search" />
@@ -39,15 +40,26 @@
         <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
       </div>
     </div>
-    <div class="fancy-toggle">
+    <div class="row items-center q-gutter-sm fancy-toggle">
       <q-toggle
         v-model="sortByPriority"
-        label="Sort by Priority"
+        label="Sort by"
         left-label
         checked-icon="sort"
         unchecked-icon="event"
         color="primary"
       />
+      <q-btn
+        dense
+        round
+        flat
+        icon="notifications"
+        color="primary"
+        @click="showMessagesDialog = true"
+        aria-label="Open messages"
+      >
+        <q-badge v-if="messages.length" floating color="negative" :label="messages.length" />
+      </q-btn>
     </div>
 
     <!-- Error Banner -->
@@ -61,39 +73,13 @@
       {{ errorMessage }}
     </q-banner>
 
-    <!-- Messages Banner -->
-    <q-banner
-      v-if="messages.length"
-      dense
-      class="bg-blue-9 text-white q-mb-md"
-      style="width: 50%"
-      aria-live="polite"
-      role="alert"
-    >
-      <div>Messages ({{ messages.length }})</div>
-      <q-list dense>
-        <q-item v-for="(message, index) in messages" :key="index" class="q-py-xs">
-          <q-item-section>{{ message.text }}</q-item-section>
-          <q-item-section side>
-            <q-btn
-              flat
-              round
-              icon="delete"
-              color="white"
-              size="sm"
-              @click="deleteMessage(index)"
-              aria-label="Delete message"
-            />
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-banner>
+    <!-- Messages moved to dialog -->
 
     <!-- Main layout -->
-    <div class="row" style="height: calc(100vh - 120px)">
+    <div class="row board-row">
       <!-- Main content area -->
       <div
-        class="col bg-grey-2 rounded-borders q-pa-md overflow-y-auto"
+        class="col rounded-borders q-pa-md overflow-y-auto board-scroll"
         style="margin-right: 280px; margin-bottom: 10px; width: calc(100% - 280px)"
       >
         <div class="row" style="min-height: 100%; flex-wrap: nowrap">
@@ -107,7 +93,7 @@
                 }}</q-badge>
               </q-card-section>
               <q-separator />
-              <q-card-section class="q-pt-sm">
+              <q-card-section class="q-pt-sm column-scroll">
                 <div
                   v-for="item in sortedItems('backlog').filter(
                     (i) =>
@@ -156,7 +142,7 @@
                 <q-badge color="primary">{{ sortedItems('In Progress').length }}</q-badge>
               </q-card-section>
               <q-separator />
-              <q-card-section class="q-pt-sm">
+              <q-card-section class="q-pt-sm column-scroll">
                 <div
                   v-for="item in sortedItems('In Progress').filter(
                     (i) =>
@@ -165,6 +151,7 @@
                   )"
                   :key="item.id"
                   class="item-card"
+                  :class="priorityClass(item.priority)"
                   :draggable="canEdit(item)"
                   @dragstart="startDrag(item)"
                   @click="viewItem(item.id)"
@@ -198,13 +185,13 @@
 
           <!-- Done Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
-            <q-card class="column-card">
+            <q-card class="board-surface column-card">
               <q-card-section class="row items-center justify-between">
                 <div class="text-subtitle2">Done</div>
                 <q-badge color="positive">{{ sortedItems('done').length }}</q-badge>
               </q-card-section>
               <q-separator />
-              <q-card-section class="q-pt-sm">
+              <q-card-section class="q-pt-sm column-scroll">
                 <div
                   v-for="item in sortedItems('done').filter(
                     (i) =>
@@ -213,6 +200,7 @@
                   )"
                   :key="item.id"
                   class="item-card"
+                  :class="priorityClass(item.priority)"
                   :draggable="canEdit(item)"
                   @dragstart="startDrag(item)"
                   @click="viewItem(item.id)"
@@ -222,36 +210,23 @@
                       <strong>{{ item.type }}</strong
                       >: {{ item.title }}
                     </div>
-                    <div class="row items-center q-gutter-xs">
-                      <q-chip
-                        dense
-                        square
-                        :color="
-                          item.priority === 'High'
-                            ? 'negative'
-                            : item.priority === 'Medium'
-                              ? 'warning'
-                              : 'grey-5'
-                        "
-                        text-color="white"
-                        >{{ item.priority || 'Low' }}</q-chip
-                      >
-                      <q-chip dense square icon="event" color="primary" text-color="white">{{
-                        item.deadline || 'N/A'
-                      }}</q-chip>
+                    <div class="text-caption">
+                      {{ formatItemDate(item.deadline) }}
                     </div>
                   </div>
-                  <q-btn
-                    flat
-                    round
-                    icon="delete"
-                    color="negative"
-                    size="sm"
-                    class="absolute-top-right q-ma-xs"
-                    @click.stop="deleteItem(item.id)"
-                    :disable="!canEdit(item)"
-                    aria-label="Delete item"
-                  />
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(item.id)"
+                      :disable="!canEdit(item)"
+                      aria-label="Delete item"
+                    />
+                  </div>
                 </div>
               </q-card-section>
             </q-card>
@@ -259,236 +234,377 @@
         </div>
       </div>
 
-      <!-- Right-side Form Panel -->
+      <!-- Right-side Panel (no white background) -->
       <div
         class="fixed-top-right"
-        style="width: 260px; top: 60px; right: 10px; bottom: 10px; overflow-y: auto; padding: 0"
+        style="width: 260px; top: 220px; right: 10px; bottom: 10px; overflow-y: hidden; padding: 0"
       >
-        <q-card flat bordered class="right-panel-card">
-          <q-card-section class="q-pb-sm">
+        <!-- Invitations Banner (no white background) -->
+        <q-banner
+          dense
+          class="bg-yellow-9 text-white full-width q-mb-md right-btn text-center"
+          aria-live="polite"
+          role="alert"
+        >
+          <template v-if="pendingInvitations.length">
+            Invitations ({{ pendingInvitations.length }})
             <q-btn
-              label="Add Item"
-              icon="add"
-              color="secondary"
-              class="full-width"
-              @click="toggleForm = !toggleForm"
+              flat
+              label="View"
+              color="white"
+              @click="showInvitationsDialog = true"
+              aria-label="View pending invitations"
             />
-          </q-card-section>
+          </template>
+          <template v-else> Invitations </template>
+        </q-banner>
 
-          <q-card-section>
-            <!-- Invitations Banner -->
-            <q-banner dense class="bg-yellow-9 text-white q-mb-md" aria-live="polite" role="alert">
-              <template v-if="pendingInvitations.length">
-                Invitations ({{ pendingInvitations.length }})
-                <q-btn
-                  flat
-                  label="View"
-                  color="white"
-                  @click="showInvitationsDialog = true"
-                  aria-label="View pending invitations"
-                />
-              </template>
-              <template v-else> Invitations </template>
-            </q-banner>
+        <!-- Add Item Button (no white background) -->
+        <q-btn
+          label="Add Item"
+          icon="add"
+          color="secondary"
+          class="full-width q-mb-md right-btn"
+          @click="toggleForm = !toggleForm"
+        />
 
-            <!-- Progress Chart -->
-            <div class="q-my-md flex flex-center">
-              <q-circular-progress
-                show-value
-                :value="completionPercent"
-                size="80px"
-                color="green"
-                track-color="grey-3"
+        <!-- Progress Chart (no white background) -->
+        <div class="q-mb-md flex flex-center">
+          <q-circular-progress
+            show-value
+            :value="completionPercent"
+            size="80px"
+            color="green"
+            track-color="grey-3"
+          >
+            {{ completionPercent }}%
+          </q-circular-progress>
+        </div>
+
+        <!-- Item Form (rounded like cards, no extra background) -->
+        <div v-if="toggleForm" class="bg-grey-2 q-pb-md board-surface form-scroll form-surface">
+          <q-form @submit.prevent="addItem" class="q-pa-sm">
+            <q-select
+              v-model="itemForm.type"
+              :options="itemTypeOptions"
+              label="Item Type (select or type)"
+              dense
+              outlined
+              rounded
+              use-input
+              input-debounce="0"
+              new-value-mode="add-unique"
+              :error="!itemForm.type && formSubmitted"
+              error-message="Item Type is required"
+              class="field-rounded field-spaced"
+              popup-content-class="menu-rounded"
+            />
+            <q-input
+              v-model="itemForm.title"
+              label="Item Title"
+              dense
+              outlined
+              rounded
+              :error="!itemForm.title && formSubmitted"
+              error-message="Title is required"
+              class="field-rounded field-spaced"
+            />
+            <q-input
+              v-model="itemForm.deadline"
+              label="Deadline"
+              dense
+              outlined
+              rounded
+              color="primary"
+              type="datetime-local"
+              :error="!itemForm.deadline && formSubmitted"
+              error-message="Deadline is required"
+              class="field-rounded field-spaced deadline-input"
+            />
+            <q-select
+              v-model="itemForm.status"
+              :options="statusOptions"
+              label="Status"
+              dense
+              outlined
+              rounded
+              :error="!itemForm.status && formSubmitted"
+              error-message="Status is required"
+              class="field-rounded field-spaced"
+              popup-content-class="menu-rounded"
+            />
+            <q-select
+              v-model="itemForm.priority"
+              :options="['Low', 'Medium', 'High']"
+              label="Priority"
+              dense
+              outlined
+              rounded
+              :error="!itemForm.priority && formSubmitted"
+              error-message="Priority is required"
+              class="field-rounded field-spaced"
+              popup-content-class="menu-rounded"
+            />
+            <q-select
+              v-model="itemForm.category"
+              :options="categoryOptions"
+              label="Category"
+              multiple
+              use-chips
+              use-input
+              new-value-mode="add-unique"
+              dense
+              outlined
+              rounded
+              :error="!itemForm.category.length && formSubmitted"
+              error-message="Category is required"
+              class="field-rounded field-spaced"
+              popup-content-class="menu-rounded"
+            />
+            <div class="q-mt-sm">
+              <div class="text-subtitle2">Subitems</div>
+              <div
+                v-for="(subitem, index) in itemForm.subitems"
+                :key="index"
+                class="row items-center q-mb-xs"
               >
-                {{ completionPercent }}%
-              </q-circular-progress>
-            </div>
-
-            <!-- Item Form -->
-            <div v-if="toggleForm" class="bg-white">
-              <q-form @submit.prevent="addItem" style="padding: 5px 15px">
                 <q-select
-                  v-model="itemForm.type"
-                  :options="statusOptions"
-                  label="Item Type (select or type)"
+                  v-model="itemForm.subitems[index].type"
+                  :options="itemTypeOptions"
+                  label="Subitem Type"
                   dense
+                  outlined
+                  rounded
                   use-input
                   input-debounce="0"
                   new-value-mode="add-unique"
-                  :error="!itemForm.type && formSubmitted"
-                  error-message="Item Type is required"
+                  :error="!itemForm.subitems[index].type && formSubmitted"
+                  error-message="Subitem Type is required"
+                  class="field-rounded field-spaced"
+                  popup-content-class="menu-rounded"
                 />
                 <q-input
-                  v-model="itemForm.title"
-                  label="Item Title"
+                  v-model="itemForm.subitems[index].title"
+                  label="Subitem Title"
                   dense
-                  :error="!itemForm.title && formSubmitted"
-                  error-message="Title is required"
+                  outlined
+                  rounded
+                  class="q-ml-sm field-rounded field-spaced"
+                  :error="!itemForm.subitems[index].title && formSubmitted"
+                  error-message="Subitem Title is required"
                 />
                 <q-input
-                  v-model="itemForm.deadline"
+                  v-model="itemForm.subitems[index].deadline"
                   label="Deadline"
                   dense
+                  outlined
+                  rounded
+                  color="primary"
                   type="datetime-local"
-                  :error="!itemForm.deadline && formSubmitted"
+                  :max="itemForm.deadline || undefined"
+                  :error="!itemForm.subitems[index].deadline && formSubmitted"
                   error-message="Deadline is required"
+                  class="q-ml-sm field-rounded field-spaced deadline-input"
                 />
                 <q-select
-                  v-model="itemForm.status"
+                  v-model="itemForm.subitems[index].status"
                   :options="statusOptions"
                   label="Status"
                   dense
-                  :error="!itemForm.status && formSubmitted"
+                  outlined
+                  rounded
+                  class="q-ml-sm field-rounded field-spaced"
+                  :error="!itemForm.subitems[index].status && formSubmitted"
                   error-message="Status is required"
+                  popup-content-class="menu-rounded"
                 />
                 <q-select
-                  v-model="itemForm.priority"
+                  v-model="itemForm.subitems[index].priority"
                   :options="['Low', 'Medium', 'High']"
                   label="Priority"
                   dense
-                  :error="!itemForm.priority && formSubmitted"
+                  outlined
+                  rounded
+                  class="q-ml-sm field-rounded field-spaced"
+                  :error="!itemForm.subitems[index].priority && formSubmitted"
                   error-message="Priority is required"
+                  popup-content-class="menu-rounded"
                 />
-                <q-select
-                  v-model="itemForm.category"
-                  :options="categoryOptions"
-                  label="Category"
-                  multiple
-                  use-chips
-                  use-input
-                  new-value-mode="add-unique"
-                  dense
-                  :error="!itemForm.category.length && formSubmitted"
-                  error-message="Category is required"
-                />
-                <div class="q-mt-sm">
-                  <div class="text-subtitle2">Subitems</div>
-                  <div
-                    v-for="(subitem, index) in itemForm.subitems"
-                    :key="index"
-                    class="row items-center q-mb-xs"
-                  >
-                    <q-select
-                      v-model="itemForm.subitems[index].type"
-                      :options="statusOptions"
-                      label="Subitem Type"
-                      dense
-                      use-input
-                      input-debounce="0"
-                      new-value-mode="add-unique"
-                      :error="!itemForm.subitems[index].type && formSubmitted"
-                      error-message="Subitem Type is required"
-                    />
-                    <q-input
-                      v-model="itemForm.subitems[index].title"
-                      label="Subitem Title"
-                      dense
-                      class="q-ml-sm"
-                      :error="!itemForm.subitems[index].title && formSubmitted"
-                      error-message="Subitem Title is required"
-                    />
-                    <q-input
-                      v-model="itemForm.subitems[index].deadline"
-                      label="Deadline"
-                      dense
-                      type="datetime-local"
-                      :max="itemForm.deadline || undefined"
-                      :error="!itemForm.subitems[index].deadline && formSubmitted"
-                      error-message="Deadline is required"
-                      class="q-ml-sm"
-                    />
-                    <q-select
-                      v-model="itemForm.subitems[index].status"
-                      :options="statusOptions"
-                      label="Status"
-                      dense
-                      class="q-ml-sm"
-                      :error="!itemForm.subitems[index].status && formSubmitted"
-                      error-message="Status is required"
-                    />
-                    <q-select
-                      v-model="itemForm.subitems[index].priority"
-                      :options="['Low', 'Medium', 'High']"
-                      label="Priority"
-                      dense
-                      class="q-ml-sm"
-                      :error="!itemForm.subitems[index].priority && formSubmitted"
-                      error-message="Priority is required"
-                    />
-                    <q-btn
-                      flat
-                      round
-                      icon="remove"
-                      color="negative"
-                      size="sm"
-                      @click="itemForm.subitems.splice(index, 1)"
-                    />
-                  </div>
-                  <q-btn
-                    flat
-                    icon="add"
-                    size="sm"
-                    color="secondary"
-                    @click="
-                      itemForm.subitems.push({
-                        type: '',
-                        title: '',
-                        deadline: '',
-                        status: 'backlog',
-                        priority: 'Low',
-                      })
-                    "
-                  />
-                </div>
                 <q-btn
-                  type="submit"
-                  label="Save Item"
-                  color="secondary"
-                  class="q-mt-sm full-width"
+                  flat
+                  round
+                  icon="remove"
+                  color="negative"
+                  size="sm"
+                  @click="itemForm.subitems.splice(index, 1)"
                 />
-              </q-form>
+              </div>
+              <q-btn
+                flat
+                icon="add"
+                size="sm"
+                color="secondary"
+                @click="
+                  itemForm.subitems.push({
+                    type: '',
+                    title: '',
+                    deadline: '',
+                    status: 'backlog',
+                    priority: 'Low',
+                  })
+                "
+              />
             </div>
-          </q-card-section>
-        </q-card>
+            <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
+          </q-form>
+        </div>
       </div>
     </div>
 
     <!-- Invitations Dialog -->
     <q-dialog v-model="showInvitationsDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw">
-        <q-card-section>
-          <div class="text-h6">Pending Invitations</div>
+      <q-card class="board-surface dialog-card" style="width: 640px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between q-gutter-sm">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="mail" color="primary" size="md" />
+            <div class="text-h6 text-primary">Pending Invitations</div>
+          </div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
         </q-card-section>
+        <q-separator />
         <q-card-section>
-          <q-list v-if="pendingInvitations.length" bordered>
+          <q-list v-if="pendingInvitations.length" bordered separator>
             <q-item
               v-for="invitation in pendingInvitations"
               :key="invitation.itemId + '-' + invitation.username"
+              class="invite-row"
             >
               <q-item-section>
-                <q-item-label>
-                  Invited to: {{ getItemTitle(invitation.itemId) }} (Role: {{ invitation.role }})
-                </q-item-label>
-                <q-item-label caption>
-                  Invited at:
-                  {{
-                    new Date(invitation.invitedAt).toLocaleString('en-US', {
-                      timeZone: 'Asia/Dubai',
-                    })
-                  }}
-                </q-item-label>
+                <div class="row items-center q-col-gutter-md">
+                  <div class="col-12 text-subtitle2 text-primary">
+                    {{ getItemTitleFromInvitation(invitation) }}
+                  </div>
+                  <div class="col-auto">
+                    <div class="text-caption text-grey-7">Invited by</div>
+                    <q-chip dense color="primary" text-color="white">{{
+                      invitation.invitedBy
+                    }}</q-chip>
+                  </div>
+                  <div class="col-auto">
+                    <div class="text-caption text-grey-7">Role</div>
+                    <q-chip dense color="secondary" text-color="white">{{
+                      invitation.role
+                    }}</q-chip>
+                  </div>
+                  <div class="col-auto">
+                    <div class="text-caption text-grey-7">Date</div>
+                    <div class="text-body2">
+                      {{
+                        new Date(invitation.invitedAt).toLocaleDateString('en-US', {
+                          timeZone: 'Asia/Dubai',
+                        })
+                      }}
+                    </div>
+                  </div>
+                </div>
               </q-item-section>
-              <q-item-section side>
-                <q-btn flat color="positive" label="Accept" @click="acceptInvitation(invitation)" />
-                <q-btn flat color="negative" label="Reject" @click="rejectInvitation(invitation)" />
+              <q-item-section side class="row items-center q-gutter-xs">
+                <q-btn
+                  dense
+                  flat
+                  color="positive"
+                  label="Accept"
+                  @click="acceptInvitation(invitation)"
+                />
+                <q-btn
+                  dense
+                  flat
+                  color="negative"
+                  label="Reject"
+                  @click="rejectInvitation(invitation)"
+                />
               </q-item-section>
             </q-item>
           </q-list>
           <div v-else class="text-negative">No pending invitations</div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" v-close-popup />
-        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Messages Dialog -->
+    <q-dialog v-model="showMessagesDialog">
+      <q-card class="board-surface dialog-card" style="width: 560px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="notifications" color="primary" size="md" />
+            <div class="text-h6 text-primary">Messages ({{ messages.length }})</div>
+          </div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <q-list v-if="messages.length" bordered separator>
+            <q-item v-for="(message, index) in messages" :key="index" class="invite-row">
+              <q-item-section>
+                <div class="text-body2">{{ message.text }}</div>
+                <div v-if="message.itemId" class="text-caption text-grey-7">
+                  Item: {{ getItemTitleFromMessage(message) }}
+                </div>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="delete"
+                  color="negative"
+                  @click="deleteMessage(index)"
+                  aria-label="Delete message"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="text-negative">No messages</div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Messages Dialog -->
+    <q-dialog v-model="showMessagesDialog">
+      <q-card class="board-surface dialog-card" style="width: 640px; max-width: 92vw">
+        <q-card-section class="row items-center justify-between q-gutter-sm">
+          <div class="row items-center q-gutter-sm">
+            <q-icon name="notifications" color="primary" size="md" />
+            <div class="text-h6 text-primary">Messages</div>
+          </div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
+        </q-card-section>
+        <q-separator />
+        <q-card-section>
+          <q-list v-if="messages.length" bordered separator>
+            <q-item v-for="(message, index) in messages" :key="index" class="invite-row">
+              <q-item-section>
+                <div class="text-body2">{{ message.text }}</div>
+                <div
+                  class="text-caption text-grey-7"
+                  v-if="getRelatedFromMessage(message.text)"
+                ></div>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn
+                  dense
+                  flat
+                  round
+                  icon="delete"
+                  color="negative"
+                  @click="deleteMessage(index)"
+                  aria-label="Delete message"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="text-grey-7">No messages</div>
+        </q-card-section>
       </q-card>
     </q-dialog>
   </q-page>
@@ -509,9 +625,11 @@ const errorMessage = ref('')
 const pendingInvitations = ref([])
 const showInvitationsDialog = ref(false)
 const messages = ref([])
+const showMessagesDialog = ref(false)
 
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
+const itemTypeOptions = ref(['Story', 'Epic', 'Project', 'Task'])
 
 const itemForm = ref({
   type: '',
@@ -577,6 +695,12 @@ const saveInvitations = (invitations, username) => {
 
 const saveMessages = () => {
   localStorage.setItem(`kanbanMessages_${currentUser.value}`, JSON.stringify(messages.value))
+}
+
+const getRelatedFromMessage = (text) => {
+  // Expect patterns like "for Type: Title"; extract content after "for "
+  const match = text.match(/for\s+([^,]+)$/)
+  return match ? match[1] : ''
 }
 
 const canEdit = (item) => {
@@ -668,6 +792,9 @@ const acceptInvitation = (invitation) => {
       }
     }
     loadInvitations()
+    if (pendingInvitations.value.length === 0) {
+      showInvitationsDialog.value = false
+    }
   }
 }
 
@@ -703,12 +830,23 @@ const rejectInvitation = (invitation) => {
     })
     localStorage.setItem(`kanbanMessages_${invitation.invitedBy}`, JSON.stringify(inviterMessages))
     loadInvitations()
+    if (pendingInvitations.value.length === 0) {
+      showInvitationsDialog.value = false
+    }
   }
 }
 
 const deleteMessage = (index) => {
   messages.value.splice(index, 1)
   saveMessages()
+}
+
+const getItemTitleFromMessage = (message) => {
+  if (!message.itemId) return ''
+  const local = findItemById(items.value, message.itemId)
+  if (local) return `${local.type}: ${local.title}`
+  // unknown source otherwise
+  return `#${message.itemId}`
 }
 
 const findItemById = (items, id) => {
@@ -786,9 +924,23 @@ const updateSubitemsShareWith = (item, shareWith) => {
   }
 }
 
-const getItemTitle = (itemId) => {
-  const item = findItemById(items.value, itemId)
-  return item ? `${item.type}: ${item.title}` : 'Unknown Item'
+// kept for potential future use; currently replaced by getItemTitleFromInvitation
+// const getItemTitle = (itemId) => {
+//   const item = findItemById(items.value, itemId)
+//   return item ? `${item.type}: ${item.title}` : 'Unknown Item'
+// }
+
+const getItemTitleFromInvitation = (invitation) => {
+  // Try current user's items first
+  const local = findItemById(items.value, invitation.itemId)
+  if (local) return `${local.type}: ${local.title}`
+
+  // Fallback: check inviter's storage (source of truth)
+  const inviterItems = JSON.parse(
+    localStorage.getItem(`kanbanItems_${invitation.invitedBy}`) || '[]',
+  )
+  const src = findItemById(inviterItems, invitation.itemId)
+  return src ? `${src.type}: ${src.title}` : 'Unknown Item'
 }
 
 const logout = () => {
@@ -1121,8 +1273,8 @@ watch(
   align-items: center;
   padding: 0 16px;
   border-radius: 8px;
-  background-color: #4d81c5;
-  color: white;
+  background-color: #eeeeee;
+  color: #2f3886;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 1;
 }
@@ -1154,7 +1306,6 @@ watch(
 }
 .item-card {
   position: relative;
-  background: white;
   border-radius: 10px;
   padding: 8px 12px;
   margin-bottom: 8px;
@@ -1178,25 +1329,86 @@ watch(
 .login-bg {
   overflow: hidden;
 }
+.fixed-page {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
 .board-surface {
   border-radius: 16px;
 }
+.board-row {
+  height: calc(100vh - 120px);
+}
+.board-scroll {
+  max-height: 100%;
+}
+.column-scroll {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-bottom: 24px; /* ensure last item isn't obscured by toolbar */
+}
+.column-scroll {
+  max-height: calc(93.5vh - 220px);
+  overflow-y: auto;
+}
 .topbar {
   position: relative;
+  flex-wrap: nowrap;
 }
 .date-pill {
   display: inline-flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.85);
-  color: #123;
+  color: rgb(35, 79, 124);
   border-radius: 9999px;
   padding: 4px 10px;
   font-weight: 600;
 }
-.top-search-input {
-  width: 100%;
-  max-width: 520px;
-  background: white;
+.big-search-input {
+  width: 500px;
+  max-width: 1000px;
+  /* background: white; */
+  height: 48px;
+}
+
+.right-rounded {
+  border-radius: 12px;
+}
+.right-tall {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
+}
+.dialog-card {
+  border-radius: 16px;
+}
+.invite-row {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.form-scroll {
+  max-height: calc(100% - 210px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.field-rounded .q-field__control {
+  border-radius: 12px;
+}
+.field-spaced {
+  margin-top: 2px;
+  /* margin-bottom: 1px; */
+}
+.menu-rounded {
+  border-radius: 12px;
+}
+.deadline-input .q-field__control {
+  background: rgba(12, 14, 15, 0.08);
+  border: 1px solid rgba(17, 0, 175, 0.25);
 }
 .fancy-toggle {
   margin-bottom: 8px;
@@ -1208,12 +1420,15 @@ watch(
 
 /* Priority full-card coloring */
 .priority-low {
-  background: #e6f6ea;
+  background: #d3d6d3;
+  /* color: #0a5c2a; */
 }
 .priority-medium {
-  background: #f1e6ff;
+  background: #cbe9d7;
+  color: #226631;
 }
 .priority-high {
-  background: #ffe9d6;
+  background: #ebc7a9;
+  color: #7a2d00;
 }
 </style>
