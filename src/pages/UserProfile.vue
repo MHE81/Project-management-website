@@ -76,17 +76,7 @@
           />
         </div>
 
-        <!-- Change Password (dialog trigger) -->
-        <div class="flex flex-center q-mb-sm">
-          <q-btn
-            outline
-            color="primary"
-            icon="lock"
-            label="Change Password"
-            class="right-btn"
-            @click="showChangePassDialog = true"
-          />
-        </div>
+        <!-- Change Password button moved to edit mode actions below -->
       </q-card-section>
 
       <!-- Scrollable Input Section -->
@@ -227,40 +217,52 @@
           <!-- Change Password moved to dialog -->
 
           <!-- Buttons -->
-          <q-btn
-            v-if="!editMode"
-            label="Edit Profile"
-            color="primary"
-            class="full-width q-mt-md right-btn"
-            @click="editMode = true"
-            aria-label="Edit profile"
-          />
-          <div v-else class="row q-col-gutter-sm q-mt-md">
+          <template v-if="!editMode">
             <q-btn
-              label="Save"
+              label="Edit Profile"
               color="primary"
-              class="col right-btn"
-              :loading="isLoading"
-              type="submit"
-              aria-label="Save profile changes"
+              class="full-width q-mt-md right-btn"
+              @click="editMode = true"
+              aria-label="Edit profile"
             />
+          </template>
+          <template v-else>
+            <!-- Change Password (only in edit mode, above Save) -->
             <q-btn
-              label="Cancel"
-              flat
+              outline
               color="primary"
-              class="col right-btn"
-              @click="cancelEdit"
-              aria-label="Cancel profile changes"
+              icon="lock"
+              label="Change Password"
+              class="full-width right-btn q-mt-md q-mb-sm"
+              @click="showChangePassDialog = true"
             />
-            <q-btn
-              label="Delete Account"
-              flat
-              color="negative"
-              class="col right-btn"
-              @click="showDeleteDialog = true"
-              aria-label="Delete your account"
-            />
-          </div>
+            <div class="row q-col-gutter-sm q-mt-sm">
+              <q-btn
+                label="Save"
+                color="primary"
+                class="col right-btn"
+                :loading="isLoading"
+                type="submit"
+                aria-label="Save profile changes"
+              />
+              <q-btn
+                label="Cancel"
+                flat
+                color="primary"
+                class="col right-btn"
+                @click="cancelEdit"
+                aria-label="Cancel profile changes"
+              />
+              <q-btn
+                label="Delete Account"
+                flat
+                color="negative"
+                class="col right-btn"
+                @click="showDeleteDialog = true"
+                aria-label="Delete your account"
+              />
+            </div>
+          </template>
         </q-form>
 
         <q-separator class="q-my-md" />
@@ -304,7 +306,7 @@
 
     <!-- Change Password Dialog -->
     <q-dialog v-model="showChangePassDialog">
-      <q-card class="dialog-card" style="width: 420px; max-width: 92vw">
+      <q-card class="dialog-card" style="width: 420px; max-width: 92vw; border-radius: 16px">
         <q-card-section class="row items-center justify-between">
           <div class="row items-center q-gutter-sm">
             <q-icon name="lock" color="primary" />
@@ -811,6 +813,10 @@ const submitChangePassword = () => {
     currentPassVerified.value = false
     newPasswordDialog.value = ''
     confirmPasswordDialog.value = ''
+    successMessage.value = 'Password changed successfully'
+    setTimeout(() => {
+      successMessage.value = ''
+    }, 3000)
   }
 }
 

@@ -1414,7 +1414,8 @@ watch(
   margin-bottom: 8px;
   display: inline-block;
   background: rgba(255, 255, 255, 0.85);
-  padding: 4px 10px;
+  padding: 0px 10px;
+  padding-bottom: 6px;
   border-radius: 9999px;
 }
 
