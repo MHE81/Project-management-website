@@ -1,0 +1,16 @@
+$env:PATH = "C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64;" + $env:PATH
+
+
+C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npm.cmd install --legacy-peer-deps
+
+
+C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npm.cmd --nodepath=C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64 install --legacy-peer-deps
+
+
+
+C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\node.exe C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npm-cli.js install --legacy-peer-deps
+
+
+
+C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npx.cmd quasar dev
+

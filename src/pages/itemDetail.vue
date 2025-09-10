@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md login-bg" style="min-height: 100vh; overflow-y: auto">
+  <q-page class="q-pa-md login-bg fixed-page">
     <div class="login-navbar">
       <div class="brand">
         <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
@@ -11,21 +11,22 @@
       <q-spinner color="primary" size="3em" />
       <div>Loading item...</div>
     </div>
-    <!-- Item Name and User Role -->
-    <div v-if="item" class="text-h4 q-mb-md text-center full-width">
-      {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
-    </div>
-    <div v-if="item" class="text-subtitle1 q-mb-md text-center">
-      Your Role: {{ currentUserRole }}
-    </div>
+    <!-- Item Name and User Role shown in top bar on the right -->
+    <div v-if="item" class="q-mb-sm text-center hidden-top"></div>
     <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">
       {{ errorMessage }} (ID: {{ route.params.id }})
     </div>
 
     <!-- Top bar -->
-    <div class="row justify-between items-center q-mb-md">
-      <div class="text-h6">Date: {{ currentDate }}</div>
-      <div class="q-gutter-sm">
+    <div class="row justify-between items-center q-mb-md topbar">
+      <div class="text-h6 date-pill">{{ currentDate }}</div>
+      <div class="row items-center q-gutter-sm top-right-info">
+        <div v-if="item" class="text-subtitle2 text-primary top-title ellipsis">
+          {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+        </div>
+        <q-chip v-if="item" dense color="primary" text-color="white"
+          >Role: {{ currentUserRole }}</q-chip
+        >
         <q-btn
           round
           color="primary"
@@ -135,9 +136,9 @@
     <q-btn
       v-if="item && !item.note && !isEditingNote"
       label="Add Note"
-      color="secondary"
+      color="primary"
       @click="toggleNoteEdit(true)"
-      class="q-mb-md"
+      class="q-mb-md right-btn"
       :disable="!canEdit"
     />
 
@@ -154,8 +155,8 @@
     <!-- Main layout -->
     <div v-if="item" class="row equal-height-row">
       <!-- Left Side Box (Item Details) -->
-      <div class="col-2 bg-grey-2 rounded-borders q-pa-md column-box" style="margin-right: 10px">
-        <div class="bg-white" style="padding: 15px">
+      <div class="col-2 q-pa-md column-box" style="margin-right: 10px">
+        <div class="board-surface" style="padding: 15px">
           <div class="text-subtitle2 q-mb-xs">Details</div>
           <div>Type: {{ item.type || 'N/A' }}</div>
           <q-input
@@ -208,7 +209,7 @@
             v-if="!isEditing"
             label="Edit"
             color="primary"
-            class="full-width q-mt-md"
+            class="full-width q-mt-md right-btn"
             @click="toggleEdit(true)"
             :disable="!canEdit"
           />
@@ -216,7 +217,7 @@
             v-else
             label="Save"
             color="positive"
-            class="full-width q-mt-md"
+            class="full-width q-mt-md right-btn"
             @click="saveDetails"
             :disable="!canEdit"
           />
@@ -224,25 +225,27 @@
       </div>
 
       <!-- Main Content Area (Subitems Kanban) -->
-      <div class="col-7 bg-grey-2 rounded-borders q-pa-md column-box" style="overflow-y: auto">
-        <q-toggle
-          v-model="sortByPriority"
-          label="Sort by"
-          left-label
-          checked-icon="sort"
-          unchecked-icon="event"
-          color="primary"
-          class="q-mb-md"
-          @update:model-value="sortSubitems"
-        />
-        <div class="row" style="flex-wrap: nowrap; height: 100%">
+      <div class="col-7 q-pa-md column-box" style="overflow-y: auto">
+        <div class="fancy-toggle">
+          <q-toggle
+            v-model="sortByPriority"
+            label="Sort by"
+            left-label
+            checked-icon="sort"
+            unchecked-icon="event"
+            color="primary"
+            @update:model-value="sortSubitems"
+          />
+        </div>
+        <div class="row board-row" style="flex-wrap: nowrap">
           <!-- Backlog Column -->
           <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
             <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
             <div
               v-for="subitem in sortedSubitems('backlog')"
               :key="subitem.id"
-              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              class="item-card row justify-between items-center"
+              :class="priorityClass(subitem.priority)"
               :draggable="canChangeSubitemStatus(subitem)"
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
@@ -284,11 +287,12 @@
 
           <!-- In Progress Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
-            <div class="text-center text-subtitle2 q-mb-md">In Progress</div>
+            <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
             <div
               v-for="subitem in sortedSubitems('in progress')"
               :key="subitem.id"
-              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              class="item-card row justify-between items-center"
+              :class="priorityClass(subitem.priority)"
               :draggable="canChangeSubitemStatus(subitem)"
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
@@ -330,11 +334,12 @@
 
           <!-- Done Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
-            <div class="text-center text-subtitle2 q-mb-md">Done</div>
+            <div class="text-center text-subtitle2 q-mb-sm">Done</div>
             <div
               v-for="subitem in sortedSubitems('done')"
               :key="subitem.id"
-              class="q-mb-xs bg-white q-pa-sm shadow-1 row justify-between items-center"
+              class="item-card row justify-between items-center"
+              :class="priorityClass(subitem.priority)"
               :draggable="canChangeSubitemStatus(subitem)"
               @dragstart="startDrag(subitem)"
               @click="viewItem(subitem.id)"
@@ -378,7 +383,7 @@
 
       <!-- Right Side Box -->
       <div
-        class="col-2 bg-grey-2 rounded-borders q-pa-md column-box"
+        class="col-2 q-pa-md bg-grey-2 column-box board-surface"
         style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto"
       >
         <!-- Shared With Section -->
@@ -424,7 +429,7 @@
             v-if="canShare"
             label="Share With"
             color="secondary"
-            class="full-width"
+            class="full-width right-btn"
             @click="openShareDialog"
           />
         </div>
@@ -457,18 +462,18 @@
                 />
               </div>
             </div>
-            <div
+            <!-- <div
               v-else
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
             >
               Not assigned
-            </div>
+            </div> -->
           </div>
           <q-btn
             v-if="canAssign"
             label="Assign Item"
             color="positive"
-            class="full-width"
+            class="full-width right-btn"
             @click="openAssignDialog"
           />
         </div>
@@ -553,18 +558,18 @@
                 </div>
               </div>
             </div>
-            <div
+            <!-- <div
               v-else
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
             >
               No meetings available.
-            </div>
+            </div> -->
           </div>
           <q-btn
             v-if="item"
             label="Add Meeting"
             color="secondary"
-            class="full-width q-mb-xs"
+            class="full-width q-mb-xs right-btn"
             @click="openMeetingDialog"
             :disable="currentUserRole === 'observer'"
             aria-label="Add a new meeting"
@@ -781,15 +786,13 @@
           </q-card>
         </q-dialog>
 
-        <!-- Add New Report Button (Plus Icon) -->
+        <!-- Add New Report Button -->
         <q-btn
           v-if="item && !isAddingReport && !showReportDialog"
-          round
-          color="secondary"
-          icon="add"
+          color="primary"
+          label="Add Report"
           @click="toggleReportForm(true)"
-          class="q-mb-md"
-          size="sm"
+          class="q-mb-md right-btn"
           :disable="!canManageOwnReports"
         />
 
@@ -811,12 +814,12 @@
             </div>
           </div>
         </div>
-        <div
+        <!-- <div
           v-else-if="item && item.reports && !item.reports.length"
           class="q-mb-md text-center text-negative"
         >
           No reports available.
-        </div>
+        </div> -->
 
         <!-- Report Dialog -->
         <q-dialog v-model="showReportDialog" persistent>
@@ -1017,7 +1020,7 @@
             <q-btn
               label="New Subitem"
               color="secondary"
-              class="full-width q-mb-xs"
+              class="full-width q-mb-xs right-btn"
               @click="openSubitemForm"
               :disable="!canAddSubitems"
             />
@@ -2942,6 +2945,12 @@ const sortedSubitems = (status) => {
   return filtered.sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
 }
 
+const priorityClass = (priority) => {
+  if (priority === 'High') return 'priority-high'
+  if (priority === 'Medium') return 'priority-medium'
+  return 'priority-low'
+}
+
 const sortSubitems = () => {
   if (!canEdit.value) {
     console.log('Cannot sort subitems: Insufficient permissions')
@@ -2965,6 +2974,79 @@ const sortSubitems = () => {
   background-repeat: no-repeat;
   min-height: 100vh;
   padding-top: 84px;
+}
+
+/* Homepage-like UI styling */
+.topbar {
+  position: relative;
+  flex-wrap: nowrap;
+}
+.date-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: rgb(35, 79, 124);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+.board-surface {
+  border-radius: 16px;
+  background: transparent;
+}
+.fixed-page {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+.column-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 8px;
+}
+.item-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  cursor: pointer;
+}
+.item-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
+}
+.fancy-toggle {
+  margin-bottom: 8px;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0px 10px;
+  padding-bottom: 6px;
+  border-radius: 9999px;
+}
+.priority-low {
+  background: #d3d6d3;
+}
+.priority-medium {
+  background: #cbe9d7;
+  color: #226631;
+}
+.priority-high {
+  background: #ebc7a9;
+  color: #7a2d00;
+}
+.top-right-info {
+  max-width: 60%;
+}
+.top-title {
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .login-navbar {
@@ -3007,6 +3089,9 @@ const sortSubitems = () => {
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
+}
+.row.board-row {
+  height: calc(100vh - 120px);
 }
 .column-box {
   height: calc(100vh - 200px);

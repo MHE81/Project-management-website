@@ -25,7 +25,7 @@
         </q-banner>
 
         <!-- Success banner for verification -->
-        <q-banner
+        <!-- <q-banner
           v-if="emailVerified"
           dense
           class="bg-positive text-white q-mb-md"
@@ -33,7 +33,7 @@
           role="alert"
         >
           Verification code validated successfully!
-        </q-banner>
+        </q-banner> -->
 
         <q-form @submit.prevent="verifyUser">
           <!-- Username or Email input -->
@@ -55,7 +55,7 @@
           <q-btn
             label="Verify"
             color="primary"
-            class="full-width q-mb-md"
+            class="full-width q-mb-md right-btn"
             :loading="isVerifying"
             :disable="emailVerificationSent"
             @click="verifyUser"
@@ -80,6 +80,7 @@
               <q-btn
                 label="Validate Code"
                 color="primary"
+                class="right-btn"
                 :disable="verificationCode.length !== 4"
                 @click="validateCode"
                 aria-label="Validate the verification code"
@@ -90,25 +91,31 @@
 
         <!-- Password reset dialog -->
         <q-dialog v-model="showPasswordDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw">
-            <q-card-section>
-              <div class="text-h6">Set New Password</div>
+          <q-card class="dialog-card" style="width: 420px; max-width: 92vw; border-radius: 16px">
+            <q-card-section class="row items-center justify-between">
+              <div class="row items-center q-gutter-sm">
+                <q-icon name="lock" color="primary" />
+                <div class="text-h6 text-primary">Set New Password</div>
+              </div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup />
             </q-card-section>
+            <q-separator />
 
             <q-card-section>
               <q-form @submit.prevent="resetPassword">
                 <!-- New Password input -->
                 <q-input
-                  filled
+                  outlined
+                  rounded
                   v-model="newPassword"
                   :type="showPassword ? 'text' : 'password'"
                   label="New Password"
-                  class="q-mb-md tall-input"
                   dense
                   :error="newPasswordError"
                   :error-message="newPasswordErrorMessage"
                   @input="clearNewPasswordError"
                   aria-label="Enter your new password"
+                  no-error-icon
                 >
                   <template v-slot:append>
                     <q-icon
@@ -121,16 +128,18 @@
 
                 <!-- Confirm New Password input -->
                 <q-input
-                  filled
+                  outlined
+                  rounded
                   v-model="confirmNewPassword"
                   :type="showPassword ? 'text' : 'password'"
                   label="Confirm New Password"
-                  class="q-mb-md tall-input"
+                  class="q-mt-sm"
                   dense
                   :error="confirmError"
                   error-message="Passwords do not match"
                   @input="clearConfirmError"
                   aria-label="Confirm your new password"
+                  no-error-icon
                 >
                   <template v-slot:append>
                     <q-icon
@@ -141,26 +150,18 @@
                   </template>
                 </q-input>
 
-                <q-btn
-                  label="Reset Password"
-                  color="primary"
-                  class="full-width q-mt-md"
-                  :loading="isResetting"
-                  type="submit"
-                  aria-label="Reset your password"
-                />
+                <q-card-actions align="right" class="q-mt-md">
+                  <q-btn flat label="Cancel" color="primary" v-close-popup />
+                  <q-btn
+                    color="primary"
+                    label="Save"
+                    class="right-btn"
+                    :loading="isResetting"
+                    @click="resetPassword"
+                  />
+                </q-card-actions>
               </q-form>
             </q-card-section>
-
-            <q-card-actions align="right">
-              <q-btn
-                flat
-                label="Cancel"
-                color="primary"
-                v-close-popup
-                aria-label="Cancel password reset"
-              />
-            </q-card-actions>
           </q-card>
         </q-dialog>
 
@@ -426,5 +427,9 @@ const goToLogin = () => {
 
 .link:hover {
   text-decoration: underline;
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
 }
 </style>

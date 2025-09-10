@@ -75,7 +75,7 @@
           <q-btn
             label="Login"
             color="primary"
-            class="full-width q-mt-md"
+            class="full-width q-mt-md right-btn"
             :loading="isLoading"
             type="submit"
             aria-label="Login with username or email and password"
@@ -307,5 +307,9 @@ const forgotPassword = () => {
 }
 .tall-input .q-field__marginal {
   height: 48px !important;
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
 }
 </style>

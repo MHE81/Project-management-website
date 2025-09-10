@@ -55,7 +55,7 @@
           <q-btn
             label="Send Code"
             color="primary"
-            class="full-width q-mb-md"
+            class="full-width q-mb-md right-btn"
             :disable="!isEmailValid || emailVerificationSent"
             @click="sendVerificationCode"
             aria-label="Send verification code to your email"
@@ -79,6 +79,7 @@
               <q-btn
                 label="Verify Email"
                 color="primary"
+                class="right-btn"
                 :disable="verificationCode.length !== 4"
                 @click="verifyEmail"
                 aria-label="Verify email with code"
@@ -147,7 +148,7 @@
           <q-btn
             label="Sign Up"
             color="primary"
-            class="full-width q-mt-md"
+            class="full-width q-mt-md right-btn"
             :loading="isLoading"
             type="submit"
             :disable="!emailVerified"
@@ -411,5 +412,9 @@ const clearVerificationError = () => {
 
 .link:hover {
   text-decoration: underline;
+}
+.right-btn {
+  border-radius: 12px;
+  height: 48px;
 }
 </style>
