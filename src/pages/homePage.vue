@@ -67,6 +67,7 @@
       v-if="errorMessage"
       dense
       class="bg-negative text-white q-mb-md"
+      style="width: fit-content; max-width: 100%"
       aria-live="polite"
       role="alert"
     >
@@ -1273,8 +1274,8 @@ watch(
   align-items: center;
   padding: 0 16px;
   border-radius: 8px;
-  background-color: #eeeeee;
-  color: #2f3886;
+  background-color: #ffffff;
+  color: #1f2937;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 1;
 }

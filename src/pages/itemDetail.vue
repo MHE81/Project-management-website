@@ -3,8 +3,39 @@
     <div class="login-navbar">
       <div class="brand">
         <img src="/logo.png" alt="PLANOVA logo" class="brand-logo" />
-        <span class="brand-title">PLANOVA</span>
+        <!-- <span class="brand-title">PLANOVA</span> -->
+        <div v-if="item" class="q-ml-sm">
+          <div class="text-subtitle2 ellipsis primary" style="max-width: 380px">
+            {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+          </div>
+          <div class="text-caption">Role: {{ currentUserRole }}</div>
+        </div>
       </div>
+    </div>
+    <div class="top-search">
+      <div class="row items-center no-wrap">
+        <q-input
+          v-model="searchQuery"
+          placeholder="Search subitems..."
+          dense
+          outlined
+          rounded
+          bg-color="grey-3"
+          class="text-black big-search-input"
+          aria-label="Search subitems"
+        />
+        <q-btn round color="primary" icon="search" class="q-ml-sm" aria-label="Perform search" />
+      </div>
+    </div>
+    <div class="top-actions">
+      <q-btn
+        round
+        color="primary"
+        icon="account_circle"
+        @click="openProfile"
+        aria-label="Go to profile"
+      />
+      <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
     </div>
     <!-- Loading State -->
     <div v-if="!item && !errorMessage" class="text-center q-mt-lg">
@@ -16,26 +47,15 @@
     <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">
       {{ errorMessage }} (ID: {{ route.params.id }})
     </div>
-
     <!-- Top bar -->
-    <div class="row justify-between items-center q-mb-md topbar">
-      <div class="text-h6 date-pill">{{ currentDate }}</div>
-      <div class="row items-center q-gutter-sm top-right-info">
-        <div v-if="item" class="text-subtitle2 text-primary top-title ellipsis">
-          {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
+    <div class="row items-center q-mb-md topbar">
+      <div class="col-3">
+        <div class="date-pill">
+          <q-icon name="event" size="sm" class="q-mr-xs" />
+          {{ currentDate }}
         </div>
-        <q-chip v-if="item" dense color="primary" text-color="white"
-          >Role: {{ currentUserRole }}</q-chip
-        >
-        <q-btn
-          round
-          color="primary"
-          icon="account_circle"
-          @click="openProfile"
-          aria-label="Go to profile"
-        />
-        <q-btn round flat color="negative" icon="logout" @click="logout" aria-label="Log out" />
       </div>
+      <div class="col-6"></div>
     </div>
 
     <!-- Error Banner -->
@@ -43,35 +63,12 @@
       v-if="errorMessage"
       dense
       class="bg-negative text-white q-mb-md"
+      style="width: fit-content; max-width: 100%"
       aria-live="polite"
       role="alert"
     >
       {{ errorMessage }}
     </q-banner>
-
-    <!-- New Report Form -->
-    <div v-if="item && isAddingReport && !selectedReport" class="q-mb-md">
-      <div class="text-subtitle1">New Report:</div>
-      <q-input
-        v-model="newReportDetails"
-        placeholder="Enter what you have done..."
-        dense
-        :error="!newReportDetails && reportFormSubmitted"
-        error-message="Details are required"
-        class="q-mb-md"
-        :disable="!canManageOwnReports"
-      />
-      <div class="row">
-        <q-btn
-          label="Save Report"
-          color="positive"
-          @click="saveReport"
-          class="q-mr-sm"
-          :disable="!canManageOwnReports"
-        />
-        <q-btn label="Cancel" color="negative" flat @click="cancelReport" />
-      </div>
-    </div>
 
     <!-- Selected Report Display (Editable) -->
     <div v-if="item && selectedReport" class="q-mb-md">
@@ -90,57 +87,104 @@
           class="q-mr-sm"
           :disable="!isReportOwner"
         />
-        <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" />
+        <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" class="right-btn" />
       </div>
     </div>
 
     <!-- Note Display -->
-    <div v-if="item && item.note && !isEditingNote" class="q-mb-md">
-      <div class="text-subtitle1">Note:</div>
-      <div
-        class="q-pa-sm bg-grey-2 rounded-borders resizable-note"
-        v-html="item.note.replace(/\n/g, '<br>')"
-      ></div>
-      <div class="row q-mt-sm">
-        <q-btn
-          label="Edit Note"
-          color="primary"
-          @click="toggleNoteEdit(true)"
-          class="q-mr-sm"
-          :disable="!canEdit"
-        />
-        <q-btn label="Delete Note" color="negative" flat @click="deleteNote" :disable="!canEdit" />
+    <div v-if="item && item.note" class="q-mb-md">
+      <div class="row items-center justify-between">
+        <q-card flat class="note-card">
+          <q-card-section class="q-pa-none">
+            <div class="note-inline">
+              <div class="note-text" v-html="item.note.replace(/\n/g, '<br>')"></div>
+              <q-btn
+                dense
+                round
+                flat
+                color="primary"
+                icon="edit"
+                size="sm"
+                @click="openNoteDialog"
+                :disable="!canEdit"
+                aria-label="Edit Note"
+              />
+              <q-btn
+                dense
+                round
+                flat
+                color="negative"
+                icon="delete"
+                size="sm"
+                @click="deleteNote"
+                :disable="!canEdit"
+                aria-label="Delete Note"
+              />
+            </div>
+          </q-card-section>
+        </q-card>
+        <div class="fancy-toggle">
+          <q-toggle
+            v-model="sortByPriority"
+            label="Sort by"
+            left-label
+            checked-icon="sort"
+            unchecked-icon="event"
+            color="primary"
+            @update:model-value="sortSubitems"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- Note Edit Form -->
-    <div v-if="item && isEditingNote" class="q-mb-md">
-      <div class="text-subtitle1">Edit Note:</div>
-      <textarea
-        v-model="item.note"
-        placeholder="Enter your note here..."
-        class="resizable-note custom-textarea"
-        :disabled="!canEdit"
-      />
-      <div class="row q-mt-sm">
+    <!-- Add Note Button -->
+    <div v-if="item && !item.note" class="q-mb-md">
+      <div class="row items-center justify-between">
         <q-btn
-          label="Save Note"
-          color="positive"
-          @click="saveNote"
-          class="q-mr-sm"
+          round
+          color="primary"
+          icon="note_add"
+          @click="openNoteDialog"
           :disable="!canEdit"
-        />
-        <q-btn label="Cancel" color="negative" flat @click="cancelNoteEdit" />
+          aria-label="Add Note"
+        >
+          <q-tooltip>Add Note</q-tooltip>
+        </q-btn>
+        <div class="fancy-toggle">
+          <q-toggle
+            v-model="sortByPriority"
+            label="Sort by"
+            left-label
+            checked-icon="sort"
+            unchecked-icon="event"
+            color="primary"
+            @update:model-value="sortSubitems"
+          />
+        </div>
       </div>
     </div>
-    <q-btn
-      v-if="item && !item.note && !isEditingNote"
-      label="Add Note"
-      color="primary"
-      @click="toggleNoteEdit(true)"
-      class="q-mb-md right-btn"
-      :disable="!canEdit"
-    />
+
+    <!-- Note Dialog -->
+    <q-dialog v-model="showNoteDialog" persistent>
+      <q-card class="dialog-card">
+        <q-card-section class="dialog-header">
+          <div class="text-h6">{{ noteDialogMode === 'edit' ? 'Edit Note' : 'Add Note' }}</div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
+        </q-card-section>
+        <q-separator />
+        <q-card-section class="dialog-content">
+          <textarea
+            v-model="noteDraft"
+            class="resizable-note custom-textarea"
+            placeholder="Enter your note here..."
+          />
+        </q-card-section>
+        <q-card-actions class="dialog-actions">
+          <q-btn flat label="Cancel" color="primary" v-close-popup class="right-btn" />
+          <q-btn color="positive" label="Save" class="right-btn" @click="saveNoteFromDialog" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- Parent Chain Info -->
     <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
@@ -155,8 +199,8 @@
     <!-- Main layout -->
     <div v-if="item" class="row equal-height-row">
       <!-- Left Side Box (Item Details) -->
-      <div class="col-2 q-pa-md column-box" style="margin-right: 10px">
-        <div class="board-surface" style="padding: 15px">
+      <div class="col-1.5 q-pa-md column-box" style="margin-right: 2px">
+        <div class="board-surface" style="padding: 2px">
           <div class="text-subtitle2 q-mb-xs">Details</div>
           <div>Type: {{ item.type || 'N/A' }}</div>
           <q-input
@@ -225,171 +269,260 @@
       </div>
 
       <!-- Main Content Area (Subitems Kanban) -->
-      <div class="col-7 q-pa-md column-box" style="overflow-y: auto">
-        <div class="fancy-toggle">
-          <q-toggle
-            v-model="sortByPriority"
-            label="Sort by"
-            left-label
-            checked-icon="sort"
-            unchecked-icon="event"
-            color="primary"
-            @update:model-value="sortSubitems"
-          />
-        </div>
+      <div class="col-8 q-pa-md column-box" style="margin-right: 290px">
         <div class="row board-row" style="flex-wrap: nowrap">
           <!-- Backlog Column -->
           <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
-            <div class="text-center text-subtitle2 q-mb-sm">Backlog</div>
-            <div
-              v-for="subitem in sortedSubitems('backlog')"
-              :key="subitem.id"
-              class="item-card row justify-between items-center"
-              :class="priorityClass(subitem.priority)"
-              :draggable="canChangeSubitemStatus(subitem)"
-              @dragstart="startDrag(subitem)"
-              @click="viewItem(subitem.id)"
-            >
-              <div>
-                <strong>{{ subitem.type }}</strong
-                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
-                  Assigned:
-                  {{
-                    subitem.assignedTo
-                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
-                      .join(', ')
-                  }}
+            <q-card class="board-surface column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">Backlog</div>
+                <q-badge color="warning" text-color="black">{{
+                  sortedSubitems('backlog').length
+                }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm column-scroll">
+                <div
+                  v-for="subitem in sortedSubitems('backlog').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="subitem.id"
+                  class="item-card"
+                  :class="priorityClass(subitem.priority)"
+                  :draggable="canChangeSubitemStatus(subitem)"
+                  @dragstart="startDrag(subitem)"
+                  @click="viewItem(subitem.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ subitem.type }}</strong
+                      >: {{ subitem.title }}
+                    </div>
+                    <div class="text-caption">
+                      {{ formatItemDate(subitem.deadline) }}
+                    </div>
+                  </div>
+                  <div
+                    v-if="subitem.assignedTo && subitem.assignedTo.length"
+                    class="text-caption q-mt-xs"
+                  >
+                    Assigned:
+                    {{
+                      subitem.assignedTo
+                        .map(
+                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                    Shared:
+                    {{
+                      subitem.shareWith
+                        .map(
+                          (s) =>
+                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(subitem.id)"
+                      :disable="!canAddSubitems"
+                      aria-label="Delete item"
+                    />
+                  </div>
                 </div>
-                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared:
-                  {{
-                    subitem.shareWith
-                      .map(
-                        (s) =>
-                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                      )
-                      .join(', ')
-                  }}
-                </div>
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(subitem.id)"
-                :disable="!canAddSubitems"
-              />
-            </div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- In Progress Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
-            <div class="text-center text-subtitle2 q-mb-sm">In Progress</div>
-            <div
-              v-for="subitem in sortedSubitems('in progress')"
-              :key="subitem.id"
-              class="item-card row justify-between items-center"
-              :class="priorityClass(subitem.priority)"
-              :draggable="canChangeSubitemStatus(subitem)"
-              @dragstart="startDrag(subitem)"
-              @click="viewItem(subitem.id)"
-            >
-              <div>
-                <strong>{{ subitem.type }}</strong
-                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
-                  Assigned:
-                  {{
-                    subitem.assignedTo
-                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
-                      .join(', ')
-                  }}
+            <q-card class="board-surface column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">In Progress</div>
+                <q-badge color="primary">{{ sortedSubitems('in progress').length }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm column-scroll">
+                <div
+                  v-for="subitem in sortedSubitems('in progress').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="subitem.id"
+                  class="item-card"
+                  :class="priorityClass(subitem.priority)"
+                  :draggable="canChangeSubitemStatus(subitem)"
+                  @dragstart="startDrag(subitem)"
+                  @click="viewItem(subitem.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ subitem.type }}</strong
+                      >: {{ subitem.title }}
+                    </div>
+                    <div class="text-caption">
+                      {{ formatItemDate(subitem.deadline) }}
+                    </div>
+                  </div>
+                  <div
+                    v-if="subitem.assignedTo && subitem.assignedTo.length"
+                    class="text-caption q-mt-xs"
+                  >
+                    Assigned:
+                    {{
+                      subitem.assignedTo
+                        .map(
+                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                    Shared:
+                    {{
+                      subitem.shareWith
+                        .map(
+                          (s) =>
+                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(subitem.id)"
+                      :disable="!canAddSubitems"
+                      aria-label="Delete item"
+                    />
+                  </div>
                 </div>
-                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared:
-                  {{
-                    subitem.shareWith
-                      .map(
-                        (s) =>
-                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                      )
-                      .join(', ')
-                  }}
-                </div>
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(subitem.id)"
-                :disable="!canAddSubitems"
-              />
-            </div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <!-- Done Column -->
           <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
-            <div class="text-center text-subtitle2 q-mb-sm">Done</div>
-            <div
-              v-for="subitem in sortedSubitems('done')"
-              :key="subitem.id"
-              class="item-card row justify-between items-center"
-              :class="priorityClass(subitem.priority)"
-              :draggable="canChangeSubitemStatus(subitem)"
-              @dragstart="startDrag(subitem)"
-              @click="viewItem(subitem.id)"
-            >
-              <div>
-                <strong>{{ subitem.type }}</strong
-                >: {{ subitem.title }} (Due: {{ subitem.deadline || 'N/A' }})
-                <div v-if="subitem.assignedTo && subitem.assignedTo.length" class="text-caption">
-                  Assigned:
-                  {{
-                    subitem.assignedTo
-                      .map((a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`)
-                      .join(', ')
-                  }}
+            <q-card class="board-surface column-card">
+              <q-card-section class="row items-center justify-between">
+                <div class="text-subtitle2">Done</div>
+                <q-badge color="positive">{{ sortedSubitems('done').length }}</q-badge>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="q-pt-sm column-scroll">
+                <div
+                  v-for="subitem in sortedSubitems('done').filter(
+                    (i) =>
+                      i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      i.type.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )"
+                  :key="subitem.id"
+                  class="item-card"
+                  :class="priorityClass(subitem.priority)"
+                  :draggable="canChangeSubitemStatus(subitem)"
+                  @dragstart="startDrag(subitem)"
+                  @click="viewItem(subitem.id)"
+                >
+                  <div class="row items-center justify-between">
+                    <div class="ellipsis">
+                      <strong>{{ subitem.type }}</strong
+                      >: {{ subitem.title }}
+                    </div>
+                    <div class="text-caption">
+                      {{ formatItemDate(subitem.deadline) }}
+                    </div>
+                  </div>
+                  <div
+                    v-if="subitem.assignedTo && subitem.assignedTo.length"
+                    class="text-caption q-mt-xs"
+                  >
+                    Assigned:
+                    {{
+                      subitem.assignedTo
+                        .map(
+                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
+                    Shared:
+                    {{
+                      subitem.shareWith
+                        .map(
+                          (s) =>
+                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
+                        )
+                        .join(', ')
+                    }}
+                  </div>
+                  <div class="row justify-end q-mt-xs">
+                    <q-btn
+                      flat
+                      round
+                      dense
+                      icon="delete"
+                      color="negative"
+                      size="sm"
+                      @click.stop="deleteItem(subitem.id)"
+                      :disable="!canAddSubitems"
+                      aria-label="Delete item"
+                    />
+                  </div>
                 </div>
-                <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
-                  Shared:
-                  {{
-                    subitem.shareWith
-                      .map(
-                        (s) =>
-                          `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                      )
-                      .join(', ')
-                  }}
-                </div>
-              </div>
-              <q-btn
-                flat
-                round
-                icon="delete"
-                color="negative"
-                size="sm"
-                @click.stop="deleteItem(subitem.id)"
-                :disable="!canAddSubitems"
-              />
-            </div>
+              </q-card-section>
+            </q-card>
           </div>
         </div>
       </div>
 
       <!-- Right Side Box -->
       <div
-        class="col-2 q-pa-md bg-grey-2 column-box board-surface"
-        style="margin-left: 10px; width: 350px; max-height: calc(100vh - 200px); overflow-y: auto"
+        class="fixed-right-panel q-pa-md bg-grey-2 board-surface"
+        style="width: 270px; top: 90px; right: 12px; bottom: 12px; overflow-y: auto"
       >
+        <!-- Progress Circle on top -->
+        <div class="q-mb-md flex flex-center">
+          <q-circular-progress
+            show-value
+            :value="completionPercent"
+            size="90px"
+            color="green"
+            track-color="grey-3"
+          >
+            {{ completionPercent }}%
+          </q-circular-progress>
+        </div>
+
         <!-- Shared With Section -->
-        <div v-if="item" class="q-mb-md">
-          <div class="text-subtitle1">Shared With:</div>
-          <div class="q-pa-sm bg-grey-2 rounded-borders">
+        <q-expansion-item
+          v-if="item && !toggleSubitemForm"
+          dense
+          expand-separator
+          icon="group"
+          label="Shared With"
+          :caption="(item.shareWith?.length || 0) + ' users'"
+          class="q-mb-sm"
+        >
+          <div class="q-pa-sm exp-section">
             <div
               v-if="item.shareWith && item.shareWith.length"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
@@ -399,45 +532,73 @@
                 :key="index"
                 class="row items-center q-mb-xs"
               >
-                {{ share.username }}
-                <span class="text-weight-bold"
-                  >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
-                >
-                <q-btn
-                  v-if="
-                    currentUserRole === 'owner' &&
-                    share.role !== 'owner' &&
-                    share.username !== currentUser
-                  "
-                  flat
-                  round
-                  icon="remove"
-                  color="negative"
-                  size="sm"
-                  @click="removeSharedUser(index)"
-                />
+                <div class="col">
+                  {{ share.username }}
+                  <span class="text-weight-bold"
+                    >({{ share.role }}{{ share.status === 'pending' ? ', Pending' : '' }})</span
+                  >
+                </div>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="
+                      currentUserRole === 'owner' &&
+                      share.role !== 'owner' &&
+                      share.username !== currentUser
+                    "
+                    flat
+                    round
+                    icon="remove"
+                    color="negative"
+                    size="sm"
+                    @click="removeSharedUser(index)"
+                  />
+                  <q-btn
+                    v-if="index === item.shareWith.length - 1 && canShare"
+                    round
+                    dense
+                    color="secondary"
+                    icon="add"
+                    size="sm"
+                    @click="openShareDialog"
+                    aria-label="Share With"
+                  >
+                    <q-tooltip>Add User</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
-              Not shared with anyone
+              <span>Not shared with anyone</span>
+              <q-btn
+                v-if="canShare"
+                round
+                dense
+                color="secondary"
+                icon="add"
+                size="sm"
+                @click="openShareDialog"
+                aria-label="Share With"
+              >
+                <q-tooltip>Add User</q-tooltip>
+              </q-btn>
             </div>
           </div>
-          <q-btn
-            v-if="canShare"
-            label="Share With"
-            color="secondary"
-            class="full-width right-btn"
-            @click="openShareDialog"
-          />
-        </div>
+        </q-expansion-item>
 
-        <!-- Assignment Section -->
-        <div v-if="item" class="q-mb-md">
-          <div class="text-subtitle1">Assigned To:</div>
-          <div class="q-pa-sm bg-grey-2 rounded-borders assignments-box">
+        <!-- Assignment (Dropdown) -->
+        <q-expansion-item
+          v-if="item && !toggleSubitemForm"
+          dense
+          expand-separator
+          icon="assignment_ind"
+          label="Assigned To"
+          :caption="(item.assignedTo?.length || 0) + ' records'"
+          class="q-mb-sm"
+        >
+          <div class="q-pa-sm assignments-box exp-section">
             <div
               v-if="item.assignedTo && item.assignedTo.length"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
@@ -445,46 +606,67 @@
               <div
                 v-for="(assignee, index) in sortedAssignees"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
                 @click="openAssigneeDialog(assignee, index)"
               >
-                <div class="text-ellipsis single-line">
+                <div class="col text-ellipsis single-line">
                   {{ assignee.assignedAt }} - {{ truncateText(assignee.note || 'No note') }}
                 </div>
-                <q-btn
-                  v-if="canAssign"
-                  flat
-                  round
-                  icon="delete"
-                  color="negative"
-                  size="sm"
-                  @click.stop="removeAssignment(index)"
-                />
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="canAssign"
+                    flat
+                    round
+                    icon="delete"
+                    color="negative"
+                    size="sm"
+                    @click.stop="removeAssignment(index)"
+                  />
+                  <q-btn
+                    v-if="index === sortedAssignees.length - 1 && canAssign"
+                    round
+                    dense
+                    color="secondary"
+                    icon="add"
+                    size="sm"
+                    @click.stop="openAssignDialog"
+                    aria-label="Assign Item"
+                  >
+                    <q-tooltip>Add Assignment</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </div>
-            <!-- <div
+            <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
-              Not assigned
-            </div> -->
+              <span>No assignments</span>
+              <q-btn
+                v-if="canAssign"
+                round
+                dense
+                color="secondary"
+                icon="add"
+                size="sm"
+                @click="openAssignDialog"
+                aria-label="Assign Item"
+              >
+                <q-tooltip>Add Assignment</q-tooltip>
+              </q-btn>
+            </div>
           </div>
-          <q-btn
-            v-if="canAssign"
-            label="Assign Item"
-            color="positive"
-            class="full-width right-btn"
-            @click="openAssignDialog"
-          />
-        </div>
+        </q-expansion-item>
 
         <!-- Assignee Dialog -->
         <q-dialog v-model="showAssigneeDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw">
-            <q-card-section>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
               <div class="text-h6">Assignee Details</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
             </q-card-section>
-            <q-card-section>
+            <q-separator />
+            <q-card-section class="dialog-content">
               <div class="text-subtitle2 q-mb-md">
                 Item: {{ item.type || 'Item' }}: {{ item.title || 'Untitled' }}
               </div>
@@ -519,13 +701,14 @@
                 />
               </q-form>
             </q-card-section>
-            <q-card-actions align="right">
+            <q-card-actions class="dialog-actions">
               <q-btn
                 flat
                 label="Close"
                 color="primary"
                 v-close-popup
                 @click="closeAssigneeDialog"
+                class="right-btn"
               />
               <q-btn
                 label="Save"
@@ -533,15 +716,22 @@
                 @click="saveAssigneeDetails"
                 :disable="!canEditAssignee"
                 aria-label="Save assignee details"
+                class="right-btn"
               />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
-        <!-- Meetings Box -->
-        <div v-if="item" class="q-mb-md">
-          <div class="text-subtitle1">Meetings:</div>
-          <div class="q-pa-sm bg-grey-2 rounded-borders meetings-box">
+        <q-expansion-item
+          v-if="item && !toggleSubitemForm"
+          dense
+          expand-separator
+          icon="event"
+          label="Meetings"
+          :caption="(item.meetings?.length || 0) + ' records'"
+          class="q-mb-sm"
+        >
+          <div class="q-pa-sm meetings-box exp-section">
             <div
               v-if="item.meetings && item.meetings.length"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
@@ -549,40 +739,61 @@
               <div
                 v-for="(meeting, index) in sortedMeetings"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
-                <div class="text-ellipsis single-line">
+                <div class="col text-ellipsis single-line">
                   <span class="text-weight-bold">{{ meeting.creator }}</span
                   >: {{ meeting.type }} - {{ meeting.status }} - {{ truncateText(meeting.title) }}
                 </div>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="index === sortedMeetings.length - 1 && item"
+                    round
+                    dense
+                    color="secondary"
+                    icon="add"
+                    size="sm"
+                    @click.stop="openMeetingDialog"
+                    :disable="currentUserRole === 'observer'"
+                    aria-label="Add Meeting"
+                  >
+                    <q-tooltip>Add Meeting</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </div>
-            <!-- <div
+            <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
-              No meetings available.
-            </div> -->
+              <span>No meetings</span>
+              <q-btn
+                v-if="item"
+                round
+                dense
+                color="secondary"
+                icon="add"
+                size="sm"
+                @click="openMeetingDialog"
+                :disable="currentUserRole === 'observer'"
+                aria-label="Add Meeting"
+              >
+                <q-tooltip>Add Meeting</q-tooltip>
+              </q-btn>
+            </div>
           </div>
-          <q-btn
-            v-if="item"
-            label="Add Meeting"
-            color="secondary"
-            class="full-width q-mb-xs right-btn"
-            @click="openMeetingDialog"
-            :disable="currentUserRole === 'observer'"
-            aria-label="Add a new meeting"
-          />
-        </div>
+        </q-expansion-item>
 
         <!-- Meeting Dialog -->
         <q-dialog v-model="showMeetingDialog" persistent>
-          <q-card style="width: 600px; max-width: 90vw">
-            <q-card-section>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
               <div class="text-h6">Start a Meeting</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
             </q-card-section>
-            <q-card-section>
+            <q-separator />
+            <q-card-section class="dialog-content">
               <q-form @submit.prevent="startMeeting">
                 <q-select
                   v-model="meetingType"
@@ -655,9 +866,9 @@
                 </q-list>
                 <q-btn
                   label="Start Meeting"
-                  color="positive"
+                  color="secondary"
                   type="submit"
-                  class="full-width q-mb-md"
+                  class="full-width q-mb-md right-btn"
                   :disable="
                     !selectedMeetingUsers.length ||
                     !meetingTitle ||
@@ -668,18 +879,27 @@
                 />
               </q-form>
             </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Close" color="primary" v-close-popup @click="closeMeetingDialog" />
+            <q-card-actions class="dialog-actions">
+              <q-btn
+                flat
+                label="Close"
+                color="primary"
+                v-close-popup
+                @click="closeMeetingDialog"
+                class="right-btn"
+              />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
         <!-- Meeting Details Dialog -->
         <q-dialog v-model="showMeetingDetailsDialog" persistent>
-          <q-card style="width: 600px; max-width: 90vw">
-            <q-card-section>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
               <div class="text-h6">Meeting Details</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
             </q-card-section>
+            <q-separator />
             <q-card-section>
               <div class="text-subtitle2 q-mb-md">Type: {{ selectedMeeting?.type || 'N/A' }}</div>
               <div class="text-subtitle2 q-mb-md">Title: {{ selectedMeeting?.title || 'N/A' }}</div>
@@ -767,13 +987,14 @@
                 </div>
               </div>
             </q-card-section>
-            <q-card-actions align="right">
+            <q-card-actions class="dialog-actions">
               <q-btn
                 flat
                 label="Close"
                 color="primary"
                 v-close-popup
                 @click="closeMeetingDetailsDialog"
+                class="right-btn"
               />
               <q-btn
                 v-if="selectedMeeting?.creator === currentUser || isMeetingParticipant"
@@ -781,39 +1002,90 @@
                 color="positive"
                 @click="saveAllMeetingDetails"
                 :disable="!(selectedMeeting?.creator === currentUser || isMeetingParticipant)"
+                class="right-btn"
               />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
         <!-- Add New Report Button -->
-        <q-btn
+        <!-- <q-btn
           v-if="item && !isAddingReport && !showReportDialog"
           color="primary"
           label="Add Report"
           @click="toggleReportForm(true)"
           class="q-mb-md right-btn"
           :disable="!canManageOwnReports"
-        />
+        /> -->
 
-        <!-- Reports Box -->
-        <div v-if="item && item.reports && item.reports.length" class="q-mb-md">
-          <div class="text-subtitle1">Reports:</div>
-          <div class="bg-grey-2 rounded-borders q-pa-sm reports-box">
+        <q-expansion-item
+          v-if="item && !toggleSubitemForm"
+          dense
+          expand-separator
+          icon="description"
+          label="Reports"
+          :caption="(item.reports?.length || 0) + ' records'"
+          class="q-mb-sm"
+        >
+          <div class="q-pa-sm reports-box exp-section">
             <div
-              v-for="(report, index) in sortedReports"
-              :key="index"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
-              @click="openReportDialog(report, index)"
+              v-if="item.reports && item.reports.length"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
             >
-              <div class="text-ellipsis single-line">
-                <span class="text-weight-bold">{{ report.creator }}</span>
-                <span v-if="report.edited" class="text-grey-7"> (Edited)</span>: {{ report.date }} -
-                {{ truncateText(report.details) }}
+              <div
+                v-for="(report, index) in sortedReports"
+                :key="index"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
+                @click="openReportDialog(report, index)"
+              >
+                <div class="col text-ellipsis single-line">
+                  <span class="text-weight-bold">{{ report.creator }}</span>
+                  <span v-if="report.edited" class="text-grey-7"> (Edited)</span>:
+                  {{ report.date }} - {{ truncateText(report.details) }}
+                </div>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="
+                      index === sortedReports.length - 1 &&
+                      item &&
+                      !showAddReportDialog &&
+                      !showReportDialog
+                    "
+                    round
+                    dense
+                    color="secondary"
+                    icon="add"
+                    size="sm"
+                    @click.stop="showAddReportDialog = true"
+                    :disable="!canManageOwnReports"
+                    aria-label="Add Report"
+                  >
+                    <q-tooltip>Add Report</q-tooltip>
+                  </q-btn>
+                </div>
               </div>
             </div>
+            <div
+              v-else
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+            >
+              <span>No reports</span>
+              <q-btn
+                v-if="item && !showAddReportDialog && !showReportDialog"
+                round
+                dense
+                color="secondary"
+                icon="add"
+                size="sm"
+                @click="showAddReportDialog = true"
+                :disable="!canManageOwnReports"
+                aria-label="Add Report"
+              >
+                <q-tooltip>Add Report</q-tooltip>
+              </q-btn>
+            </div>
           </div>
-        </div>
+        </q-expansion-item>
         <!-- <div
           v-else-if="item && item.reports && !item.reports.length"
           class="q-mb-md text-center text-negative"
@@ -821,13 +1093,56 @@
           No reports available.
         </div> -->
 
+        <!-- Add Report Dialog -->
+        <q-dialog v-model="showAddReportDialog" persistent>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
+              <div class="text-h6">Add New Report</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
+            </q-card-section>
+            <q-separator />
+            <q-card-section class="dialog-content">
+              <q-input
+                v-model="newReportDetails"
+                placeholder="Enter what you have done..."
+                dense
+                :error="!newReportDetails && reportFormSubmitted"
+                error-message="Details are required"
+                class="q-mb-md"
+                :disable="!canManageOwnReports"
+                type="textarea"
+                rows="4"
+              />
+            </q-card-section>
+            <q-card-actions class="dialog-actions">
+              <q-btn
+                flat
+                label="Cancel"
+                color="primary"
+                v-close-popup
+                @click="cancelReport"
+                class="right-btn"
+              />
+              <q-btn
+                label="Save Report"
+                color="positive"
+                @click="saveReport"
+                :disable="!canManageOwnReports"
+                class="right-btn"
+              />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
+
         <!-- Report Dialog -->
         <q-dialog v-model="showReportDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw">
-            <q-card-section>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
               <div class="text-h6">Report Details</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
             </q-card-section>
-            <q-card-section>
+            <q-separator />
+            <q-card-section class="dialog-content">
               <div class="text-subtitle2 q-mb-md">
                 Written by: {{ selectedReport?.creator || 'Unknown' }}
                 <span v-if="selectedReport?.edited" class="text-weight-bold text-grey-7">
@@ -858,23 +1173,37 @@
                 </div>
               </div>
             </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Close" color="primary" v-close-popup @click="closeReportDialog" />
+            <q-card-actions class="dialog-actions">
+              <q-btn
+                flat
+                label="Close"
+                color="primary"
+                v-close-popup
+                @click="closeReportDialog"
+                class="right-btn"
+              />
               <q-btn
                 v-if="isReportOwner"
                 label="Save"
                 color="positive"
                 @click="saveEditedReport"
                 :disable="!isReportOwner"
+                class="right-btn"
               />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
-        <!-- Comments Box -->
-        <div v-if="item" class="q-mb-md">
-          <div class="text-subtitle1">Comments:</div>
-          <div class="bg-grey-2 rounded-borders q-pa-sm comments-box">
+        <q-expansion-item
+          v-if="item && !toggleSubitemForm"
+          dense
+          expand-separator
+          icon="chat"
+          label="Comments"
+          :caption="(item.comments?.length || 0) + ' records'"
+          class="q-mb-sm"
+        >
+          <div class="q-pa-sm comments-box exp-section">
             <div
               v-if="item.comments && item.comments.length"
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
@@ -882,45 +1211,67 @@
               <div
                 v-for="(comment, index) in sortedComments"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center justify-between cursor-pointer"
+                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
                 @click="openCommentDialog(comment, index)"
               >
-                <div class="text-ellipsis single-line">
+                <div class="col text-ellipsis single-line">
                   <span class="text-weight-bold">{{ comment.creator }}</span>
                   <span v-if="comment.edited" class="text-grey-7"> (Edited)</span>:
                   {{ comment.date }} - {{ truncateText(comment.details) }}
                   <div v-if="comment.reply" class="text-caption">
-                    Reply by {{ comment.reply.creator }}:
-                    {{ truncateText(comment.reply.text) }}
-                    <span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
+                    Reply by {{ comment.reply.creator }}: {{ truncateText(comment.reply.text)
+                    }}<span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
                   </div>
+                </div>
+                <div class="row items-center q-gutter-xs">
+                  <q-btn
+                    v-if="index === sortedComments.length - 1 && currentUserRole === 'observer'"
+                    round
+                    dense
+                    color="secondary"
+                    icon="add"
+                    size="sm"
+                    class="right-btn"
+                    @click.stop="openCommentDialog(null, null)"
+                    :disable="currentUserRole !== 'observer'"
+                    aria-label="Add Comment"
+                  >
+                    <q-tooltip>Add Comment</q-tooltip>
+                  </q-btn>
                 </div>
               </div>
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative"
+              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
-              No comments available.
+              <span>No comments available</span>
+              <q-btn
+                v-if="currentUserRole === 'observer'"
+                round
+                dense
+                color="secondary"
+                icon="add"
+                size="sm"
+                @click="openCommentDialog(null, null)"
+                :disable="currentUserRole !== 'observer'"
+                aria-label="Add Comment"
+              >
+                <q-tooltip>Add Comment</q-tooltip>
+              </q-btn>
             </div>
           </div>
-          <q-btn
-            v-if="currentUserRole === 'observer'"
-            label="Add Comment"
-            color="secondary"
-            class="full-width q-mb-xs"
-            @click="openCommentDialog(null, null)"
-            :disable="currentUserRole !== 'observer'"
-          />
-        </div>
+        </q-expansion-item>
 
         <!-- Comment Dialog -->
         <q-dialog v-model="showCommentDialog" persistent>
-          <q-card style="width: 400px; max-width: 90vw">
-            <q-card-section>
+          <q-card class="dialog-card">
+            <q-card-section class="dialog-header">
               <div class="text-h6">Comment Details</div>
+              <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
             </q-card-section>
-            <q-card-section>
+            <q-separator />
+            <q-card-section class="dialog-content">
               <div class="text-subtitle2 q-mb-md">
                 Written by: {{ selectedComment?.creator || 'Unknown' }}
                 <span v-if="selectedComment?.edited" class="text-weight-bold text-grey-7">
@@ -990,35 +1341,33 @@
                 </div>
               </div>
             </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Close" color="primary" v-close-popup @click="closeCommentDialog" />
+            <q-card-actions class="dialog-actions">
+              <q-btn
+                flat
+                label="Close"
+                color="primary"
+                v-close-popup
+                @click="closeCommentDialog"
+                class="right-btn"
+              />
               <q-btn
                 v-if="isCommentOwner || currentUserRole === 'owner'"
                 label="Save"
                 color="positive"
                 @click="saveCommentOrReply"
                 :disable="!isCommentOwner && currentUserRole !== 'owner'"
+                class="right-btn"
               />
             </q-card-actions>
           </q-card>
         </q-dialog>
 
         <!-- Subitem Form -->
-        <div class="bg-white" style="padding: 15px">
-          <div v-if="!toggleSubitemForm" class="q-my-md flex flex-center">
-            <q-circular-progress
-              show-value
-              :value="completionPercent"
-              size="80px"
-              color="green"
-              track-color="grey-3"
-            >
-              {{ completionPercent }}%
-            </q-circular-progress>
-          </div>
+        <div class="bg-white" style="padding: 3px">
           <div v-if="!toggleSubitemForm">
             <q-btn
               label="New Subitem"
+              icon="add"
               color="secondary"
               class="full-width q-mb-xs right-btn"
               @click="openSubitemForm"
@@ -1026,10 +1375,10 @@
             />
           </div>
           <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
-            <q-form @submit.prevent="addSubitem" style="padding: 5px 15px">
+            <q-form @submit.prevent="addSubitem">
               <q-select
                 v-model="subitemForm.type"
-                :options="['Task', 'Project', 'Portfolio', 'Other']"
+                :options="itemTypeOptions"
                 label="Subitem Type (select or type)"
                 dense
                 use-input
@@ -1080,7 +1429,7 @@
                   type="submit"
                   label="Save Subitem"
                   color="secondary"
-                  class="full-width q-mr-sm"
+                  class="full-width q-mr-sm right-btn"
                   :disable="!canAddSubitems"
                 />
                 <q-btn
@@ -1099,11 +1448,13 @@
 
     <!-- Share Dialog -->
     <q-dialog v-model="showShareDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw">
-        <q-card-section>
+      <q-card class="dialog-card">
+        <q-card-section class="dialog-header">
           <div class="text-h6">Share With</div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
         </q-card-section>
-        <q-card-section>
+        <q-separator />
+        <q-card-section class="dialog-content">
           <q-form @submit.prevent="addSharedUser">
             <div class="row items-center q-mb-md">
               <q-input
@@ -1154,9 +1505,9 @@
             </q-item>
             <q-btn
               label="Add User"
-              color="positive"
+              color="secondary"
               type="submit"
-              class="full-width q-mb-md"
+              class="full-width q-mb-md right-btn"
               :disable="!canShare || !searchUsername || usernameError || !isValidUsername"
             />
           </q-form>
@@ -1212,20 +1563,35 @@
             </div>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" v-close-popup @click="closeShareDialog" />
-          <q-btn label="Save" color="positive" @click="saveSharedUsers" :disable="!canShare" />
+        <q-card-actions class="dialog-actions">
+          <q-btn
+            flat
+            label="Close"
+            color="primary"
+            v-close-popup
+            @click="closeShareDialog"
+            class="right-btn"
+          />
+          <q-btn
+            label="Save"
+            color="positive"
+            @click="saveSharedUsers"
+            :disable="!canShare"
+            class="right-btn"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Assign Dialog -->
     <q-dialog v-model="showAssignDialog" persistent>
-      <q-card style="width: 600px; max-width: 90vw">
-        <q-card-section>
+      <q-card class="dialog-card">
+        <q-card-section class="dialog-header">
           <div class="text-h6">Assign Item</div>
+          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
         </q-card-section>
-        <q-card-section>
+        <q-separator />
+        <q-card-section class="dialog-content">
           <q-form @submit.prevent="addAssignee">
             <q-select
               v-model="selectedItem"
@@ -1299,9 +1665,9 @@
             </div>
             <q-btn
               label="Add User"
-              color="positive"
+              color="secondary"
               type="submit"
-              class="full-width q-mt-md"
+              class="full-width q-mt-md right-btn"
               :disable="!canAssign || !searchAssignUsername || !isValidAssignUsername"
             />
           </q-form>
@@ -1330,14 +1696,22 @@
             </div>
           </div>
         </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" v-close-popup @click="closeAssignDialog" />
+        <q-card-actions class="dialog-actions">
+          <q-btn
+            flat
+            label="Close"
+            color="primary"
+            v-close-popup
+            @click="closeAssignDialog"
+            class="right-btn"
+          />
           <q-btn
             label="Save"
             color="positive"
             @click="saveAssignment"
             :disable="!canAssign || !selectedItem || !newAssignees.length"
             aria-label="Save assignment"
+            class="right-btn"
           />
         </q-card-actions>
       </q-card>
@@ -1352,8 +1726,10 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const currentDateTime = ref('')
 const item = ref(null)
+const searchQuery = ref('')
 const directParent = ref(null)
 const sortByPriority = ref(false)
 const draggedItem = ref(null)
@@ -1372,9 +1748,9 @@ const statusOptions = ref(['Backlog', 'In Progress', 'Done'])
 const categoryOptions = ref(['Development', 'Design', 'Marketing', 'Research', 'Others'])
 const errorMessage = ref('')
 const itemId = ref(0)
-const isEditingNote = ref(false)
-const originalNote = ref('')
-const isAddingReport = ref(false)
+const showNoteDialog = ref(false)
+const noteDialogMode = ref('add') // 'add' or 'edit'
+const noteDraft = ref('')
 const newReportDetails = ref('')
 const reportFormSubmitted = ref(false)
 const selectedReport = ref(null)
@@ -1400,6 +1776,7 @@ const showAssigneeDialog = ref(false)
 const selectedAssignee = ref(null)
 const selectedAssigneeIndex = ref(null)
 const showReportDialog = ref(false)
+const showAddReportDialog = ref(false)
 const showMeetingDialog = ref(false)
 const meetingType = ref('')
 const meetingTitle = ref('')
@@ -1415,6 +1792,7 @@ const showCommentDialog = ref(false)
 const selectedComment = ref(null)
 const selectedCommentIndex = ref(null)
 const newReplyText = ref('')
+const itemTypeOptions = ref(['Story', 'Epic', 'Project', 'Task'])
 
 // Update currentDateTime dynamically
 const updateCurrentDateTime = () => {
@@ -1722,8 +2100,7 @@ const loadItems = () => {
   isEditing.value = false
   setEditingState(itemId.value, false)
   toggleSubitemForm.value = false
-  isEditingNote.value = false
-  isAddingReport.value = false
+  showAddReportDialog.value = false
   selectedReport.value = null
   selectedReportIndex.value = null
   showReportDialog.value = false
@@ -2093,53 +2470,6 @@ const resetSubitemForm = () => {
   console.log('Reset subitem form')
 }
 
-const toggleNoteEdit = (value) => {
-  if (!canEdit.value) {
-    console.log('Cannot toggle note edit: Insufficient permissions')
-    return
-  }
-  if (value) {
-    originalNote.value = item.value.note
-    console.log('Started editing note:', originalNote.value)
-  }
-  isEditingNote.value = value
-  if (!value && !item.value.note) {
-    item.value.note = ''
-  }
-  console.log('Toggled note edit mode:', value)
-}
-
-const cancelNoteEdit = () => {
-  item.value.note = originalNote.value
-  isEditingNote.value = false
-  errorMessage.value = ''
-  console.log('Cancelled note edit')
-}
-
-const saveNote = () => {
-  if (!canEdit.value) {
-    console.log('Cannot save note: Insufficient permissions')
-    return
-  }
-  if (item.value.note && item.value.note.trim()) {
-    if (originalNote.value !== item.value.note) {
-      item.value.noteHistory = item.value.noteHistory || []
-      item.value.noteHistory.push({
-        note: originalNote.value,
-        date: new Date().toLocaleString('en-US'),
-        editedBy: currentUser.value,
-      })
-    }
-    console.log('Saving note:', item.value.note)
-    saveItem()
-    isEditingNote.value = false
-    errorMessage.value = ''
-  } else {
-    errorMessage.value = 'Note cannot be empty.'
-    console.error('Note validation failed: Note is empty')
-  }
-}
-
 const deleteNote = () => {
   if (!canEdit.value) {
     console.log('Cannot delete note: Insufficient permissions')
@@ -2157,26 +2487,54 @@ const deleteNote = () => {
   errorMessage.value = ''
 }
 
-const toggleReportForm = (value) => {
-  if (!canManageOwnReports.value && value) {
-    console.log('Cannot toggle report form: Insufficient permissions')
+const openNoteDialog = () => {
+  if (!canEdit.value) {
+    console.log('Cannot open note dialog: Insufficient permissions')
     return
   }
-  if (value) {
-    newReportDetails.value = ''
-    reportFormSubmitted.value = false
+  if (item.value.note) {
+    noteDialogMode.value = 'edit'
+    noteDraft.value = item.value.note
+  } else {
+    noteDialogMode.value = 'add'
+    noteDraft.value = ''
   }
-  isAddingReport.value = value
-  if (value) {
-    selectedReport.value = null
-    selectedReportIndex.value = null
-    showReportDialog.value = false
+  showNoteDialog.value = true
+}
+
+const saveNoteFromDialog = () => {
+  if (!canEdit.value) {
+    console.log('Cannot save note: Insufficient permissions')
+    return
   }
-  console.log('Toggled report form:', value)
+  if (noteDraft.value && noteDraft.value.trim()) {
+    item.value.noteHistory = item.value.noteHistory || []
+    if (noteDialogMode.value === 'edit' && item.value.note) {
+      item.value.noteHistory.push({
+        note: item.value.note,
+        date: new Date().toLocaleString('en-US'),
+        editedBy: currentUser.value,
+      })
+    }
+    item.value.note = noteDraft.value.trim()
+    item.value.noteHistory.push({
+      note: item.value.note,
+      date: new Date().toLocaleString('en-US'),
+      editedBy: currentUser.value,
+    })
+    showNoteDialog.value = false
+    saveItem()
+    errorMessage.value = ''
+    console.log(`Note ${noteDialogMode.value === 'add' ? 'created' : 'updated'}`)
+  } else {
+    errorMessage.value = 'Note cannot be empty'
+  }
 }
 
 const cancelReport = () => {
-  isAddingReport.value = false
+  showAddReportDialog.value = false
+  newReportDetails.value = ''
+  reportFormSubmitted.value = false
   errorMessage.value = ''
   console.log('Cancelled report form')
 }
@@ -2204,8 +2562,9 @@ const saveReport = () => {
   item.value.reports.unshift(newReport)
   console.log('Saved report:', newReport)
   saveItem()
-  isAddingReport.value = false
+  showAddReportDialog.value = false
   newReportDetails.value = ''
+  reportFormSubmitted.value = false
   errorMessage.value = ''
 }
 
@@ -2213,7 +2572,7 @@ const openReportDialog = (report, index) => {
   selectedReport.value = { ...report }
   selectedReportIndex.value = index
   showReportDialog.value = true
-  isAddingReport.value = false
+  showAddReportDialog.value = false
   console.log('Opened report dialog for report:', report)
 }
 
@@ -2556,6 +2915,13 @@ const saveAllMeetingDetails = () => {
 const truncateText = (text) => {
   if (!text) return ''
   return text.length > 30 ? text.substring(0, 30) + '...' : text
+}
+
+const formatItemDate = (value) => {
+  if (!value) return 'No due date'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return 'No due date'
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric' })
 }
 
 const openShareDialog = () => {
@@ -3003,6 +3369,9 @@ const sortSubitems = () => {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
   padding: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .item-card {
   position: relative;
@@ -3018,15 +3387,16 @@ const sortSubitems = () => {
 }
 .right-btn {
   border-radius: 12px;
-  height: 48px;
+  height: 10px;
 }
 .fancy-toggle {
   margin-bottom: 8px;
   display: inline-block;
   background: rgba(255, 255, 255, 0.85);
-  padding: 0px 10px;
-  padding-bottom: 6px;
+  padding: 4px 8px;
+  /* padding-left: 20px; */
   border-radius: 9999px;
+  width: fit-content;
 }
 .priority-low {
   background: #d3d6d3;
@@ -3038,6 +3408,65 @@ const sortSubitems = () => {
 .priority-high {
   background: #ebc7a9;
   color: #7a2d00;
+}
+
+/* Homepage matching styles */
+.item-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.item-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+.ellipsis {
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-surface {
+  border-radius: 16px;
+}
+.board-row {
+  height: calc(100vh - 120px);
+}
+.column-scroll {
+  max-height: calc(86vh - 220px);
+  overflow-y: auto;
+  /* padding-bottom: 60px; */
+  /* padding-bottom: 24px; */
+  min-height: 0;
+  flex: 1;
+}
+.topbar {
+  position: relative;
+  flex-wrap: nowrap;
+}
+.date-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: rgb(35, 79, 124);
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+.fancy-toggle {
+  margin-bottom: -10px;
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 5px 10px;
+  padding-bottom: 7px;
+  margin-right: 300px;
+  border-radius: 9999px;
+  width: fit-content;
 }
 .top-right-info {
   max-width: 60%;
@@ -3053,14 +3482,14 @@ const sortSubitems = () => {
   position: fixed;
   top: 12px;
   left: 12px;
-  right: 12px;
-  height: 56px;
+  /* right: 1350px; */
+  height: 70px;
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-radius: 8px;
-  background-color: #4d81c5;
-  color: white;
+  border-radius: 80px;
+  background-color: #ffffff;
+  color: #1f2937;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 10;
 }
@@ -3081,6 +3510,85 @@ const sortSubitems = () => {
   height: 35px;
   width: auto;
 }
+.exp-section {
+  position: relative;
+}
+.section-add-btn {
+  position: absolute;
+  top: -5px;
+  right: 4px;
+}
+.top-search {
+  position: fixed;
+  top: 33px;
+  left: 480px;
+  /* right: 0px; leaves room for right icons */
+  display: flex;
+  align-items: center;
+  z-index: 10;
+}
+.big-search-input {
+  width: 500px;
+  max-width: 1000px;
+  height: 48px;
+}
+.top-actions {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 11;
+}
+
+.fixed-right-panel {
+  position: fixed;
+  z-index: 10;
+}
+
+/* Dialog Styling */
+.dialog-card {
+  width: 520px;
+  max-width: 92vw;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.dialog-header {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dialog-header .text-h6 {
+  margin: 0;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.dialog-content {
+  padding: 24px;
+  background: #ffffff;
+}
+
+.dialog-actions {
+  background: #f8f9fa;
+  border-radius: 0 0 16px 16px;
+  padding: 16px 24px;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.dialog-actions .q-btn {
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 8px 16px;
+}
 .divider-col {
   border-left: 1px solid #ccc;
   padding-left: 8px;
@@ -3091,12 +3599,15 @@ const sortSubitems = () => {
   align-items: stretch;
 }
 .row.board-row {
-  height: calc(100vh - 120px);
+  max-height: calc(93vh - 180px);
+  align-items: flex-start;
+  flex: 1;
 }
 .column-box {
-  height: calc(100vh - 200px);
+  height: calc(93vh - 180px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .resizable-note {
   width: 100%;
@@ -3115,6 +3626,38 @@ const sortSubitems = () => {
   border: 1px solid #ccc;
   padding: 8px;
   font-family: inherit;
+  border-radius: 16px;
+}
+
+.note-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  display: inline-block;
+  width: auto;
+  max-width: 50%;
+}
+
+.note-card .q-card-section {
+  padding: 8px 0;
+  line-height: 1.6;
+  color: #333;
+  background: transparent;
+}
+
+.note-inline {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: auto;
+  max-width: 100%;
+}
+
+.note-text {
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  word-break: break-word;
 }
 .reports-box {
   max-height: 200px;
@@ -3151,7 +3694,7 @@ const sortSubitems = () => {
 }
 .subitem-form {
   padding: 10px;
-  border-radius: 4px;
+  border-radius: 16px;
 }
 .user-list {
   max-height: 200px;
