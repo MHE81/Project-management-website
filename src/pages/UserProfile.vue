@@ -18,7 +18,7 @@
           v-if="apiError"
           dense
           class="bg-negative text-white q-mb-md"
-          style="width: fit-content; max-width: 100%"
+          style="max-width: 100%"
           aria-live="polite"
           role="alert"
         >
@@ -30,7 +30,7 @@
           v-if="successMessage"
           dense
           class="bg-positive text-white q-mb-md"
-          style="width: fit-content; max-width: 100%"
+          style="max-width: 100%"
           aria-live="polite"
           role="alert"
         >

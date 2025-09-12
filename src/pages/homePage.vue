@@ -238,10 +238,23 @@
       <!-- Right-side Panel (no white background) -->
       <div
         class="fixed-top-right"
-        style="width: 260px; top: 220px; right: 10px; bottom: 10px; overflow-y: hidden; padding: 0"
+        style="width: 260px; top: 123px; right: 10px; bottom: 10px; overflow-y: hidden; padding: 0"
       >
+        <!-- Progress Chart (no white background) -->
+        <div class="q-mb-md flex flex-center">
+          <q-circular-progress
+            show-value
+            :value="completionPercent"
+            size="80px"
+            color="green"
+            track-color="grey-3"
+          >
+            {{ completionPercent }}%
+          </q-circular-progress>
+        </div>
         <!-- Invitations Banner (no white background) -->
         <q-banner
+
           dense
           class="bg-yellow-9 text-white full-width q-mb-md right-btn text-center"
           aria-live="polite"
@@ -262,25 +275,13 @@
 
         <!-- Add Item Button (no white background) -->
         <q-btn
+
           label="Add Item"
           icon="add"
           color="secondary"
           class="full-width q-mb-md right-btn"
           @click="toggleForm = !toggleForm"
         />
-
-        <!-- Progress Chart (no white background) -->
-        <div class="q-mb-md flex flex-center">
-          <q-circular-progress
-            show-value
-            :value="completionPercent"
-            size="80px"
-            color="green"
-            track-color="grey-3"
-          >
-            {{ completionPercent }}%
-          </q-circular-progress>
-        </div>
 
         <!-- Item Form (rounded like cards, no extra background) -->
         <div v-if="toggleForm" class="bg-grey-2 q-pb-md board-surface form-scroll form-surface">
@@ -362,7 +363,7 @@
               class="field-rounded field-spaced"
               popup-content-class="menu-rounded"
             />
-            <div class="q-mt-sm">
+            <!-- <div class="q-mt-sm">
               <div class="text-subtitle2">Subitems</div>
               <div
                 v-for="(subitem, index) in itemForm.subitems"
@@ -455,7 +456,7 @@
                   })
                 "
               />
-            </div>
+            </div> -->
             <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
           </q-form>
         </div>
@@ -1393,7 +1394,7 @@ watch(
   padding-bottom: 6px;
 }
 .form-scroll {
-  max-height: calc(100% - 210px);
+  max-height: calc(55vh - 20px);
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -1401,7 +1402,8 @@ watch(
   border-radius: 12px;
 }
 .field-spaced {
-  margin-top: 2px;
+  /* margin-top: 2px; */
+  /* padding-top: 2px; */
   /* margin-bottom: 1px; */
 }
 .menu-rounded {

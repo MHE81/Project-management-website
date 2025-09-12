@@ -187,7 +187,7 @@
     </q-dialog>
 
     <!-- Parent Chain Info -->
-    <div v-if="parentChain.length" class="text-subtitle1 q-mb-md">
+    <div v-if="parentChain.length" class="text-subtitle1 q-mb-md row items-center q-gutter-sm fancy-toggle" >
       <span>
         <span v-for="(parent, index) in parentChain" :key="parent.id">
           {{ parent.type }}: {{ parent.title }}{{ index < parentChain.length - 1 ? ' -> ' : '' }}
@@ -496,8 +496,8 @@
 
       <!-- Right Side Box -->
       <div
-        class="fixed-right-panel q-pa-md bg-grey-2 board-surface"
-        style="width: 270px; top: 90px; right: 12px; bottom: 12px; overflow-y: auto"
+        class="fixed-right-panel q-pa-md  board-surface"
+        style="width: 270px; top: 65px; right: 12px; bottom: 12px; overflow-y: auto"
       >
         <!-- Progress Circle on top -->
         <div class="q-mb-md flex flex-center">
@@ -506,7 +506,7 @@
             :value="completionPercent"
             size="90px"
             color="green"
-            track-color="grey-3"
+            track-color="grey-5"
           >
             {{ completionPercent }}%
           </q-circular-progress>
@@ -519,18 +519,31 @@
           expand-separator
           icon="group"
           label="Shared With"
+          style="padding-top: 30px"
           :caption="(item.shareWith?.length || 0) + ' users'"
           class="q-mb-sm"
         >
           <div class="q-pa-sm exp-section">
+            <q-btn
+              v-if="canShare"
+              round
+              dense
+              color="secondary"
+              icon="add"
+              size="sm"
+              class="section-add-btn"
+              @click="openShareDialog"
+              aria-label="Share With"
+            />
             <div
               v-if="item.shareWith && item.shareWith.length"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+              class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs"
+              style="border-radius: 16px"
             >
               <div
                 v-for="(share, index) in item.shareWith"
                 :key="index"
-                class="row items-center q-mb-xs"
+                class="row items-center q-mb-xs dropdown-row"
               >
                 <div class="col">
                   {{ share.username }}
@@ -552,18 +565,6 @@
                     size="sm"
                     @click="removeSharedUser(index)"
                   />
-                  <q-btn
-                    v-if="index === item.shareWith.length - 1 && canShare"
-                    round
-                    dense
-                    color="secondary"
-                    icon="add"
-                    size="sm"
-                    @click="openShareDialog"
-                    aria-label="Share With"
-                  >
-                    <q-tooltip>Add User</q-tooltip>
-                  </q-btn>
                 </div>
               </div>
             </div>
@@ -572,18 +573,6 @@
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
               <span>Not shared with anyone</span>
-              <q-btn
-                v-if="canShare"
-                round
-                dense
-                color="secondary"
-                icon="add"
-                size="sm"
-                @click="openShareDialog"
-                aria-label="Share With"
-              >
-                <q-tooltip>Add User</q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-expansion-item>
@@ -599,14 +588,26 @@
           class="q-mb-sm"
         >
           <div class="q-pa-sm assignments-box exp-section">
+            <q-btn
+              v-if="canAssign"
+              round
+              dense
+              color="secondary"
+              icon="add"
+              size="sm"
+              class="section-add-btn"
+              @click="openAssignDialog"
+              aria-label="Assign Item"
+            />
             <div
               v-if="item.assignedTo && item.assignedTo.length"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+              class="q-py-xs q-px-sm rounded-borders q-mb-xs"
             >
               <div
                 v-for="(assignee, index) in sortedAssignees"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
+                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px"
                 @click="openAssigneeDialog(assignee, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -622,38 +623,14 @@
                     size="sm"
                     @click.stop="removeAssignment(index)"
                   />
-                  <q-btn
-                    v-if="index === sortedAssignees.length - 1 && canAssign"
-                    round
-                    dense
-                    color="secondary"
-                    icon="add"
-                    size="sm"
-                    @click.stop="openAssignDialog"
-                    aria-label="Assign Item"
-                  >
-                    <q-tooltip>Add Assignment</q-tooltip>
-                  </q-btn>
                 </div>
               </div>
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              class="q-py-xs q-px-sm bg-gray-3 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
               <span>No assignments</span>
-              <q-btn
-                v-if="canAssign"
-                round
-                dense
-                color="secondary"
-                icon="add"
-                size="sm"
-                @click="openAssignDialog"
-                aria-label="Assign Item"
-              >
-                <q-tooltip>Add Assignment</q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-expansion-item>
@@ -732,35 +709,33 @@
           class="q-mb-sm"
         >
           <div class="q-pa-sm meetings-box exp-section">
+            <q-btn
+              v-if="item && currentUserRole !== 'observer'"
+              round
+              dense
+              color="secondary"
+              icon="add"
+              size="sm"
+              class="section-add-btn"
+              @click="openMeetingDialog"
+              aria-label="Add Meeting"
+            />
             <div
               v-if="item.meetings && item.meetings.length"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+              class="q-py-xs q-px-sm rounded-borders q-mb-xs"
             >
               <div
                 v-for="(meeting, index) in sortedMeetings"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
+                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px"
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
                 <div class="col text-ellipsis single-line">
                   <span class="text-weight-bold">{{ meeting.creator }}</span
                   >: {{ meeting.type }} - {{ meeting.status }} - {{ truncateText(meeting.title) }}
                 </div>
-                <div class="row items-center q-gutter-xs">
-                  <q-btn
-                    v-if="index === sortedMeetings.length - 1 && item"
-                    round
-                    dense
-                    color="secondary"
-                    icon="add"
-                    size="sm"
-                    @click.stop="openMeetingDialog"
-                    :disable="currentUserRole === 'observer'"
-                    aria-label="Add Meeting"
-                  >
-                    <q-tooltip>Add Meeting</q-tooltip>
-                  </q-btn>
-                </div>
+                <div class="row items-center q-gutter-xs"></div>
               </div>
             </div>
             <div
@@ -768,19 +743,6 @@
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
               <span>No meetings</span>
-              <q-btn
-                v-if="item"
-                round
-                dense
-                color="secondary"
-                icon="add"
-                size="sm"
-                @click="openMeetingDialog"
-                :disable="currentUserRole === 'observer'"
-                aria-label="Add Meeting"
-              >
-                <q-tooltip>Add Meeting</q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-expansion-item>
@@ -1028,14 +990,26 @@
           class="q-mb-sm"
         >
           <div class="q-pa-sm reports-box exp-section">
+            <q-btn
+              v-if="item && !showAddReportDialog && !showReportDialog && canManageOwnReports"
+              round
+              dense
+              color="secondary"
+              icon="add"
+              size="sm"
+              class="section-add-btn"
+              @click.stop="showAddReportDialog = true"
+              aria-label="Add Report"
+            />
             <div
               v-if="item.reports && item.reports.length"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+              class="q-py-xs q-px-sm rounded-borders q-mb-xs"
             >
               <div
                 v-for="(report, index) in sortedReports"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
+                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px"
                 @click="openReportDialog(report, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -1043,26 +1017,7 @@
                   <span v-if="report.edited" class="text-grey-7"> (Edited)</span>:
                   {{ report.date }} - {{ truncateText(report.details) }}
                 </div>
-                <div class="row items-center q-gutter-xs">
-                  <q-btn
-                    v-if="
-                      index === sortedReports.length - 1 &&
-                      item &&
-                      !showAddReportDialog &&
-                      !showReportDialog
-                    "
-                    round
-                    dense
-                    color="secondary"
-                    icon="add"
-                    size="sm"
-                    @click.stop="showAddReportDialog = true"
-                    :disable="!canManageOwnReports"
-                    aria-label="Add Report"
-                  >
-                    <q-tooltip>Add Report</q-tooltip>
-                  </q-btn>
-                </div>
+                <div class="row items-center q-gutter-xs"></div>
               </div>
             </div>
             <div
@@ -1070,19 +1025,6 @@
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
               <span>No reports</span>
-              <q-btn
-                v-if="item && !showAddReportDialog && !showReportDialog"
-                round
-                dense
-                color="secondary"
-                icon="add"
-                size="sm"
-                @click="showAddReportDialog = true"
-                :disable="!canManageOwnReports"
-                aria-label="Add Report"
-              >
-                <q-tooltip>Add Report</q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-expansion-item>
@@ -1204,14 +1146,26 @@
           class="q-mb-sm"
         >
           <div class="q-pa-sm comments-box exp-section">
+            <q-btn
+              v-if="currentUserRole === 'observer'"
+              round
+              dense
+              color="secondary"
+              icon="add"
+              size="sm"
+              class="section-add-btn"
+              @click.stop="openCommentDialog(null, null)"
+              aria-label="Add Comment"
+            />
             <div
               v-if="item.comments && item.comments.length"
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs"
+              class="q-py-xs q-px-sm rounded-borders q-mb-xs"
             >
               <div
                 v-for="(comment, index) in sortedComments"
                 :key="index"
-                class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs row items-center cursor-pointer"
+                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px"
                 @click="openCommentDialog(comment, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -1223,22 +1177,7 @@
                     }}<span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
                   </div>
                 </div>
-                <div class="row items-center q-gutter-xs">
-                  <q-btn
-                    v-if="index === sortedComments.length - 1 && currentUserRole === 'observer'"
-                    round
-                    dense
-                    color="secondary"
-                    icon="add"
-                    size="sm"
-                    class="right-btn"
-                    @click.stop="openCommentDialog(null, null)"
-                    :disable="currentUserRole !== 'observer'"
-                    aria-label="Add Comment"
-                  >
-                    <q-tooltip>Add Comment</q-tooltip>
-                  </q-btn>
-                </div>
+                <div class="row items-center q-gutter-xs"></div>
               </div>
             </div>
             <div
@@ -1246,19 +1185,6 @@
               class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
             >
               <span>No comments available</span>
-              <q-btn
-                v-if="currentUserRole === 'observer'"
-                round
-                dense
-                color="secondary"
-                icon="add"
-                size="sm"
-                @click="openCommentDialog(null, null)"
-                :disable="currentUserRole !== 'observer'"
-                aria-label="Add Comment"
-              >
-                <q-tooltip>Add Comment</q-tooltip>
-              </q-btn>
             </div>
           </div>
         </q-expansion-item>
@@ -1363,7 +1289,7 @@
         </q-dialog>
 
         <!-- Subitem Form -->
-        <div class="bg-white" style="padding: 3px">
+        <div style="padding: 3px; padding-top: 20px">
           <div v-if="!toggleSubitemForm">
             <q-btn
               label="New Subitem"
@@ -1374,7 +1300,7 @@
               :disable="!canAddSubitems"
             />
           </div>
-          <div v-if="toggleSubitemForm" class="bg-white q-pa-md subitem-form">
+          <div v-if="toggleSubitemForm" class="bg-grey-3 q-pa-md subitem-form">
             <q-form @submit.prevent="addSubitem">
               <q-select
                 v-model="subitemForm.type"
@@ -3512,11 +3438,16 @@ const sortSubitems = () => {
 }
 .exp-section {
   position: relative;
+  border-radius: 20px;
+  /* background-color: #f6a8a8; */
+}
+.dropdown-row {
+  min-height: 40px;
 }
 .section-add-btn {
   position: absolute;
-  top: -5px;
-  right: 4px;
+  top: 10px;
+  right: 2px;
 }
 .top-search {
   position: fixed;

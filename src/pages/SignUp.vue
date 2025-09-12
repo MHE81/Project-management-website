@@ -6,11 +6,20 @@
         <span class="brand-title">PLANOVA</span>
       </div>
     </div>
-    <q-card class="q-pa-lg shadow-2" style="width: 420px; max-width: 95vw; border-radius: 16px">
+    <q-card
+      class="q-pa-lg shadow-2"
+      style="
+        width: 420px;
+        max-width: 90vw;
+        max-height: calc(100vh - 140px);
+        border-radius: 16px;
+        overflow: auto;
+      "
+    >
       <q-card-section>
         <div class="flex column items-center q-mb-md">
           <img src="/logo.png" alt="PLANOVA logo" class="login-logo" />
-          <div class="text-h4 text-primary q-mt-sm">Sign Up</div>
+          <div class="text-h5 text-primary q-mt-sm">Sign Up</div>
         </div>
 
         <!-- API error banner -->
@@ -362,7 +371,8 @@ const clearVerificationError = () => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   padding-top: 84px;
 }
 
@@ -400,7 +410,7 @@ const clearVerificationError = () => {
 }
 
 .login-logo {
-  height: 120px;
+  height: 100px;
   width: auto;
 }
 
