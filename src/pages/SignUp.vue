@@ -27,6 +27,7 @@
           v-if="apiError"
           dense
           class="bg-negative text-white q-mb-md"
+          style="border-radius: 16px; border-radius: 16px"
           aria-live="polite"
           role="alert"
         >
@@ -38,6 +39,7 @@
           v-if="emailVerified"
           dense
           class="bg-positive text-white q-mb-md"
+          style="border-radius: 16px; border-radius: 16px"
           aria-live="polite"
           role="alert"
         >

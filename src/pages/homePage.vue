@@ -67,7 +67,7 @@
       v-if="errorMessage"
       dense
       class="bg-negative text-white q-mb-md"
-      style="width: fit-content; max-width: 100%"
+      style="width: fit-content; max-width: 100%; border-radius: 16px"
       aria-live="polite"
       role="alert"
     >
@@ -254,7 +254,6 @@
         </div>
         <!-- Invitations Banner (no white background) -->
         <q-banner
-
           dense
           class="bg-yellow-9 text-white full-width q-mb-md right-btn text-center"
           aria-live="polite"
@@ -272,10 +271,8 @@
           </template>
           <template v-else> Invitations </template>
         </q-banner>
-
         <!-- Add Item Button (no white background) -->
         <q-btn
-
           label="Add Item"
           icon="add"
           color="secondary"
@@ -457,7 +454,12 @@
                 "
               />
             </div> -->
-            <q-btn type="submit" label="Save Item" color="secondary" class="q-mt-sm full-width" />
+            <q-btn
+              type="submit"
+              label="Save Item"
+              color="secondary"
+              class="q-mt-sm full-width right-btn"
+            />
           </q-form>
         </div>
       </div>
@@ -528,7 +530,9 @@
               </q-item-section>
             </q-item>
           </q-list>
-          <div v-else class="text-negative">No pending invitations</div>
+          <div v-else class="text-negative q-pa-sm rounded-borders" style="border-radius: 16px">
+            No pending invitations
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -566,7 +570,9 @@
               </q-item-section>
             </q-item>
           </q-list>
-          <div v-else class="text-negative">No messages</div>
+          <div v-else class="text-negative q-pa-sm rounded-borders" style="border-radius: 16px">
+            No messages
+          </div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -1371,6 +1377,7 @@ watch(
   width: 500px;
   max-width: 1000px;
   /* background: white; */
+  border-radius: 12px;
   height: 48px;
 }
 
@@ -1406,6 +1413,7 @@ watch(
   /* padding-top: 2px; */
   /* margin-bottom: 1px; */
 }
+
 .menu-rounded {
   border-radius: 12px;
 }

@@ -18,7 +18,7 @@
           v-if="apiError"
           dense
           class="bg-negative text-white q-mb-md"
-          style="max-width: 100%"
+          style="max-width: 100%; border-radius: 16px"
           aria-live="polite"
           role="alert"
         >
@@ -30,7 +30,7 @@
           v-if="successMessage"
           dense
           class="bg-positive text-white q-mb-md"
-          style="max-width: 100%"
+          style="max-width: 100%; border-radius: 16px"
           aria-live="polite"
           role="alert"
         >
@@ -283,8 +283,8 @@
     </q-card>
 
     <!-- Delete Confirmation Dialog -->
-    <q-dialog v-model="showDeleteDialog" persistent>
-      <q-card>
+    <q-dialog v-model="showDeleteDialog" persistent >
+      <q-card style=" border-radius: 16px;">
         <q-card-section class="row items-center">
           <q-icon name="warning" color="negative" size="lg" class="q-mr-sm" />
           <span class="text-h6">Confirm Account Deletion</span>
@@ -294,11 +294,12 @@
           data, including your profile and kanban items, and cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" />
+          <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" style=" border-radius: 12px"/>
           <q-btn
             flat
             label="Confirm"
             color="negative"
+            style=" border-radius: 12px"
             @click="deleteAccount"
             aria-label="Confirm account deletion"
           />
@@ -966,9 +967,9 @@ const goToHome = () => {
 }
 .constrained-card {
   width: 450px;
-  max-width: 90vw;
+  max-width: 95vw;
   /* height: 860px; */
-  max-height: calc(100vh - 32px);
+  max-height: calc(90vh - 32px);
   display: flex;
   flex-direction: column;
   border-radius: 16px;

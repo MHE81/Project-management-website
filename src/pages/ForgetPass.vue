@@ -18,6 +18,7 @@
           v-if="apiError"
           dense
           class="bg-negative text-white q-mb-md"
+          style="border-radius: 16px; border-radius: 16px"
           aria-live="polite"
           role="alert"
         >
@@ -151,7 +152,13 @@
                 </q-input>
 
                 <q-card-actions align="right" class="q-mt-md">
-                  <q-btn flat label="Cancel" color="primary" v-close-popup />
+                  <q-btn
+                    flat
+                    label="Cancel"
+                    color="primary"
+                    v-close-popup
+                    style="right: 10px; border-radius: 12px"
+                  />
                   <q-btn
                     color="primary"
                     label="Save"

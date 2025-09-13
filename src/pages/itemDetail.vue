@@ -20,7 +20,7 @@
           dense
           outlined
           rounded
-          bg-color="grey-3"
+          bg-color="grey-2"
           class="text-black big-search-input"
           aria-label="Search subitems"
         />
@@ -44,7 +44,11 @@
     </div>
     <!-- Item Name and User Role shown in top bar on the right -->
     <div v-if="item" class="q-mb-sm text-center hidden-top"></div>
-    <div v-else-if="errorMessage" class="text-h4 q-mb-md text-center full-width text-negative">
+    <div
+      v-else-if="errorMessage"
+      class="text-h4 q-mb-md text-center full-width text-negative q-pa-md rounded-borders"
+      style="border-radius: 16px"
+    >
       {{ errorMessage }} (ID: {{ route.params.id }})
     </div>
     <!-- Top bar -->
@@ -63,7 +67,7 @@
       v-if="errorMessage"
       dense
       class="bg-negative text-white q-mb-md"
-      style="width: fit-content; max-width: 100%"
+      style="width: fit-content; max-width: 100%; border-radius: 16px"
       aria-live="polite"
       role="alert"
     >
@@ -143,6 +147,7 @@
         <q-btn
           round
           color="primary"
+          lable="Add Note"
           icon="note_add"
           @click="openNoteDialog"
           :disable="!canEdit"
@@ -187,7 +192,10 @@
     </q-dialog>
 
     <!-- Parent Chain Info -->
-    <div v-if="parentChain.length" class="text-subtitle1 q-mb-md row items-center q-gutter-sm fancy-toggle" >
+    <div
+      v-if="parentChain.length"
+      class="text-subtitle1 q-mb-md row items-center q-gutter-sm fancy-toggle"
+    >
       <span>
         <span v-for="(parent, index) in parentChain" :key="parent.id">
           {{ parent.type }}: {{ parent.title }}{{ index < parentChain.length - 1 ? ' -> ' : '' }}
@@ -272,7 +280,7 @@
       <div class="col-8 q-pa-md column-box" style="margin-right: 290px">
         <div class="row board-row" style="flex-wrap: nowrap">
           <!-- Backlog Column -->
-          <div class="col-4" @dragover.prevent @drop="handleDrop('backlog')">
+          <div class="col-4 column-drop-zone" @dragover.prevent @drop="handleDrop('backlog')">
             <q-card class="board-surface column-card">
               <q-card-section class="row items-center justify-between">
                 <div class="text-subtitle2">Backlog</div>
@@ -347,7 +355,11 @@
           </div>
 
           <!-- In Progress Column -->
-          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('in progress')">
+          <div
+            class="col-4 divider-col column-drop-zone"
+            @dragover.prevent
+            @drop="handleDrop('in progress')"
+          >
             <q-card class="board-surface column-card">
               <q-card-section class="row items-center justify-between">
                 <div class="text-subtitle2">In Progress</div>
@@ -420,7 +432,11 @@
           </div>
 
           <!-- Done Column -->
-          <div class="col-4 divider-col" @dragover.prevent @drop="handleDrop('done')">
+          <div
+            class="col-4 divider-col column-drop-zone"
+            @dragover.prevent
+            @drop="handleDrop('done')"
+          >
             <q-card class="board-surface column-card">
               <q-card-section class="row items-center justify-between">
                 <div class="text-subtitle2">Done</div>
@@ -496,7 +512,7 @@
 
       <!-- Right Side Box -->
       <div
-        class="fixed-right-panel q-pa-md  board-surface"
+        class="fixed-right-panel q-pa-md board-surface"
         style="width: 270px; top: 65px; right: 12px; bottom: 12px; overflow-y: auto"
       >
         <!-- Progress Circle on top -->
@@ -537,13 +553,13 @@
             />
             <div
               v-if="item.shareWith && item.shareWith.length"
-              class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs"
-              style="border-radius: 16px"
+              class="q-py-xs q-px-sm rounded-borders q-mb-xs"
             >
               <div
                 v-for="(share, index) in item.shareWith"
                 :key="index"
-                class="row items-center q-mb-xs dropdown-row"
+                class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px; max-width: 90%"
               >
                 <div class="col">
                   {{ share.username }}
@@ -560,7 +576,7 @@
                     "
                     flat
                     round
-                    icon="remove"
+                    icon="delete"
                     color="negative"
                     size="sm"
                     @click="removeSharedUser(index)"
@@ -606,8 +622,8 @@
               <div
                 v-for="(assignee, index) in sortedAssignees"
                 :key="index"
-                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
-                style="border-radius: 16px"
+                class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px; max-width: 90%"
                 @click="openAssigneeDialog(assignee, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -628,7 +644,8 @@
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-gray-3 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              style="border-radius: 16px; max-width: 90%"
             >
               <span>No assignments</span>
             </div>
@@ -727,8 +744,8 @@
               <div
                 v-for="(meeting, index) in sortedMeetings"
                 :key="index"
-                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
-                style="border-radius: 16px"
+                class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px; max-width: 90%"
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -740,7 +757,8 @@
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              style="border-radius: 16px; max-width: 90%"
             >
               <span>No meetings</span>
             </div>
@@ -809,7 +827,7 @@
                     clickable
                     @click="toggleMeetingUser(user)"
                     :active="selectedMeetingUsers.includes(user.username)"
-                    active-class="bg-grey-3"
+                    active-class="bg-grey-2"
                   >
                     <q-item-section>
                       {{ user.username }}
@@ -1008,8 +1026,8 @@
               <div
                 v-for="(report, index) in sortedReports"
                 :key="index"
-                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
-                style="border-radius: 16px"
+                class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px; max-width: 90%"
                 @click="openReportDialog(report, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -1022,7 +1040,8 @@
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              style="border-radius: 16px; max-width: 90%"
             >
               <span>No reports</span>
             </div>
@@ -1164,8 +1183,8 @@
               <div
                 v-for="(comment, index) in sortedComments"
                 :key="index"
-                class="q-py-xs q-px-sm bg-grey-3 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
-                style="border-radius: 16px"
+                class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs row items-center cursor-pointer dropdown-row"
+                style="border-radius: 16px; max-width: 90%"
                 @click="openCommentDialog(comment, index)"
               >
                 <div class="col text-ellipsis single-line">
@@ -1182,7 +1201,8 @@
             </div>
             <div
               v-else
-              class="q-py-xs q-px-sm bg-white rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              class="q-py-xs q-px-sm bg-grey-2 rounded-borders q-mb-xs text-center text-negative row items-center justify-between"
+              style="border-radius: 16px; max-width: 90%"
             >
               <span>No comments available</span>
             </div>
@@ -1300,7 +1320,7 @@
               :disable="!canAddSubitems"
             />
           </div>
-          <div v-if="toggleSubitemForm" class="bg-grey-3 q-pa-md subitem-form">
+          <div v-if="toggleSubitemForm" class="bg-grey-2 q-pa-md subitem-form">
             <q-form @submit.prevent="addSubitem">
               <q-select
                 v-model="subitemForm.type"
@@ -1361,6 +1381,7 @@
                 <q-btn
                   flat
                   label="Cancel"
+                  style="margin-top: 10px; border-radius: 12px"
                   color="negative"
                   class="full-width"
                   @click="cancelSubitemForm"
@@ -1554,9 +1575,14 @@
                 >
               </q-item>
             </q-list>
-            <div v-else-if="searchAssignUsername && !isLoadingUsers" class="q-mt-md text-negative">
+            <!-- <div
+              v-else-if="searchAssignUsername && !isLoadingUsers"
+              class="q-mt-md text-negative q-pa-sm rounded-borders"
+              style="border-radius: 16px"
+            >
               No eligible users found
-            </div>
+            </div> -->
+            
             <div v-if="isLoadingUsers" class="q-mt-md text-grey">Loading users...</div>
             <div v-if="newAssignees.length" class="q-mt-md">
               <div class="text-subtitle2">Selected Users:</div>
@@ -2965,23 +2991,59 @@ const removeSharedUser = (index) => {
       }
       return false
     }
-    if (isParentItem) {
+
+    // Check if this item appears as a parent item in the user's homepage
+    const appearsAsParentInUserHomepage = userItems.some(
+      (userItem) => userItem.id === item.value.id,
+    )
+
+    if (isParentItem || appearsAsParentInUserHomepage) {
       const newUserItems = userItems.filter((i) => i.id !== item.value.id)
       localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(newUserItems))
-      console.log(`Removed item ${item.value.id} from user ${removedUsername}`)
+      console.log(
+        `Removed item ${item.value.id} from user ${removedUsername} (appears as parent in their homepage)`,
+      )
       const invitations = JSON.parse(
         localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]',
       )
       const newInvitations = invitations.filter((inv) => inv.itemId !== item.value.id)
       localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
       console.log(`Removed invitations for item ${item.value.id} for user ${removedUsername}`)
+
+      // Clean up messages for the item
+      const userMessages = JSON.parse(
+        localStorage.getItem(`kanbanMessages_${removedUsername}`) || '[]',
+      )
+      const newMessages = userMessages.filter((msg) => msg.itemId !== item.value.id)
+      localStorage.setItem(`kanbanMessages_${removedUsername}`, JSON.stringify(newMessages))
+      console.log(`Removed messages for item ${item.value.id} for user ${removedUsername}`)
     } else if (!isPending) {
+      // For subitems, search through all user items and their subitems
+      let itemDeleted = false
       for (let i = 0; i < userItems.length; i++) {
         if (deleteRecursive(userItems[i].subitems || [], item.value.id)) {
-          localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(userItems))
+          itemDeleted = true
           console.log(`Removed subitem ${item.value.id} from user ${removedUsername}`)
           break
         }
+      }
+      if (itemDeleted) {
+        localStorage.setItem(`kanbanItems_${removedUsername}`, JSON.stringify(userItems))
+        // Also clean up invitations for the subitem
+        const invitations = JSON.parse(
+          localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]',
+        )
+        const newInvitations = invitations.filter((inv) => inv.itemId !== item.value.id)
+        localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
+        console.log(`Removed invitations for subitem ${item.value.id} for user ${removedUsername}`)
+
+        // Clean up messages for the subitem
+        const userMessages = JSON.parse(
+          localStorage.getItem(`kanbanMessages_${removedUsername}`) || '[]',
+        )
+        const newMessages = userMessages.filter((msg) => msg.itemId !== item.value.id)
+        localStorage.setItem(`kanbanMessages_${removedUsername}`, JSON.stringify(newMessages))
+        console.log(`Removed messages for subitem ${item.value.id} for user ${removedUsername}`)
       }
     }
   } else if (index >= item.value.shareWith.length) {
@@ -3447,7 +3509,7 @@ const sortSubitems = () => {
 .section-add-btn {
   position: absolute;
   top: 10px;
-  right: 2px;
+  right: 0px;
 }
 .top-search {
   position: fixed;
@@ -3539,6 +3601,11 @@ const sortSubitems = () => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.column-drop-zone {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .resizable-note {
   width: 100%;
