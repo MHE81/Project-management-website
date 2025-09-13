@@ -16,4 +16,9 @@ C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npx.cmd 
 
 
 
-when i shared an item (item or subitem) with user1 but he has not accept if (its still an invitaion), if i delete user 1 from the shared with list of a subitem of the item, the invitation for user 1 should be updated so if user1 accepts it after deleting that user from a subitem shared with list, the subitem that user1 has been deleted from until its last layer of subitems shouldnt be shared with user1
+i want the assigns, meetings, reports, comments records text to be available until the width of the grey box that they are in. and if the size of the text is more that the width, there should be "..." at the end of the record to show that there is more you need to see. note that each record just has to have one line od text exept commet that has the reply on the second line of it
+
+if any record needs edited lable, the edited lable should be at the first of the record.
+
+in the meeting record before the name of the owner of the meeting, the meeting title should be writen.
+when a meeting is set, a message should be sent to the users message box that are invited to the meeting by the creator of the meeting that says: "your invited to the {meeting title} meeting by {meeting creator username} for item {the meeting's item title} on {meeting's date}."

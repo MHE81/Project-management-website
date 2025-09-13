@@ -600,10 +600,11 @@
                 @click="openAssigneeDialog(assignee, index)"
               >
                 <div
-                  class="col text-ellipsis single-line"
+                  class="col record-content"
                   :class="{ 'invalid-record': !isUserInSharedWith(assignee.username) }"
                 >
-                  {{ assignee.username }} - {{ truncateText(assignee.note || 'No note') }}
+                  <span v-if="assignee.edited" class="text-grey-7 q-mr-sm">(Edited)</span
+                  >{{ assignee.username }} - {{ assignee.note || 'No note' }}
                   <span
                     v-if="!isUserInSharedWith(assignee.username)"
                     class="text-caption text-negative q-ml-sm"
@@ -731,10 +732,11 @@
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
                 <div
-                  class="col text-ellipsis single-line"
+                  class="col record-content"
                   :class="{ 'invalid-record': !isUserInSharedWith(meeting.creator) }"
                 >
-                  {{ meeting.attendees?.join(', ') || meeting.creator }} - {{ meeting.type }}
+                  <span v-if="meeting.edited" class="text-grey-7 q-mr-sm">(Edited)</span
+                  >{{ meeting.title }} - {{ meeting.creator }} - {{ meeting.type }}
                   <span
                     v-if="!isUserInSharedWith(meeting.creator)"
                     class="text-caption text-negative q-ml-sm"
@@ -1021,11 +1023,11 @@
                 @click="openReportDialog(report, index)"
               >
                 <div
-                  class="col text-ellipsis single-line"
+                  class="col record-content"
                   :class="{ 'invalid-record': !isUserInSharedWith(report.creator) }"
                 >
-                  {{ report.creator }}: {{ truncateText(report.details) }}
-                  <span v-if="report.edited" class="text-grey-7"> (Edited)</span>
+                  <span v-if="report.edited" class="text-grey-7 q-mr-sm">(Edited)</span
+                  >{{ report.creator }}: {{ report.details }}
                   <span
                     v-if="!isUserInSharedWith(report.creator)"
                     class="text-caption text-negative q-ml-sm"
@@ -1185,10 +1187,10 @@
                 style="border-radius: 16px; max-width: 90%"
                 @click="openCommentDialog(comment, index)"
               >
-                <div class="col text-ellipsis single-line">
+                <div class="col record-content">
                   <div :class="{ 'invalid-record': !isUserInSharedWith(comment.creator) }">
-                    {{ comment.creator }}: {{ truncateText(comment.details) }}
-                    <span v-if="comment.edited" class="text-grey-7"> (Edited)</span>
+                    <span v-if="comment.edited" class="text-grey-7 q-mr-sm">(Edited)</span
+                    >{{ comment.creator }}: {{ comment.details }}
                     <span
                       v-if="!isUserInSharedWith(comment.creator)"
                       class="text-caption text-negative q-ml-sm"
@@ -1198,11 +1200,11 @@
                   </div>
                   <div
                     v-if="comment.reply"
-                    class="text-caption"
+                    class="text-caption comment-reply"
                     :class="{ 'invalid-record': !isUserInSharedWith(comment.reply.creator) }"
                   >
-                    Reply by {{ comment.reply.creator }}: {{ truncateText(comment.reply.text)
-                    }}<span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
+                    <span v-if="comment.reply.edited" class="text-grey-7 q-mr-sm">(Edited)</span
+                    >Reply by {{ comment.reply.creator }}: {{ comment.reply.text }}
                     <span
                       v-if="!isUserInSharedWith(comment.reply.creator)"
                       class="text-negative q-ml-sm"
@@ -2823,9 +2825,42 @@ const startMeeting = () => {
   item.value.meetings = item.value.meetings || []
   item.value.meetings.unshift(newMeeting)
   console.log('Started meeting:', newMeeting)
+
+  // Send notification messages to invited users
+  sendMeetingInvitations(newMeeting)
+
   saveItem()
   closeMeetingDialog()
   errorMessage.value = ''
+}
+
+const sendMeetingInvitations = (meeting) => {
+  // Send notification messages to all invited users except the creator
+  const invitedUsers = meeting.users.filter((user) => user !== currentUser.value)
+
+  invitedUsers.forEach((invitedUser) => {
+    const message = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      text: `You're invited to the ${meeting.type} "${meeting.title}" meeting by "${meeting.creator}" for item "${item.value.title}" on "${meeting.entranceDateTime}".`,
+      itemId: item.value.id,
+      itemTitle: item.value.title,
+      date: new Date().toLocaleString('en-US'),
+      type: 'meeting_invitation',
+    }
+
+    // Get existing messages for the invited user
+    const existingMessages = JSON.parse(
+      localStorage.getItem(`kanbanMessages_${invitedUser}`) || '[]',
+    )
+
+    // Add the new message
+    existingMessages.unshift(message)
+
+    // Save messages back to localStorage
+    localStorage.setItem(`kanbanMessages_${invitedUser}`, JSON.stringify(existingMessages))
+
+    console.log(`Sent meeting invitation message to ${invitedUser}:`, message)
+  })
 }
 
 const openMeetingDetailsDialog = (meeting, index) => {
@@ -2896,11 +2931,6 @@ const saveAllMeetingDetails = () => {
   saveItem()
   closeMeetingDetailsDialog()
   errorMessage.value = ''
-}
-
-const truncateText = (text) => {
-  if (!text) return ''
-  return text.length > 30 ? text.substring(0, 30) + '...' : text
 }
 
 const formatItemDate = (value) => {
@@ -3767,6 +3797,19 @@ const sortSubitems = () => {
 .single-line {
   display: inline-block;
   max-width: 80%;
+}
+.record-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  flex: 1;
+}
+.comment-reply {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .subitem-form {
   padding: 10px;
