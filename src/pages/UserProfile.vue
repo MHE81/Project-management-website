@@ -283,8 +283,8 @@
     </q-card>
 
     <!-- Delete Confirmation Dialog -->
-    <q-dialog v-model="showDeleteDialog" persistent >
-      <q-card style=" border-radius: 16px;">
+    <q-dialog v-model="showDeleteDialog" persistent>
+      <q-card style="border-radius: 16px">
         <q-card-section class="row items-center">
           <q-icon name="warning" color="negative" size="lg" class="q-mr-sm" />
           <span class="text-h6">Confirm Account Deletion</span>
@@ -294,12 +294,19 @@
           data, including your profile and kanban items, and cannot be undone.
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup aria-label="Cancel deletion" style=" border-radius: 12px"/>
+          <q-btn
+            flat
+            label="Cancel"
+            color="primary"
+            v-close-popup
+            aria-label="Cancel deletion"
+            style="border-radius: 12px"
+          />
           <q-btn
             flat
             label="Confirm"
             color="negative"
-            style=" border-radius: 12px"
+            style="border-radius: 12px"
             @click="deleteAccount"
             aria-label="Confirm account deletion"
           />
@@ -413,6 +420,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 // Profile data
 const profile = ref({
@@ -440,6 +448,10 @@ const newPassError = ref(false)
 const confirmPassError = ref(false)
 
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
+
 const editMode = ref(false)
 const isLoading = ref(false)
 const showPassword = ref(false)
@@ -845,6 +857,10 @@ onMounted(() => {
       console.error('Error loading profile from localStorage:', e)
     }
   }
+
+  // Setup auto-dismiss for banners
+  setupAutoDismiss(apiError)
+  setupAutoDismiss(successMessage)
 })
 
 // Delete account

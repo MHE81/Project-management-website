@@ -1692,9 +1692,14 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 const route = useRoute()
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
+
 const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const currentDateTime = ref('')
 const item = ref(null)
@@ -2054,6 +2059,9 @@ onMounted(() => {
   const users = JSON.parse(localStorage.getItem('kanbanUsers') || '[]')
   availableUsers.value = Array.isArray(users) ? users : []
   console.log('Initial Kanban Users:', availableUsers.value)
+
+  // Setup auto-dismiss for errorMessage banner
+  setupAutoDismiss(errorMessage)
 })
 
 const loadItems = () => {
@@ -3534,7 +3542,7 @@ const sortSubitems = () => {
   height: calc(100vh - 120px);
 }
 .column-scroll {
-  max-height: calc(86vh - 220px);
+  max-height: calc(90vh - 220px);
   overflow-y: auto;
   /* padding-bottom: 60px; */
   /* padding-bottom: 24px; */
@@ -3705,7 +3713,7 @@ const sortSubitems = () => {
   flex: 1;
 }
 .column-box {
-  height: calc(93vh - 180px);
+  height: calc(97vh - 180px);
   display: flex;
   flex-direction: column;
   overflow: hidden;

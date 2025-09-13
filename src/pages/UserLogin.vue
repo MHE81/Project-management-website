@@ -102,6 +102,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 // Form fields and state
 const username = ref('')
@@ -117,6 +118,9 @@ const passwordError = ref(false)
 
 // Router instance
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
 
 // Password strength validator
 const isPasswordValid = computed(() => {
@@ -139,6 +143,9 @@ onMounted(() => {
     rememberMe.value = true
     console.log('Loaded remembered credentials:', savedUsername)
   }
+
+  // Setup auto-dismiss for apiError banner
+  setupAutoDismiss(apiError)
 })
 
 const login = () => {

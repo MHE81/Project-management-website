@@ -185,10 +185,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
+
 const username = ref('')
 const email = ref('')
 const password = ref('')
@@ -353,6 +358,12 @@ const clearConfirmError = () => {
 const clearVerificationError = () => {
   if (verificationCode.value.length === 4) verificationError.value = false
 }
+
+// Setup auto-dismiss for banners
+onMounted(() => {
+  setupAutoDismiss(apiError)
+  setupAutoDismiss(emailVerified)
+})
 
 // Commented out for local testing without backend; uncomment when backend is available
 // const sendVerificationCode = () => {

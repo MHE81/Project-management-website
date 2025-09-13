@@ -13,12 +13,3 @@ C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\node.exe
 
 
 C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npx.cmd quasar dev
-
-
-
-i want the assigns, meetings, reports, comments records text to be available until the width of the grey box that they are in. and if the size of the text is more that the width, there should be "..." at the end of the record to show that there is more you need to see. note that each record just has to have one line od text exept commet that has the reply on the second line of it
-
-if any record needs edited lable, the edited lable should be at the first of the record.
-
-in the meeting record before the name of the owner of the meeting, the meeting title should be writen.
-when a meeting is set, a message should be sent to the users message box that are invited to the meeting by the creator of the meeting that says: "your invited to the {meeting title} meeting by {meeting creator username} for item {the meeting's item title} on {meeting's date}."

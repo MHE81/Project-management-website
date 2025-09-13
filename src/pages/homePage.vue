@@ -621,8 +621,13 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
+
 const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
 const items = ref([])
 const searchQuery = ref('')
@@ -661,6 +666,9 @@ onMounted(() => {
   loadItems()
   loadInvitations()
   loadMessages()
+
+  // Setup auto-dismiss for errorMessage banner
+  setupAutoDismiss(errorMessage)
 })
 
 const loadItems = () => {

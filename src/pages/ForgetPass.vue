@@ -190,10 +190,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAutoDismiss } from '../composables/useAutoDismiss'
 
 const router = useRouter()
+
+// Auto-dismiss functionality
+const { setupAutoDismiss } = useAutoDismiss()
+
 const usernameOrEmail = ref('')
 const verificationCode = ref('')
 const newPassword = ref('')
@@ -376,6 +381,11 @@ const clearConfirmError = () => {
 const goToLogin = () => {
   router.push('/login')
 }
+
+// Setup auto-dismiss for banners
+onMounted(() => {
+  setupAutoDismiss(apiError)
+})
 </script>
 
 <style scoped>
