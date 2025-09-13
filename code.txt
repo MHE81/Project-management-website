@@ -14,3 +14,6 @@ C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\node.exe
 
 C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npx.cmd quasar dev
 
+
+
+when i shared an item (item or subitem) with user1 but he has not accept if (its still an invitaion), if i delete user 1 from the shared with list of a subitem of the item, the invitation for user 1 should be updated so if user1 accepts it after deleting that user from a subitem shared with list, the subitem that user1 has been deleted from until its last layer of subitems shouldnt be shared with user1

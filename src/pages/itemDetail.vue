@@ -75,7 +75,7 @@
     </q-banner>
 
     <!-- Selected Report Display (Editable) -->
-    <div v-if="item && selectedReport" class="q-mb-md">
+    <!-- <div v-if="item && selectedReport" class="q-mb-md">
       <div class="text-subtitle1">Editing Report:</div>
       <textarea
         v-model="selectedReport.details"
@@ -93,7 +93,7 @@
         />
         <q-btn label="Cancel" color="negative" flat @click="cancelEditReport" class="right-btn" />
       </div>
-    </div>
+    </div> -->
 
     <!-- Note Display -->
     <div v-if="item && item.note" class="q-mb-md">
@@ -317,22 +317,13 @@
                     class="text-caption q-mt-xs"
                   >
                     Assigned:
-                    {{
-                      subitem.assignedTo
-                        .map(
-                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
-                        )
-                        .join(', ')
-                    }}
+                    {{ subitem.assignedTo.map((a) => `${a.username}`).join(', ') }}
                   </div>
                   <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                     Shared:
                     {{
                       subitem.shareWith
-                        .map(
-                          (s) =>
-                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                        )
+                        .map((s) => `${s.username} ${s.status === 'pending' ? ', Pending' : ''}`)
                         .join(', ')
                     }}
                   </div>
@@ -394,22 +385,13 @@
                     class="text-caption q-mt-xs"
                   >
                     Assigned:
-                    {{
-                      subitem.assignedTo
-                        .map(
-                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
-                        )
-                        .join(', ')
-                    }}
+                    {{ subitem.assignedTo.map((a) => `${a.username}`).join(', ') }}
                   </div>
                   <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                     Shared:
                     {{
                       subitem.shareWith
-                        .map(
-                          (s) =>
-                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                        )
+                        .map((s) => `${s.username} ${s.status === 'pending' ? ', Pending' : ''}`)
                         .join(', ')
                     }}
                   </div>
@@ -471,22 +453,13 @@
                     class="text-caption q-mt-xs"
                   >
                     Assigned:
-                    {{
-                      subitem.assignedTo
-                        .map(
-                          (a) => `${a.username} (${a.role}): ${truncateText(a.note || 'No note')}`,
-                        )
-                        .join(', ')
-                    }}
+                    {{ subitem.assignedTo.map((a) => `${a.username}`).join(', ') }}
                   </div>
                   <div v-if="subitem.shareWith && subitem.shareWith.length" class="text-caption">
                     Shared:
                     {{
                       subitem.shareWith
-                        .map(
-                          (s) =>
-                            `${s.username} (${s.role}${s.status === 'pending' ? ', Pending' : ''})`,
-                        )
+                        .map((s) => `${s.username} ${s.status === 'pending' ? ', Pending' : ''}`)
                         .join(', ')
                     }}
                   </div>
@@ -626,8 +599,17 @@
                 style="border-radius: 16px; max-width: 90%"
                 @click="openAssigneeDialog(assignee, index)"
               >
-                <div class="col text-ellipsis single-line">
-                  {{ assignee.assignedAt }} - {{ truncateText(assignee.note || 'No note') }}
+                <div
+                  class="col text-ellipsis single-line"
+                  :class="{ 'invalid-record': !isUserInSharedWith(assignee.username) }"
+                >
+                  {{ assignee.username }} - {{ truncateText(assignee.note || 'No note') }}
+                  <span
+                    v-if="!isUserInSharedWith(assignee.username)"
+                    class="text-caption text-negative q-ml-sm"
+                  >
+                    <!-- (User not in shared list) -->
+                  </span>
                 </div>
                 <div class="row items-center q-gutter-xs">
                   <q-btn
@@ -748,9 +730,17 @@
                 style="border-radius: 16px; max-width: 90%"
                 @click="openMeetingDetailsDialog(meeting, index)"
               >
-                <div class="col text-ellipsis single-line">
-                  <span class="text-weight-bold">{{ meeting.creator }}</span
-                  >: {{ meeting.type }} - {{ meeting.status }} - {{ truncateText(meeting.title) }}
+                <div
+                  class="col text-ellipsis single-line"
+                  :class="{ 'invalid-record': !isUserInSharedWith(meeting.creator) }"
+                >
+                  {{ meeting.attendees?.join(', ') || meeting.creator }} - {{ meeting.type }}
+                  <span
+                    v-if="!isUserInSharedWith(meeting.creator)"
+                    class="text-caption text-negative q-ml-sm"
+                  >
+                    <!-- (User not in shared list) -->
+                  </span>
                 </div>
                 <div class="row items-center q-gutter-xs"></div>
               </div>
@@ -1030,10 +1020,18 @@
                 style="border-radius: 16px; max-width: 90%"
                 @click="openReportDialog(report, index)"
               >
-                <div class="col text-ellipsis single-line">
-                  <span class="text-weight-bold">{{ report.creator }}</span>
-                  <span v-if="report.edited" class="text-grey-7"> (Edited)</span>:
-                  {{ report.date }} - {{ truncateText(report.details) }}
+                <div
+                  class="col text-ellipsis single-line"
+                  :class="{ 'invalid-record': !isUserInSharedWith(report.creator) }"
+                >
+                  {{ report.creator }}: {{ truncateText(report.details) }}
+                  <span v-if="report.edited" class="text-grey-7"> (Edited)</span>
+                  <span
+                    v-if="!isUserInSharedWith(report.creator)"
+                    class="text-caption text-negative q-ml-sm"
+                  >
+                    <!-- (User not in shared list) -->
+                  </span>
                 </div>
                 <div class="row items-center q-gutter-xs"></div>
               </div>
@@ -1188,12 +1186,29 @@
                 @click="openCommentDialog(comment, index)"
               >
                 <div class="col text-ellipsis single-line">
-                  <span class="text-weight-bold">{{ comment.creator }}</span>
-                  <span v-if="comment.edited" class="text-grey-7"> (Edited)</span>:
-                  {{ comment.date }} - {{ truncateText(comment.details) }}
-                  <div v-if="comment.reply" class="text-caption">
+                  <div :class="{ 'invalid-record': !isUserInSharedWith(comment.creator) }">
+                    {{ comment.creator }}: {{ truncateText(comment.details) }}
+                    <span v-if="comment.edited" class="text-grey-7"> (Edited)</span>
+                    <span
+                      v-if="!isUserInSharedWith(comment.creator)"
+                      class="text-caption text-negative q-ml-sm"
+                    >
+                      <!-- (User not in shared list) -->
+                    </span>
+                  </div>
+                  <div
+                    v-if="comment.reply"
+                    class="text-caption"
+                    :class="{ 'invalid-record': !isUserInSharedWith(comment.reply.creator) }"
+                  >
                     Reply by {{ comment.reply.creator }}: {{ truncateText(comment.reply.text)
                     }}<span v-if="comment.reply.edited" class="text-grey-7"> (Edited)</span>
+                    <span
+                      v-if="!isUserInSharedWith(comment.reply.creator)"
+                      class="text-negative q-ml-sm"
+                    >
+                      <!-- (Reply user not in shared list) -->
+                    </span>
                   </div>
                 </div>
                 <div class="row items-center q-gutter-xs"></div>
@@ -1582,7 +1597,7 @@
             >
               No eligible users found
             </div> -->
-            
+
             <div v-if="isLoadingUsers" class="q-mt-md text-grey">Loading users...</div>
             <div v-if="newAssignees.length" class="q-mt-md">
               <div class="text-subtitle2">Selected Users:</div>
@@ -1906,6 +1921,12 @@ const sortedComments = computed(() => {
     : []
 })
 
+// Helper function to check if a user is in the shared with list
+const isUserInSharedWith = (username) => {
+  if (!item.value?.shareWith) return false
+  return item.value.shareWith.some((share) => share.username === username)
+}
+
 const isReportOwner = computed(() => {
   return selectedReport.value?.creator === currentUser.value
 })
@@ -1977,8 +1998,21 @@ const updateSubitemsAssignedTo = (item, assignedTo) => {
     item.subitems.forEach((subitem) => {
       subitem.assignedTo = subitem.assignedTo || []
       assignedTo.forEach((newAssignee) => {
-        if (!subitem.assignedTo.some((a) => a.username === newAssignee.username)) {
+        const existingAssigneeIndex = subitem.assignedTo.findIndex(
+          (a) => a.username === newAssignee.username,
+        )
+        if (existingAssigneeIndex !== -1) {
+          // Update existing assignee with new note and details
+          subitem.assignedTo[existingAssigneeIndex] = { ...newAssignee }
+          console.log(
+            `Updated subitem ${subitem.title} assignment for ${newAssignee.username} with note: "${newAssignee.note || 'No note'}"`,
+          )
+        } else {
+          // Add new assignee
           subitem.assignedTo.unshift({ ...newAssignee })
+          console.log(
+            `Added subitem ${subitem.title} assignment for ${newAssignee.username} with note: "${newAssignee.note || 'No note'}"`,
+          )
         }
       })
       updateSubitemsAssignedTo(subitem, assignedTo)
@@ -2536,13 +2570,13 @@ const closeReportDialog = () => {
   console.log('Closed report dialog')
 }
 
-const cancelEditReport = () => {
-  selectedReport.value = null
-  selectedReportIndex.value = null
-  showReportDialog.value = false
-  errorMessage.value = ''
-  console.log('Cancelled report edit')
-}
+// const cancelEditReport = () => {
+//   selectedReport.value = null
+//   selectedReportIndex.value = null
+//   showReportDialog.value = false
+//   errorMessage.value = ''
+//   console.log('Cancelled report edit')
+// }
 
 const saveEditedReport = () => {
   if (!isReportOwner.value) {
@@ -3017,6 +3051,26 @@ const removeSharedUser = (index) => {
       const newMessages = userMessages.filter((msg) => msg.itemId !== item.value.id)
       localStorage.setItem(`kanbanMessages_${removedUsername}`, JSON.stringify(newMessages))
       console.log(`Removed messages for item ${item.value.id} for user ${removedUsername}`)
+    } else if (isPending) {
+      // For pending users, only clean up invitations (they don't have the item yet)
+      const invitations = JSON.parse(
+        localStorage.getItem(`kanbanInvitations_${removedUsername}`) || '[]',
+      )
+      const newInvitations = invitations.filter((inv) => inv.itemId !== item.value.id)
+      localStorage.setItem(`kanbanInvitations_${removedUsername}`, JSON.stringify(newInvitations))
+      console.log(
+        `Removed pending invitation for item ${item.value.id} for user ${removedUsername}`,
+      )
+
+      // Also clean up messages for the pending invitation
+      const userMessages = JSON.parse(
+        localStorage.getItem(`kanbanMessages_${removedUsername}`) || '[]',
+      )
+      const newMessages = userMessages.filter((msg) => msg.itemId !== item.value.id)
+      localStorage.setItem(`kanbanMessages_${removedUsername}`, JSON.stringify(newMessages))
+      console.log(
+        `Removed messages for pending invitation ${item.value.id} for user ${removedUsername}`,
+      )
     } else if (!isPending) {
       // For subitems, search through all user items and their subitems
       let itemDeleted = false
@@ -3204,13 +3258,31 @@ const saveAssignment = () => {
     selectedItem.value.value.assignedTo = []
   }
   newAssignees.value.forEach((assignee) => {
-    if (!selectedItem.value.value.assignedTo.some((a) => a.username === assignee.username)) {
+    const existingAssigneeIndex = selectedItem.value.value.assignedTo.findIndex(
+      (a) => a.username === assignee.username,
+    )
+    if (existingAssigneeIndex !== -1) {
+      // Update existing assignee with new note and details
+      selectedItem.value.value.assignedTo[existingAssigneeIndex] = {
+        username: assignee.username,
+        role: assignee.role,
+        note: assignee.note || 'No note',
+        assignedAt: assignee.assignedAt,
+      }
+      console.log(
+        `Updated assignment for ${assignee.username} with note: "${assignee.note || 'No note'}"`,
+      )
+    } else {
+      // Add new assignee
       selectedItem.value.value.assignedTo.push({
         username: assignee.username,
         role: assignee.role,
         note: assignee.note || 'No note',
         assignedAt: assignee.assignedAt,
       })
+      console.log(
+        `Added new assignment for ${assignee.username} with note: "${assignee.note || 'No note'}"`,
+      )
     }
   })
   updateSubitemsAssignedTo(selectedItem.value.value, newAssignees.value)
@@ -3328,6 +3400,12 @@ const sortSubitems = () => {
   background-repeat: no-repeat;
   min-height: 100vh;
   padding-top: 84px;
+}
+
+.invalid-record {
+  text-decoration: line-through;
+  opacity: 0.6;
+  color: #666 !important;
 }
 
 /* Homepage-like UI styling */

@@ -712,10 +712,24 @@ const getRelatedFromMessage = (text) => {
 }
 
 const canEdit = (item) => {
-  return (
-    item.creator === currentUser.value ||
-    item.shareWith?.some((share) => share.username === currentUser.value && share.role === 'owner')
-  )
+  if (!item) return false
+  if (item.creator === currentUser.value) {
+    console.log(`User ${currentUser.value} can edit ${item.title} - creator`)
+    return true
+  }
+  const userShare = item.shareWith?.find((share) => share.username === currentUser.value)
+  if (userShare && userShare.role === 'owner') {
+    console.log(`User ${currentUser.value} can edit ${item.title} - owner`)
+    return true
+  }
+  if (userShare && userShare.role === 'admin') {
+    const isAssigned =
+      item.assignedTo?.some((assignee) => assignee.username === currentUser.value) || false
+    console.log(`User ${currentUser.value} can edit ${item.title} - admin assigned: ${isAssigned}`)
+    return isAssigned
+  }
+  console.log(`User ${currentUser.value} cannot edit ${item.title} - no permissions`)
+  return false
 }
 
 const extractSubitem = (items, itemId) => {
