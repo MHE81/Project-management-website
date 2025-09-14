@@ -552,7 +552,19 @@
           <q-list v-if="messages.length" bordered separator>
             <q-item v-for="(message, index) in messages" :key="index" class="invite-row">
               <q-item-section>
-                <div class="text-body2">{{ message.text }}</div>
+                <div class="text-body2">
+                  {{ parseMessageText(message.text).text }}
+                  <q-btn
+                    v-if="parseMessageText(message.text).link"
+                    flat
+                    dense
+                    color="primary"
+                    label="View Item"
+                    @click="navigateToItem(parseMessageText(message.text).link)"
+                    class="q-ml-sm"
+                    size="sm"
+                  />
+                </div>
                 <div v-if="message.itemId" class="text-caption text-grey-7">
                   Item: {{ getItemTitleFromMessage(message) }}
                 </div>
@@ -573,45 +585,6 @@
           <div v-else class="text-negative q-pa-sm rounded-borders" style="border-radius: 16px">
             No messages
           </div>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
-
-    <!-- Messages Dialog -->
-    <q-dialog v-model="showMessagesDialog">
-      <q-card class="board-surface dialog-card" style="width: 640px; max-width: 92vw">
-        <q-card-section class="row items-center justify-between q-gutter-sm">
-          <div class="row items-center q-gutter-sm">
-            <q-icon name="notifications" color="primary" size="md" />
-            <div class="text-h6 text-primary">Messages</div>
-          </div>
-          <q-btn dense flat icon="close" color="primary" v-close-popup aria-label="Close" />
-        </q-card-section>
-        <q-separator />
-        <q-card-section>
-          <q-list v-if="messages.length" bordered separator>
-            <q-item v-for="(message, index) in messages" :key="index" class="invite-row">
-              <q-item-section>
-                <div class="text-body2">{{ message.text }}</div>
-                <div
-                  class="text-caption text-grey-7"
-                  v-if="getRelatedFromMessage(message.text)"
-                ></div>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn
-                  dense
-                  flat
-                  round
-                  icon="delete"
-                  color="negative"
-                  @click="deleteMessage(index)"
-                  aria-label="Delete message"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-          <div v-else class="text-grey-7">No messages</div>
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -713,10 +686,22 @@ const saveMessages = () => {
   localStorage.setItem(`kanbanMessages_${currentUser.value}`, JSON.stringify(messages.value))
 }
 
-const getRelatedFromMessage = (text) => {
-  // Expect patterns like "for Type: Title"; extract content after "for "
-  const match = text.match(/for\s+([^,]+)$/)
-  return match ? match[1] : ''
+const parseMessageText = (text) => {
+  // Check if message contains a link pattern like "/itemDetail/123"
+  const linkMatch = text.match(/(.*?)\s+Click here to view the item:\s+(.*)$/)
+  if (linkMatch) {
+    return {
+      text: linkMatch[1],
+      link: linkMatch[2],
+    }
+  }
+  return { text, link: null }
+}
+
+const navigateToItem = (link) => {
+  if (link) {
+    router.push(link)
+  }
 }
 
 const canEdit = (item) => {
@@ -751,6 +736,57 @@ const extractSubitem = (items, itemId) => {
   return null
 }
 
+// Helper function to get all subitem IDs from an item (recursively)
+const getAllSubitemIds = (item) => {
+  const ids = []
+  if (item.subitems) {
+    item.subitems.forEach((subitem) => {
+      ids.push(subitem.id)
+      ids.push(...getAllSubitemIds(subitem))
+    })
+  }
+  return ids
+}
+
+// Helper function to find items that are subitems of the shared item
+const findConflictingSubitems = (userItems, sharedItem) => {
+  const conflictingItems = []
+  const sharedSubitemIds = getAllSubitemIds(sharedItem)
+
+  const checkItem = (items) => {
+    items.forEach((item) => {
+      if (sharedSubitemIds.includes(item.id)) {
+        conflictingItems.push(item)
+      }
+      if (item.subitems) {
+        checkItem(item.subitems)
+      }
+    })
+  }
+
+  checkItem(userItems)
+  return conflictingItems
+}
+
+// Helper function to remove conflicting subitems from user's items
+const removeConflictingSubitems = (userItems, conflictingItems) => {
+  const conflictingIds = conflictingItems.map((item) => item.id)
+
+  const filterItems = (items) => {
+    return items.filter((item) => {
+      if (conflictingIds.includes(item.id)) {
+        return false
+      }
+      if (item.subitems) {
+        item.subitems = filterItems(item.subitems)
+      }
+      return true
+    })
+  }
+
+  return filterItems(userItems)
+}
+
 const acceptInvitation = (invitation) => {
   const invitations = JSON.parse(
     localStorage.getItem(`kanbanInvitations_${currentUser.value}`) || '[]',
@@ -771,11 +807,30 @@ const acceptInvitation = (invitation) => {
         (s) => s.username === currentUser.value,
       )
       if (creatorShareIndex !== -1) {
+        // Get current user's items to check for conflicting subitems
+        const userItems = JSON.parse(
+          localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]',
+        )
+
+        // Find conflicting subitems that should be removed
+        const conflictingItems = findConflictingSubitems(userItems, sharedItem)
+        console.log(
+          'Found conflicting items:',
+          conflictingItems.map((item) => `${item.type}: ${item.title}`),
+        )
+
+        // Remove conflicting subitems from user's items
+        const cleanedUserItems = removeConflictingSubitems(userItems, conflictingItems)
+        console.log('Cleaned user items, removed', conflictingItems.length, 'conflicting subitems')
+
+        // Update the shared item's role
         sharedItem.shareWith[creatorShareIndex] = {
           username: currentUser.value,
           role: invitation.role,
         }
-        const updateSubitemsPendingStatus = (item) => {
+
+        // Update all subitems with the new role
+        const updateSubitemsRole = (item) => {
           if (item.subitems) {
             item.subitems.forEach((subitem) => {
               const subitemShareIndex = subitem.shareWith.findIndex(
@@ -787,38 +842,103 @@ const acceptInvitation = (invitation) => {
                   role: invitation.role,
                 }
               }
-              updateSubitemsPendingStatus(subitem)
+              updateSubitemsRole(subitem)
             })
           }
         }
-        updateSubitemsPendingStatus(sharedItem)
+        updateSubitemsRole(sharedItem)
         updateItemInUserStorage(sharedItem, invitation.invitedBy)
 
-        const userItems = JSON.parse(
-          localStorage.getItem(`kanbanItems_${currentUser.value}`) || '[]',
-        )
+        // Create a clean copy of the shared item for the user
         const itemCopy = JSON.parse(JSON.stringify(sharedItem))
         itemCopy.shareWith = itemCopy.shareWith.map((s) => ({
           username: s.username,
           role: s.role,
         }))
-        const cleanSubitemsPendingStatus = (item) => {
+
+        // Filter subitems based on current shareWith status for the accepting user
+        const filterSubitemsForUser = (item, username) => {
+          if (!item.subitems) return item
+
+          const filteredItem = { ...item }
+          filteredItem.subitems = item.subitems
+            .filter((subitem) => {
+              // Check if the user is currently in the subitem's shareWith list
+              const userShare = subitem.shareWith?.find(
+                (share) =>
+                  share.username === username && (!share.status || share.status !== 'pending'),
+              )
+              console.log(
+                `Filtering subitem ${subitem.type}: ${subitem.title} - userShare:`,
+                userShare,
+                'shareWith:',
+                subitem.shareWith,
+              )
+              return !!userShare
+            })
+            .map((subitem) => {
+              // Recursively filter nested subitems
+              const filteredSubitem = { ...subitem }
+              filteredSubitem.shareWith = subitem.shareWith.map((share) =>
+                share.username === username ? { username, role: invitation.role } : share,
+              )
+
+              if (subitem.subitems) {
+                filteredSubitem.subitems = subitem.subitems
+                  .filter((nestedSubitem) => {
+                    const nestedUserShare = nestedSubitem.shareWith?.find(
+                      (share) =>
+                        share.username === username &&
+                        (!share.status || share.status !== 'pending'),
+                    )
+                    return !!nestedUserShare
+                  })
+                  .map((nestedSubitem) => {
+                    const filteredNested = { ...nestedSubitem }
+                    filteredNested.shareWith = nestedSubitem.shareWith.map((share) =>
+                      share.username === username ? { username, role: invitation.role } : share,
+                    )
+                    return filteredNested
+                  })
+              }
+
+              return filteredSubitem
+            })
+
+          return filteredItem
+        }
+
+        // Filter the item copy for the accepting user
+        const filteredItemCopy = filterSubitemsForUser(itemCopy, currentUser.value)
+        console.log(
+          'Before filtering - subitems:',
+          itemCopy.subitems?.map((s) => `${s.type}: ${s.title}`),
+        )
+        console.log(
+          'After filtering - subitems:',
+          filteredItemCopy.subitems?.map((s) => `${s.type}: ${s.title}`),
+        )
+
+        // Clean subitems pending status and ensure all subitems have the correct role
+        const cleanSubitemsRole = (item) => {
           if (item.subitems) {
             item.subitems.forEach((subitem) => {
               subitem.shareWith = subitem.shareWith.map((s) => ({
                 username: s.username,
                 role: s.role,
               }))
-              cleanSubitemsPendingStatus(subitem)
+              cleanSubitemsRole(subitem)
             })
           }
         }
-        cleanSubitemsPendingStatus(itemCopy)
-        userItems.push(itemCopy)
-        localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(userItems))
-        items.value = userItems
+        cleanSubitemsRole(filteredItemCopy)
 
-        updateSharedItems(sharedItem, invitation.invitedBy)
+        // Add the filtered shared item to cleaned user items
+        cleanedUserItems.push(filteredItemCopy)
+        localStorage.setItem(`kanbanItems_${currentUser.value}`, JSON.stringify(cleanedUserItems))
+        items.value = cleanedUserItems
+
+        updateSharedItems(filteredItemCopy, invitation.invitedBy)
       }
     }
     loadInvitations()
@@ -1185,9 +1305,16 @@ const updateSharedItems = (updatedItem, sourceUser) => {
     const userItems = JSON.parse(localStorage.getItem(`kanbanItems_${username}`) || '[]')
     const targetItem = findItemById(userItems, updatedItem.id)
     if (targetItem) {
+      // Check for conflicting subitems before updating
+      const conflictingItems = findConflictingSubitems(userItems, updatedItem)
+      const cleanedUserItems = removeConflictingSubitems(userItems, conflictingItems)
+
+      // Update the target item
       Object.assign(targetItem, JSON.parse(JSON.stringify(updatedItem)))
       updateSubitemsShareWith(targetItem, updatedItem.shareWith)
-      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(userItems))
+
+      // Save the cleaned items
+      localStorage.setItem(`kanbanItems_${username}`, JSON.stringify(cleanedUserItems))
     }
   })
 
@@ -1431,9 +1558,9 @@ watch(
   border-radius: 12px;
 }
 .field-spaced {
-  /* margin-top: 2px; */
-  /* padding-top: 2px; */
-  /* margin-bottom: 1px; */
+  margin-top: 2px;
+  padding-top: 2px;
+  margin-bottom: 1px;
 }
 
 .menu-rounded {

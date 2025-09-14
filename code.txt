@@ -13,3 +13,18 @@ C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\node.exe
 
 
 C:\Users\m.eskafi\Downloads\node-v22.18.0-win-x64\node-v22.18.0-win-x64\npx.cmd quasar dev
+
+
+
+if an item or subitem is shared with a user with a role, al its subitems will be shared with that user with the saem role
+if a parent of the item that is already shared, is shared with the same user with another role. the share should be from the item or subitem that is in an upper layer of item chain until its last layer of subitems
+a search should be done in the items that user has in his homepage amd if there is any subitem of the item that is share recently, it should be delete4d becuase the new item that is shared already includes the previouse one with an updated role
+
+for example:
+i have item 1, subitems 1.1 (subs 1.1.1 and 1.1.1.1) , 1.2 (subs 1.2.1 and 1.2.1.1)
+ i share 1.1.1 with u1 with role1.
+after accepting it, the 1.1.1 is in u1 homapage and in its itemdetail there are its sibs until the last layer (1 and 1.1 are not shareed (the upper layer))
+until now every thing is ok thaat no need to change
+
+now i want to share 1.1 with u1 with role2
+if u1 accepts it, the 1.1.1 should be deleted in his homepage and 1.1 should be in his homepage and in its itemdetails, all its subs until the last layer all with role2 because 1.1.1 is a part of 1.1 so when we have 1.1 we also have 1.1.1

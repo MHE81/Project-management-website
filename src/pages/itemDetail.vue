@@ -323,7 +323,7 @@
                     Shared:
                     {{
                       subitem.shareWith
-                        .map((s) => `${s.username} ${s.status === 'pending' ? ', Pending' : ''}`)
+                        .map((s) => `${s.username}${s.status === 'pending' ? '(Pending)' : ''}`)
                         .join(', ')
                     }}
                   </div>
@@ -2085,6 +2085,34 @@ const loadItems = () => {
   if (!item.value.assignedTo) item.value.assignedTo = []
   if (!item.value.meetings) item.value.meetings = []
   if (!item.value.comments) item.value.comments = []
+
+  // Filter subitems based on user's access permissions
+  if (item.value.subitems) {
+    const filteredSubitems = item.value.subitems.filter((subitem) => {
+      const userShare = subitem.shareWith?.find(
+        (share) =>
+          share.username === currentUser.value && (!share.status || share.status !== 'pending'),
+      )
+      console.log(
+        `Filtering subitem ${subitem.type}: ${subitem.title} - userShare:`,
+        userShare,
+        'shareWith:',
+        subitem.shareWith,
+      )
+      return !!userShare
+    })
+
+    console.log(
+      'Before filtering - subitems:',
+      item.value.subitems?.map((s) => `${s.type}: ${s.title}`),
+    )
+    console.log(
+      'After filtering - subitems:',
+      filteredSubitems?.map((s) => `${s.type}: ${s.title}`),
+    )
+
+    item.value.subitems = filteredSubitems
+  }
   if (item.value.parentId) {
     directParent.value = findItemById(items, item.value.parentId)
     console.log('Direct Parent:', directParent.value)
@@ -2849,7 +2877,7 @@ const sendMeetingInvitations = (meeting) => {
   invitedUsers.forEach((invitedUser) => {
     const message = {
       id: Date.now() + Math.floor(Math.random() * 1000),
-      text: `You're invited to the ${meeting.type} "${meeting.title}" meeting by "${meeting.creator}" for item "${item.value.title}" on "${meeting.entranceDateTime}".`,
+      text: `You're invited to the ${meeting.type} "${meeting.title}" meeting by "${meeting.creator}" for item "${item.value.title}" on "${meeting.entranceDateTime}". Click here to view the item: /itemDetail/${item.value.id}`,
       itemId: item.value.id,
       itemTitle: item.value.title,
       date: new Date().toLocaleString('en-US'),
@@ -3394,9 +3422,17 @@ const sortedSubitems = (status) => {
     Done: 'done',
   }
   const normalizedStatus = statusMap[status] || status.toLowerCase()
-  const filtered = item.value.subitems.filter(
-    (sub) => sub.status?.toLowerCase() === normalizedStatus,
-  )
+  const filtered = item.value.subitems.filter((sub) => {
+    // Filter by status
+    if (sub.status?.toLowerCase() !== normalizedStatus) return false
+
+    // Additional check: ensure user has access to this subitem
+    const userShare = sub.shareWith?.find(
+      (share) =>
+        share.username === currentUser.value && (!share.status || share.status !== 'pending'),
+    )
+    return !!userShare
+  })
   if (status === 'done') {
     return filtered.sort((a, b) => (a.movedToDoneAt || 0) - (b.movedToDoneAt || 0))
   }
