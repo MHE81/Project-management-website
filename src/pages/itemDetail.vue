@@ -981,15 +981,6 @@
         </q-dialog>
 
         <!-- Add New Report Button -->
-        <!-- <q-btn
-          v-if="item && !isAddingReport && !showReportDialog"
-          color="primary"
-          label="Add Report"
-          @click="toggleReportForm(true)"
-          class="q-mb-md right-btn"
-          :disable="!canManageOwnReports"
-        /> -->
-
         <q-expansion-item
           v-if="item && !toggleSubitemForm"
           dense
@@ -1700,7 +1691,7 @@ const router = useRouter()
 // Auto-dismiss functionality
 const { setupAutoDismiss } = useAutoDismiss()
 
-const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Tehran' })
 const currentDateTime = ref('')
 const item = ref(null)
 const searchQuery = ref('')

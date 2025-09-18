@@ -505,7 +505,7 @@
                     <div class="text-body2">
                       {{
                         new Date(invitation.invitedAt).toLocaleDateString('en-US', {
-                          timeZone: 'Asia/Dubai',
+                          timeZone: 'Asia/Tehran',
                         })
                       }}
                     </div>
@@ -601,7 +601,7 @@ const router = useRouter()
 // Auto-dismiss functionality
 const { setupAutoDismiss } = useAutoDismiss()
 
-const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Dubai' })
+const currentDate = new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Tehran' })
 const items = ref([])
 const searchQuery = ref('')
 const sortByPriority = ref(false)
