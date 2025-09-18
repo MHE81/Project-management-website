@@ -127,6 +127,7 @@ const isPasswordValid = computed(() => {
   return password.value.length >= 8
 })
 
+
 const passwordErrorMessage = computed(() => {
   if (!password.value) return 'Password is required'
   if (!isPasswordValid.value) return 'Password must be at least 8 characters'
